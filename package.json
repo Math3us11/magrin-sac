@@ -1,0 +1,17 @@
+{
+  "name": "magrin-sac",
+  "private": true,
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=24.12.0 <25",
+    "pnpm": "11.18.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build",
+    "type-check": "pnpm --filter frontend type-check",
+    "lint": "pnpm --filter frontend lint",
+    "test": "pnpm --filter frontend test:unit",
+    "format": "pnpm --filter frontend format"
+  }
+}
