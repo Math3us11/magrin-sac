@@ -35,10 +35,10 @@ Entregar o fluxo vertical mínimo:
 
 ## Stack aprovada
 
-- Runtime do frontend: Node.js 24 LTS e pnpm 11.
+- Runtime do monorepo: Node.js 24 LTS e pnpm 11.
 - Frontend: Vue 3, TypeScript, Vite e Tailwind CSS.
-- Backend: Python e Flask, expondo API REST com JSON.
-- Persistência: MariaDB, SQLAlchemy 2.x e Alembic/Flask-Migrate.
+- Backend: NestJS e TypeScript, expondo API REST com JSON.
+- Persistência: MariaDB, Sequelize 6, sequelize-typescript e Umzug.
 - Notificações: Twilio API for WhatsApp; Sandbox durante desenvolvimento.
 - Arquitetura: monólito modular em um único repositório.
 
@@ -48,9 +48,9 @@ mensagens sem uma decisão arquitetural registrada em `docs/DECISIONS.md`.
 ## Fronteiras arquiteturais
 
 - O frontend não acessa o banco e não é a fonte de verdade de regras críticas.
-- Rotas/controllers devem tratar HTTP e delegar regras para serviços de
+- Controllers devem tratar HTTP e delegar regras para services de
   aplicação ou domínio.
-- O acesso ao banco deve passar pelo SQLAlchemy.
+- O acesso ao banco deve passar pelo Sequelize.
 - A integração com a Twilio deve permanecer atrás do módulo de notificações.
 - Módulos de domínio não devem importar nem chamar a SDK da Twilio diretamente.
 - Auditoria e histórico não devem ser misturados com logs técnicos.
@@ -70,21 +70,25 @@ frontend/
     types/
     composables/
 backend/
-  app/
-    auth/
-    users/
-    availability/
-    appointments/
-    attendance/
-    dashboard/
-    notifications/
-    audit/
+  src/
+    config/
+    database/
+      migrations/
+    decorators/
+    guards/
+    helpers/
+    health/
     models/
-    extensions.py
-  migrations/
-  tests/
-  requirements.txt
-  run.py
+    modules/
+      auth/
+      users/
+      availability/
+      appointments/
+      attendance/
+      dashboard/
+      notifications/
+      audit/
+    types/
 docs/
 ```
 
@@ -142,18 +146,30 @@ versionados.
 
 ### Backend
 
+- Usar Node.js 24, NestJS e TypeScript sem Vite ou Vitest.
 - Preferir módulos pequenos e responsabilidades explícitas.
-- Manter regras de negócio fora de views/routes sempre que possível.
-- Tipar o código Python e validar payloads na fronteira HTTP.
+- Organizar cada contexto com `module`, `controller`, `service`, `dto` e
+  demais arquivos somente quando houver responsabilidade concreta.
+- Manter decorators, guards, helpers e tipos realmente transversais diretamente
+  em `backend/src` para reutilização entre módulos.
+- Organizar cada helper transversal em pasta própria, com arquivos `*.service.ts`
+  e `*.module.ts`; `helpers/helpers.module.ts` funciona apenas como agregador.
+- Manter regras de negócio fora de controllers.
+- Models Sequelize ficam centralizados em `backend/src/models`, um por tabela,
+  e devem ser registrados explicitamente.
+- Usar `synchronize: false`; nunca usar `sync({ alter: true })`.
+- Tipar o código TypeScript e validar DTOs na fronteira HTTP.
 - Versionar toda alteração estrutural do banco por migration.
 - Responder erros em formato consistente, sem stack trace ou detalhes internos.
 - Tratar data e hora com timezone explícito; a definição oficial permanece em
   `docs/OPEN_QUESTIONS.md`.
+- Usar ESLint e Prettier no backend; não adicionar Oxlint.
 
 ### Frontend
 
 - Usar pnpm a partir da raiz do workspace; não gerar `package-lock.json` ou
   `yarn.lock`.
+- Usar ESLint e Prettier; não adicionar Oxlint.
 - TypeScript é obrigatório.
 - Centralizar consumo da API em `services`.
 - Manter componentes reutilizáveis e estados de loading, vazio, erro e sucesso.

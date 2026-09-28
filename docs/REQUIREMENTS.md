@@ -14,7 +14,8 @@ documento de requisitos original.
 - Cadastrar, editar, ativar e desativar usuários autorizados (`RF05`).
 - Manter os dados mínimos do aluno (`RF07`).
 - Garantir que o aluno consulte apenas seus próprios dados (`RNF18`).
-- Recuperação de senha (`RF04`) depende da decisão sobre autenticação.
+- Recuperação de senha (`RF04`) permanece no backlog do mecanismo de contas
+  locais e ainda precisa de contrato seguro.
 
 ### Disponibilidade
 
@@ -82,6 +83,11 @@ documento de requisitos original.
 - Validação e sanitização de entrada (`RNF19`, `RNF20`).
 - Sessão segura e registro controlado de tentativas suspeitas
   (`RNF21`, `RNF22`).
+- Access token JWT em cookie `HttpOnly`, com assinatura e claims validadas antes
+  de consultar a sessão stateful. Inatividade, duração absoluta, revogação e
+  usuário ativo são sempre validados no backend.
+- CPF normalizado com 11 dígitos, único no banco e omitido de logs, URLs e
+  respostas que não precisem explicitamente desse dado.
 - Menor privilégio, LGPD e ausência de dados pessoais em URLs e logs
   (`RNF23`–`RNF26`).
 
@@ -150,4 +156,3 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
 9. Falha da Twilio não remove nem invalida o agendamento.
 10. Os fluxos principais funcionam em desktop e viewport móvel e possuem testes
     automatizados ou roteiro documentado.
-

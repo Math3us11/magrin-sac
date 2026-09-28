@@ -2,8 +2,8 @@
 
 ## Estado
 
-Sequência recomendada. A Fase 1 está em andamento: o frontend foi criado e o
-backend permanece pendente.
+Sequência recomendada. A Fase 1 está em andamento: os scaffolds de frontend e
+backend foram criados; o modelo físico de domínio permanece pendente.
 
 ## Fase 0 — Alinhamento essencial
 
@@ -27,13 +27,18 @@ Objetivo: criar a base executável do monorepo.
 Entregas:
 
 - [x] frontend Vue 3 + TypeScript + Vite + Tailwind;
-- [ ] backend Flask com configuração por ambiente;
-- [ ] MariaDB local e SQLAlchemy;
-- [ ] Flask-Migrate e migration inicial;
+- [x] paleta institucional por tokens e temas claro/escuro;
+- [x] backend NestJS + TypeScript com configuração por ambiente;
+- [x] validar MariaDB local e conexão Sequelize;
+- [x] runner de migrations Umzug com `synchronize: false`;
+- [x] migration inicial de identidade, sessões e configuração;
 - [x] `.env.example` do frontend e `.gitignore` da raiz;
-- [x] lint, formatação, testes e build do frontend;
-- [ ] health check do backend;
-- [x] README da raiz com execução local do frontend.
+- [x] `.env.example` do backend sem segredos;
+- [x] validar lint, formatação, testes e build do workspace;
+- [x] health check do backend;
+- [x] README da raiz com execução local do frontend e backend.
+- [x] adicionar testes automatizados do backend com o test runner nativo do
+  Node.js, sem Vite/Vitest.
 
 Critério de saída: uma pessoa nova clona, configura e executa o projeto seguindo
 somente a documentação.
@@ -44,10 +49,12 @@ Objetivo: estabelecer usuários e fronteiras de acesso antes de dados sensíveis
 
 Entregas:
 
-- autenticação aprovada;
-- usuários ativos/inativos;
+- [x] autenticação local e mecanismo de sessão aprovados;
+- [x] login, logout e endpoint de identidade atual;
+- [x] validar usuário ativo, sessão revogada e expiração absoluta;
+- [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
+- usuários ativos/inativos no gerenciamento administrativo;
 - perfis e permissões mínimas;
-- endpoint de identidade atual;
 - proteção de rotas administrativas;
 - testes de isolamento entre alunos.
 
@@ -146,6 +153,6 @@ Entregas:
 ## Próxima ação recomendada
 
 Realizar uma reunião curta de domínio usando os seis primeiros bloqueadores de
-`OPEN_QUESTIONS.md`. Depois, criar o scaffold e implementar a Fase 3 como um
-fluxo vertical, evitando construir todos os cadastros antes de provar a reserva
-concorrente.
+`OPEN_QUESTIONS.md`. Depois, criar a migration inicial e implementar a Fase 3
+como fluxo vertical, evitando construir todos os cadastros antes de provar a
+reserva concorrente.

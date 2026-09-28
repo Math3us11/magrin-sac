@@ -8,10 +8,13 @@
   },
   "scripts": {
     "dev": "pnpm --filter frontend dev",
-    "build": "pnpm --filter frontend build",
+    "start:dev": "pnpm --filter backend start:dev",
+    "build": "pnpm --recursive --if-present build",
     "type-check": "pnpm --filter frontend type-check",
-    "lint": "pnpm --filter frontend lint",
-    "test": "pnpm --filter frontend test:unit",
-    "format": "pnpm --filter frontend format"
+    "lint": "pnpm --recursive --if-present lint",
+    "test": "pnpm --filter backend test && pnpm --filter frontend test:unit",
+    "format": "pnpm --recursive --if-present format",
+    "format:check": "pnpm --recursive --if-present format:check",
+    "check": "pnpm lint && pnpm type-check && pnpm test && pnpm build"
   }
 }

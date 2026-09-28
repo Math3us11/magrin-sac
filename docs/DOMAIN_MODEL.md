@@ -2,8 +2,9 @@
 
 ## Estado
 
-Proposta para a oficina inicial de banco e contratos. Nomes físicos, colunas e
-enums ainda não estão aprovados.
+Primeiro recorte físico aprovado e versionado para identidade, sessões e
+configuração. O modelo de agendamento e atendimento continua como proposta até
+as pendências institucionais correspondentes serem resolvidas.
 
 ## Agregados e entidades
 
@@ -11,8 +12,36 @@ enums ainda não estão aprovados.
 
 Representa a identidade autenticada e seu estado de acesso.
 
-Dados esperados: identificador, nome, e-mail, estado ativo, credencial local
-quando aplicável, perfis e permissões.
+Possui identificador numérico, nome, e-mail, data de nascimento opcional, tipo,
+estado ativo e hash de senha. Os tipos iniciais são `aluno`, `professor` e
+`administrador`; a matriz de permissões de cada tipo ainda está pendente.
+
+E-mail e CPF são únicos mesmo após exclusão lógica. O CPF é armazenado
+normalizado com 11 dígitos e sem pontuação. Ele é excluído do escopo padrão do
+model e só deve ser selecionado por fluxos autorizados de cadastro e validação.
+
+### Sessão de autenticação
+
+Representa uma sessão stateful de usuário. Guarda o identificador do JWT
+(`jti`), última atividade, expiração absoluta, última reautenticação e eventual
+revogação. O JWT completo apresentado pelo navegador não é persistido no banco.
+
+### Parâmetro de sistema
+
+Valor operacional não secreto identificado por nome único. Não pode ser usado
+para credenciais, chaves de criptografia ou configuração necessária para abrir
+a conexão com o próprio banco.
+
+### Endpoint de integração
+
+URL nomeada de um serviço externo. Quando houver autenticação, guarda apenas os
+nomes das variáveis externas que fornecem secret ou API key, nunca seus valores.
+
+### Opção de sistema e item de opção
+
+Vocabulário administrável composto por um grupo e seus itens de nome/valor. Um
+valor é único dentro do grupo. Tipos usados para autorização não dependem dessa
+tabela: regras críticas permanecem tipadas e validadas no backend.
 
 ### Aluno
 
@@ -57,8 +86,10 @@ pessoais.
 ## Relacionamentos propostos
 
 ```text
+Usuário 1 ----- * Sessão de autenticação
 Usuário 1 ----- 0..1 Aluno
-Usuário * ----- * Perfil/Permissão
+Usuário 1 ----- * registros como autor de auditoria
+Opção de sistema 1 ----- * Item de opção
 
 Usuário 1 ----- * Disponibilidade criada
 Aluno   1 ----- * Agendamento
@@ -120,6 +151,25 @@ workshop de domínio.
 8. Em tratativa registra continuidade mínima.
 9. Toda mudança administrativa relevante identifica o ator.
 10. Desativar usuário não apaga o histórico.
+11. E-mail e CPF normalizado identificam no máximo um usuário, inclusive entre
+    excluídos logicamente.
+12. O JWT completo não é persistido; a sessão armazena somente seu `jti` e pode
+    ser revogada no backend.
+13. Parâmetros e endpoints não armazenam segredos reais.
+14. Todo item possui valor único dentro de sua opção de sistema.
+
+## Convenção de auditoria
+
+As tabelas físicas do primeiro recorte possuem:
+
+- `created_at` e `created_by`;
+- `updated_at` e `updated_by`;
+- `deleted_at` e `deleted_by`.
+
+Timestamps de criação e atualização são obrigatórios. Colunas de autoria podem
+ser nulas em bootstrap e rotinas técnicas sem ator autenticado. Exclusões comuns
+são lógicas; as referências de autoria impedem apagar fisicamente um usuário
+necessário ao histórico.
 
 ## Pontos para o modelo físico
 
@@ -130,7 +180,6 @@ workshop de domínio.
 - Padronizar armazenamento de datas em UTC e conversão para o timezone oficial,
   após decisão institucional.
 - Definir política de exclusão lógica e retenção de dados pessoais.
-- Definir se perfis e permissões exigem tabelas flexíveis no MVP ou se papéis
-  fixos são suficientes.
+- Definir a matriz de permissões dos tipos fixos `aluno`, `professor` e
+  `administrador` e se uma evolução futura exigirá papéis compostos.
 - Definir se o atendimento online armazena um link manual.
-

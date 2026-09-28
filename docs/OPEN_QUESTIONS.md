@@ -7,16 +7,20 @@ alinhamento, não para autorizar implementação silenciosa.
 
 ## Bloqueadores do primeiro scaffold funcional
 
-### 1. Autenticação
+### 1. Autenticação — resolvida
 
-Decidir entre:
+**Decisão:** o MVP usa contas locais com senha protegida por hash e access token
+JWT em cookie `HttpOnly`. A sessão permanece stateful no MariaDB para revogação,
+inatividade e desativação imediata do usuário. Não haverá refresh token no
+primeiro fluxo. A fronteira de identidade permanece preparada para futura
+integração institucional. Consulte a ADR-016.
 
-- contas locais no MVP;
-- login institucional desde a primeira versão;
-- contas locais com adapter preparado para integração futura.
+### 1.1. Tempos de sessão
 
-**Recomendação inicial:** contas locais com hash seguro e fronteira de serviço de
-identidade, se a instituição ainda não forneceu protocolo e credenciais.
+Definir os limites institucionais de inatividade e duração absoluta da sessão.
+Como ponto inicial para validação, considerar 30 minutos de inatividade e 8
+horas de duração absoluta. Esses números ainda não estão aprovados e não devem
+ser fixados silenciosamente no código.
 
 ### 2. Perfis e permissões
 
@@ -143,4 +147,3 @@ Ao resolver uma pendência:
 3. ajustar `DOMAIN_MODEL.md` e `API_CONTRACT.md` quando aplicável;
 4. remover a questão desta lista ou marcá-la como resolvida com referência à
    decisão.
-

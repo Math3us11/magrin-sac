@@ -2,8 +2,8 @@
 
 ## Estado
 
-Base documental ativa. O scaffold do frontend foi criado; o backend ainda não
-foi iniciado.
+Base documental ativa. Os scaffolds do frontend Vue e do backend NestJS foram
+criados no workspace pnpm.
 
 Ainda não há contrato final de API nem modelo físico aprovado.
 Os documentos distinguem:
@@ -21,8 +21,9 @@ Os documentos distinguem:
 5. `API_CONTRACT.md` — primeira proposta de recursos e semântica HTTP.
 6. `DECISIONS.md` — decisões arquiteturais aceitas.
 7. `OPEN_QUESTIONS.md` — definições que ainda não podem ser presumidas.
-8. `ROADMAP.md` — sequência sugerida para iniciar a implementação.
-9. `CODEX_VSCODE.md` — preparação e verificação do Codex no VS Code.
+8. `DESIGN_SYSTEM.md` — cores institucionais, temas, tokens e uso das logos.
+9. `ROADMAP.md` — sequência sugerida para iniciar a implementação.
+10. `CODEX_VSCODE.md` — preparação e verificação do Codex no VS Code.
 
 ## Fontes consolidadas
 

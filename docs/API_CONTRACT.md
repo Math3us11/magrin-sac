@@ -2,15 +2,17 @@
 
 ## Estado
 
-Proposta de recursos para orientar o primeiro alinhamento. Rotas, payloads e
-códigos ainda devem ser validados antes da implementação.
+Contrato evolutivo. O recorte de sessão descrito abaixo está implementado; os
+demais recursos continuam como proposta até a implementação correspondente.
 
 ## Convenções
 
 - Prefixo sugerido: `/api`.
 - JSON para request e response, exceto respostas sem corpo.
 - Datas e horários em ISO 8601 com timezone explícito.
-- Identificadores opacos; não expor dados pessoais em URLs.
+- Identificadores numéricos podem ser usados nos recursos internos; toda
+  consulta deve recalcular autorização e não pode depender da dificuldade de
+  adivinhar um identificador. Dados pessoais não são expostos em URLs.
 - Paginação para coleções administrativas.
 - Erros com código estável, mensagem segura e detalhes por campo quando
   aplicável.
@@ -28,7 +30,7 @@ Exemplo de erro:
 }
 ```
 
-## Recursos propostos
+## Recursos
 
 ### Sessão
 
@@ -38,7 +40,51 @@ POST /api/auth/logout
 GET  /api/me
 ```
 
-O contrato de login depende da decisão entre autenticação local e institucional.
+O login inicial usa e-mail e senha e cria uma sessão stateful no backend. O
+access token é um JWT assinado e enviado exclusivamente em cookie `HttpOnly`;
+ele não é retornado no JSON nem persistido pelo JavaScript. Não há refresh token
+no MVP. O backend já controla revogação, duração absoluta e estado do usuário
+consultando a sessão no MariaDB, além de registrar a última atividade. A
+expiração por inatividade permanece pendente dos valores em
+`OPEN_QUESTIONS.md`.
+
+Requisição de login:
+
+```json
+{
+  "email": "aluno@example.com",
+  "password": "senha-do-usuario"
+}
+```
+
+Resposta `200` de login, também acompanhada de `Set-Cookie`:
+
+```json
+{
+  "user": {
+    "id": 3,
+    "name": "Aluno Exemplo",
+    "email": "aluno@example.com",
+    "birthDate": "2000-01-02",
+    "userType": "aluno"
+  }
+}
+```
+
+Credenciais inválidas respondem `401` com mensagem genérica, sem revelar se o
+e-mail existe. `GET /api/me` retorna o mesmo objeto de usuário, sem o envelope
+`user`. `POST /api/auth/logout` é idempotente, revoga a sessão reconhecida,
+remove o cookie e responde `204` sem corpo.
+
+O JWT contém somente `sub` (usuário), `sid` (sessão), `jti` (identificador do
+token), `token_use`, `iat`, `exp`, `iss` e `aud`. Nome, e-mail, tipo, CPF e
+permissões não entram no token; são carregados da fonte atual para evitar dados
+sensíveis ou autorização desatualizada.
+
+O frontend nunca persiste o token em `localStorage`. Login e logout exigem o
+cabeçalho `Origin` correspondente a `CORS_ORIGIN`; uma origem ausente ou
+diferente responde `403`. Os demais endpoints de escrita deverão aplicar a
+mesma proteção ao serem implementados.
 
 ### Disponibilidade do aluno
 
@@ -158,4 +204,3 @@ falha de reserva.
 
 Depois do workshop de domínio, criar schemas de request/response, matriz de
 permissões por rota e exemplos de erro antes de implementar o frontend.
-

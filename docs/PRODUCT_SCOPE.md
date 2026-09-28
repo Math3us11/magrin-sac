@@ -72,7 +72,8 @@ Dashboard recalcula indicadores
 
 ### Acesso
 
-- autenticação de alunos e equipe autorizada;
+- autenticação local de alunos e equipe autorizada;
+- sessão revogável com timeout por inatividade e duração absoluta;
 - controle de acesso por perfil e permissão;
 - ativação e desativação de usuários;
 - isolamento dos dados de cada aluno.
@@ -156,4 +157,3 @@ contadores independentes.
 A fórmula de percentual de resolução continua pendente porque depende da
 definição institucional do denominador. Até a decisão, o MVP deve priorizar os
 quatro totais e tornar explícito quais registros compõem cada indicador.
-
