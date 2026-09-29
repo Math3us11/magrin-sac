@@ -40,8 +40,38 @@ pnpm install
 ## Desenvolvimento
 
 ```sh
-pnpm dev
+pnpm dev --host
 ```
+
+Com o backend executando em `http://localhost:3000`, abra
+`http://localhost:5173/login`. O Vite encaminha `/api` ao backend local.
+
+## Autenticação
+
+O frontend oferece login, restauração da sessão por `GET /api/me`, proteção de
+navegação e logout. O JWT permanece exclusivamente no cookie `HttpOnly`; o
+JavaScript não lê nem persiste o token.
+
+Não existe cadastro público neste incremento. Contas administrativas e docentes
+são provisionadas internamente, enquanto o cadastro de alunos aguarda a
+definição da validação institucional.
+
+## Formulários e validação
+
+Os componentes compartilhados AppForm, AppInput e AppButton ficam em
+src/components/basic. AppForm centraliza o Vee Validate, enquanto os schemas
+Yup de cada fluxo ficam em src/validations.
+
+O schema de login valida e normaliza os dados antes de chamar a API. A regra de
+nova senha exige pelo menos oito caracteres e será reutilizada quando o fluxo
+de criação ou troca de senha existir, junto da validação correspondente no
+backend.
+
+## Ícones
+
+O frontend usa Iconify Vue com ícones Lucide importados como dados locais pelo
+catálogo src/icons/index.ts. Isso mantém a interface disponível sem consultar a
+API pública do Iconify no navegador.
 
 ## Typecheck e build
 
@@ -60,6 +90,8 @@ pnpm test:unit
 ```sh
 pnpm lint
 ```
+
+O frontend usa ESLint e Prettier. Oxlint não faz parte do workspace.
 
 ## Formatação
 

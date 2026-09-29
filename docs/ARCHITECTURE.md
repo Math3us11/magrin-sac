@@ -28,7 +28,7 @@ Node.js 24 + NestJS + TypeScript
 | Camada | Tecnologia |
 |---|---|
 | Runtime | Node.js 24 LTS, pnpm 11 |
-| Frontend | Vue 3, TypeScript, Vite, Tailwind CSS |
+| Frontend | Vue 3, TypeScript, Vite, Tailwind CSS, Vee Validate 4, Yup e Iconify |
 | Backend | NestJS, TypeScript |
 | API | REST, JSON |
 | ORM | Sequelize 6, sequelize-typescript |
@@ -51,6 +51,12 @@ O diretório `frontend/` foi criado com:
 - ESLint e Prettier;
 - estrutura inicial de `assets`, `components`, `composables`, `router`,
   `services`, `stores`, `types` e `views`.
+- cliente HTTP baseado em `fetch`, sempre com cookies habilitados;
+- store Pinia de autenticação e restauração da sessão por `GET /api/me`;
+- tela de login responsiva, proteção de navegação e logout;
+- componentes básicos de formulário em components/basic, integrados ao
+  Vee Validate e a schemas Yup;
+- ícones por Iconify Vue com dados Lucide empacotados localmente;
 - workspace pnpm configurado na raiz do monorepo.
 
 A origem da futura API usa `VITE_API_BASE_URL`, com fallback para `/api`.
@@ -59,6 +65,10 @@ porta 3000.
 
 O backend usa o pacote `mariadb` como driver do Sequelize. O Vite e o Vitest
 permanecem exclusivos do frontend.
+
+Os guards do Vue Router melhoram a navegação, mas não são fronteira de
+segurança. Cada operação protegida continua validando autenticação e autorização
+no backend.
 
 ### Identidade visual e temas
 
@@ -99,13 +109,19 @@ para reutilização entre os módulos de domínio.
 frontend/
   src/
     assets/
+    icons/
     components/
+      basic/
+        AppButton.vue
+        AppForm.vue
+        AppInput.vue
     views/
     router/
     stores/
     services/
     types/
     composables/
+    validations/
 backend/
   src/
     config/

@@ -27,6 +27,17 @@ ser fixados silenciosamente no código.
 Definir o que diferencia coordenador, usuário administrativo e administrador.
 Precisamos de uma matriz mínima de ações por perfil.
 
+### 2.1. Provisionamento de contas — decisão parcial
+
+**Decisão:** professor e administrador não possuem autocadastro público; essas
+contas são criadas por rotina interna autorizada. O primeiro incremento do
+frontend oferece somente login e será validado inicialmente com uma conta de
+administrador inserida de forma controlada no banco.
+
+**Pendente:** definir como confirmar o vínculo acadêmico antes de liberar um
+futuro cadastro de aluno. Até essa definição, não existe rota nem formulário de
+cadastro público e a interface não permite selecionar um perfil privilegiado.
+
 ### 3. Regras de cancelamento
 
 Definir antecedência mínima, motivo obrigatório, liberação do horário e poderes

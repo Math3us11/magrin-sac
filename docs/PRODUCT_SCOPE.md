@@ -73,10 +73,17 @@ Dashboard recalcula indicadores
 ### Acesso
 
 - autenticação local de alunos e equipe autorizada;
+- primeiro incremento visual focado no acesso administrativo, sem cadastro
+  público;
+- contas administrativas e docentes provisionadas por rotina interna;
 - sessão revogável com timeout por inatividade e duração absoluta;
 - controle de acesso por perfil e permissão;
 - ativação e desativação de usuários;
 - isolamento dos dados de cada aluno.
+
+O mecanismo de validação necessário ao futuro cadastro de alunos permanece
+pendente de alinhamento institucional. A interface não permite escolher um
+perfil privilegiado durante um cadastro público.
 
 ### Disponibilidade
 

@@ -40,6 +40,10 @@ POST /api/auth/logout
 GET  /api/me
 ```
 
+Não existe endpoint de cadastro público neste incremento. Contas de professor e
+administrador são provisionadas internamente; o cadastro de aluno aguarda a
+definição de uma validação institucional.
+
 O login inicial usa e-mail e senha e cria uma sessão stateful no backend. O
 access token é um JWT assinado e enviado exclusivamente em cookie `HttpOnly`;
 ele não é retornado no JSON nem persistido pelo JavaScript. Não há refresh token
@@ -85,6 +89,11 @@ O frontend nunca persiste o token em `localStorage`. Login e logout exigem o
 cabeçalho `Origin` correspondente a `CORS_ORIGIN`; uma origem ausente ou
 diferente responde `403`. Os demais endpoints de escrita deverão aplicar a
 mesma proteção ao serem implementados.
+
+O cliente web centraliza essas chamadas em `services`, sempre envia
+`credentials: 'include'`, recupera a identidade por `/api/me` ao iniciar e usa
+guards de navegação apenas para experiência. A autorização definitiva continua
+obrigatoriamente no backend.
 
 ### Disponibilidade do aluno
 

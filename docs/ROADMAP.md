@@ -51,7 +51,13 @@ Entregas:
 
 - [x] autenticação local e mecanismo de sessão aprovados;
 - [x] login, logout e endpoint de identidade atual;
+- [x] cliente web de sessão, tela de login responsiva, proteção de navegação e
+  logout no frontend;
+- [x] base de formulários reutilizáveis com AppForm, AppInput, AppButton,
+  Vee Validate e schemas Yup;
 - [x] validar usuário ativo, sessão revogada e expiração absoluta;
+- [ ] criar de forma controlada a primeira conta de administrador;
+- [ ] definir a validação institucional para futuro cadastro de aluno;
 - [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
 - usuários ativos/inativos no gerenciamento administrativo;
 - perfis e permissões mínimas;

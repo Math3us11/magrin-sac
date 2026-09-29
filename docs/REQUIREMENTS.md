@@ -13,6 +13,10 @@ documento de requisitos original.
 - Autenticar usuários e distinguir perfis autorizados (`RF01`–`RF03`, `RF06`).
 - Cadastrar, editar, ativar e desativar usuários autorizados (`RF05`).
 - Manter os dados mínimos do aluno (`RF07`).
+- Não oferecer autocadastro de professor ou administrador; essas contas são
+  provisionadas internamente.
+- Manter o autocadastro de aluno indisponível até existir uma validação
+  institucional adequada.
 - Garantir que o aluno consulte apenas seus próprios dados (`RNF18`).
 - Recuperação de senha (`RF04`) permanece no backlog do mecanismo de contas
   locais e ainda precisa de contrato seguro.
