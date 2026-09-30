@@ -38,6 +38,7 @@ Exemplo de erro:
 POST /api/auth/login
 POST /api/auth/logout
 GET  /api/me
+GET  /api/me/navigation
 ```
 
 Não existe endpoint de cadastro público neste incremento. Contas de professor e
@@ -94,6 +95,44 @@ O cliente web centraliza essas chamadas em `services`, sempre envia
 `credentials: 'include'`, recupera a identidade por `/api/me` ao iniciar e usa
 guards de navegação apenas para experiência. A autorização definitiva continua
 obrigatoriamente no backend.
+
+`GET /api/me/navigation` exige uma sessão válida e recalcula no banco as
+permissões do tipo atual do usuário. A resposta contém os códigos de permissão e
+a árvore de navegação já filtrada. Agrupadores sem filhos autorizados são
+omitidos:
+
+```json
+{
+  "permissions": ["reports.dashboard.view"],
+  "items": [
+    {
+      "id": 1,
+      "code": "home",
+      "label": "Início",
+      "routeName": "home",
+      "iconKey": "house",
+      "children": []
+    },
+    {
+      "id": 2,
+      "code": "reports",
+      "label": "Relatórios",
+      "routeName": null,
+      "iconKey": "chart-no-axes-combined",
+      "children": [
+        {
+          "id": 3,
+          "code": "reports.dashboard",
+          "label": "Dashboard",
+          "routeName": "reports-dashboard",
+          "iconKey": "chart-no-axes-combined",
+          "children": []
+        }
+      ]
+    }
+  ]
+}
+```
 
 ### Disponibilidade do aluno
 

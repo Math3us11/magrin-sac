@@ -56,7 +56,15 @@ Entregas:
 - [x] base de formulários reutilizáveis com AppForm, AppInput, AppButton,
   Vee Validate e schemas Yup;
 - [x] validar usuário ativo, sessão revogada e expiração absoluta;
-- [ ] criar de forma controlada a primeira conta de administrador;
+- [x] criar de forma controlada a primeira conta de administrador;
+- [x] criar a base física de permissões, tipos de usuário e navegação
+  hierárquica;
+- [x] cadastrar a matriz e os menus iniciais de aluno, professor e
+  administrador;
+- [x] expor permissões e árvore de navegação do usuário autenticado;
+- [x] consumir a navegação no frontend e criar o shell responsivo autenticado;
+- [x] criar protótipo visual da index com atalhos por permissão e blocos
+  ilustrativos para agenda, campanhas e avisos;
 - [ ] definir a validação institucional para futuro cadastro de aluno;
 - [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
 - usuários ativos/inativos no gerenciamento administrativo;

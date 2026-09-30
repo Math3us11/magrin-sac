@@ -12,6 +12,7 @@ import { AuditModule } from './modules/audit/audit.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { AvailabilityModule } from './modules/availability/availability.module.js';
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
+import { NavigationModule } from './modules/navigation/navigation.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
@@ -31,6 +32,7 @@ import { UsersModule } from './modules/users/users.module.js';
     AppointmentsModule,
     AttendanceModule,
     DashboardModule,
+    NavigationModule,
     NotificationsModule,
     AuditModule,
   ],

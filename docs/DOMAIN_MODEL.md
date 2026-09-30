@@ -43,6 +43,24 @@ Vocabulário administrável composto por um grupo e seus itens de nome/valor. Um
 valor é único dentro do grupo. Tipos usados para autorização não dependem dessa
 tabela: regras críticas permanecem tipadas e validadas no backend.
 
+### Permissão e permissão por tipo de usuário
+
+Uma permissão representa uma capacidade estável do backend, identificada por um
+código único. `user_type_permissions` associa os tipos iniciais `aluno`,
+`professor` e `administrador` às capacidades liberadas. A matriz concreta
+começa com acesso ao dashboard de relatórios para professor e administrador e
+acesso à criação e consulta dos próprios agendamentos para aluno e
+administrador.
+
+### Item de menu
+
+Representa uma entrada da navegação. Possui código único, rótulo, nome de rota,
+chave de ícone, ordem, estado ativo e referência opcional ao item pai e à
+permissão exigida. A hierarquia organiza menus e submenus, mas não concede
+acesso por si só. O primeiro conjunto contém `home`, o grupo `reports` com
+`reports.dashboard` e o grupo `appointments` com `appointments.new` e
+`appointments.mine`.
+
 ### Aluno
 
 Especialização ou perfil associado a usuário, com matrícula, curso e outros
@@ -90,6 +108,9 @@ Usuário 1 ----- * Sessão de autenticação
 Usuário 1 ----- 0..1 Aluno
 Usuário 1 ----- * registros como autor de auditoria
 Opção de sistema 1 ----- * Item de opção
+Permissão 1 ----- * Permissão por tipo de usuário
+Permissão 1 ----- * Item de menu
+Item de menu 1 ----- * Item de menu filho
 
 Usuário 1 ----- * Disponibilidade criada
 Aluno   1 ----- * Agendamento
@@ -157,6 +178,9 @@ workshop de domínio.
     ser revogada no backend.
 13. Parâmetros e endpoints não armazenam segredos reais.
 14. Todo item possui valor único dentro de sua opção de sistema.
+15. Um código de permissão identifica no máximo uma capacidade.
+16. Um código de menu identifica no máximo uma entrada de navegação.
+17. A visibilidade de um menu nunca substitui a autorização do endpoint.
 
 ## Convenção de auditoria
 

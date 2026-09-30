@@ -459,8 +459,11 @@
 
   html,
   body,
+  aside,
+  footer,
   header,
   main,
+  nav,
   article,
   button {
     transition:

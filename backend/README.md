@@ -25,7 +25,8 @@ A API usa o prefixo `/api` e expõe inicialmente:
 - `GET /api/health`;
 - `POST /api/auth/login`;
 - `POST /api/auth/logout`;
-- `GET /api/me`.
+- `GET /api/me`;
+- `GET /api/me/navigation`.
 
 ## Banco
 
@@ -34,7 +35,21 @@ A API usa o prefixo `/api` e expõe inicialmente:
 - `db:migrate:status`: mostra migrations executadas e pendentes;
 - `db:migrate`: aplica migrations;
 - `db:migrate:undo`: reverte a última migration;
-- `db:setup`: cria o banco e aplica migrations.
+- `db:setup`: cria o banco e aplica migrations;
+- `db:bootstrap:admin`: cria ou atualiza, de forma controlada, a primeira conta
+  administrativa.
+
+Para provisionar o administrador, defina localmente as variáveis
+`BOOTSTRAP_ADMIN_NAME`, `BOOTSTRAP_ADMIN_EMAIL`, `BOOTSTRAP_ADMIN_PASSWORD`,
+`BOOTSTRAP_ADMIN_CPF` e `BOOTSTRAP_ADMIN_BIRTH_DATE` e execute:
+
+```bash
+pnpm --filter backend db:bootstrap:admin
+```
+
+A data usa o formato `YYYY-MM-DD`, o CPF é normalizado para 11 dígitos e a
+senha nunca é persistida em texto puro. A rotina é idempotente para a mesma
+combinação de e-mail e CPF e recusa conflitos com contas existentes.
 
 O Sequelize usa `synchronize: false`. Toda mudança estrutural deve ser criada
 como migration versionada.
@@ -45,6 +60,16 @@ A migration inicial cria:
 - `system_parameters` para valores operacionais não secretos;
 - `integration_endpoints` para URLs e referências a segredos externos;
 - `system_options` e `system_option_items` para vocabulários configuráveis.
+
+A migration de navegação e autorização cria:
+
+- `permissions`, com códigos estáveis usados pelo backend;
+- `user_type_permissions`, associando os tipos iniciais às permissões;
+- `menu_items`, com rota nominal, ícone, ordenação e hierarquia por
+  `parent_id`.
+
+O menu controla apenas a navegação apresentada. A autorização real continuará
+sendo aplicada pelos guards e services do backend.
 
 Todas as tabelas possuem colunas de criação, atualização e exclusão lógica com
 autoria. Segredos reais, chaves de criptografia e credenciais de infraestrutura
@@ -98,6 +123,8 @@ src/
     appointments/
     attendance/
     auth/
+      dto/
+    navigation/
       dto/
     availability/
     dashboard/

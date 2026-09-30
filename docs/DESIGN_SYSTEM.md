@@ -91,7 +91,10 @@ conjunto contém:
   inválido e direciona o foco ao primeiro campo com erro;
 - AppInput: reúne label, campo, ajuda, mensagem de erro, atributos ARIA,
   prefixo, sufixo e exibição opcional de senha;
-- AppButton: padroniza variantes, largura, estado desabilitado e carregamento.
+- AppButton: padroniza variantes, largura, estado desabilitado e carregamento;
+- AppConfirmDialog: concentra confirmações reutilizáveis com título, descrição,
+  tom da ação, loading, bloqueio do fundo, retorno de foco e fechamento por
+  botão, backdrop ou tecla Escape.
 
 Schemas de cada fluxo ficam em frontend/src/validations. Mensagens e regras não
 devem ser declaradas diretamente na view. A regra inicial para criação ou troca
@@ -101,6 +104,37 @@ retroativamente uma política de criação.
 
 Validações no frontend orientam a pessoa usuária, mas nunca substituem as
 validações equivalentes no backend quando o dado for persistido.
+
+## Shell autenticado
+
+As páginas autenticadas compartilham um shell em duas faixas: header ocupando
+toda a largura e região principal dividida entre sidebar e conteúdo. No desktop,
+a sidebar fica abaixo do header e pode alternar entre o estado expandido e uma
+faixa compacta de ícones; a preferência é mantida no navegador. No mobile, ela
+funciona como drawer sobreposto, fecha por botão, backdrop, tecla Escape ou
+mudança de rota.
+
+Os itens são carregados de `GET /api/me/navigation` após o login e ao restaurar
+uma sessão. Estados de carregamento e erro aparecem dentro da própria sidebar.
+Chaves de ícone recebidas da API são resolvidas somente pelo catálogo local; uma
+chave desconhecida nunca provoca consulta externa nem injeta marcação.
+
+O header concentra a marca, contexto da página, tema, identidade resumida e
+logout. Ele usa `logo_vermelha.png` no tema claro e `logo_branca.png` no tema
+escuro. A sidebar fica dedicada à navegação e aos controles necessários para
+abri-la, fechá-la ou minimizá-la.
+
+## Página inicial autenticada
+
+A primeira versão da index é um protótipo visual para validar hierarquia e
+densidade. Ela reúne saudação conforme o perfil, campanha institucional,
+atalhos permitidos, próximos atendimentos e avisos. Os atalhos já respeitam as
+permissões carregadas pelo servidor.
+
+Campanhas, atendimentos e avisos exibidos nesta etapa são dados ilustrativos e
+devem permanecer identificados como tal. Eles não representam registros reais
+nem definem contratos de API. A integração será feita por blocos quando cada
+fonte de dados e regra de personalização estiver consolidada.
 
 ## Ícones
 

@@ -54,6 +54,8 @@ O diretório `frontend/` foi criado com:
 - cliente HTTP baseado em `fetch`, sempre com cookies habilitados;
 - store Pinia de autenticação e restauração da sessão por `GET /api/me`;
 - tela de login responsiva, proteção de navegação e logout;
+- shell autenticado com header, footer e sidebar responsiva alimentada pela API;
+- store de navegação com permissões atuais e estados de carregamento e erro;
 - componentes básicos de formulário em components/basic, integrados ao
   Vee Validate e a schemas Yup;
 - ícones por Iconify Vue com dados Lucide empacotados localmente;
@@ -95,6 +97,8 @@ O diretório `backend/` foi criado com:
 - health check em `GET /api/health`, incluindo autenticação no banco;
 - login, logout e identidade atual com sessão stateful em cookie `HttpOnly`;
 - hash e verificação de senhas com Argon2id;
+- rotina interna e idempotente para provisionar a primeira conta
+  administrativa sem endpoint público;
 - módulos iniciais de autenticação, usuários, disponibilidade, agendamentos,
   atendimento, dashboard, notificações e auditoria;
 - ESLint e Prettier, sem Vite, Vitest ou Oxlint.
@@ -144,6 +148,7 @@ backend/
     models/
     modules/
       auth/
+      navigation/
       users/
       availability/
       appointments/
@@ -187,6 +192,12 @@ já autenticada ao controller, sem duplicar leitura de cookie nos módulos.
 ### `modules/users`
 
 Usuários, alunos, perfis, permissões, ativação e desativação.
+
+### `modules/navigation`
+
+Consulta a navegação do usuário autenticado, monta a árvore de menus e remove
+agrupadores sem filhos permitidos. O módulo usa o serviço de permissões
+exportado por `modules/auth`, mas não concede autorização por conta própria.
 
 ### `modules/availability`
 
@@ -269,6 +280,25 @@ guard valida JWT, vínculo com a sessão, expiração absoluta e usuário ativo 
 de anexar a identidade à requisição. `last_activity_at` já é atualizado, mas a
 expiração por inatividade só será ativada depois da aprovação dos tempos de
 sessão em `OPEN_QUESTIONS.md`.
+
+### Navegação e permissões
+
+A navegação dinâmica usa `menu_items`, com hierarquia por `parent_id`, ordem,
+chave de ícone e nome de uma rota previamente registrada no Vue. O banco não
+armazena componentes nem URLs executáveis. Agrupadores sem rota podem ficar
+visíveis quando possuírem ao menos um filho autorizado.
+
+`permissions` define capacidades estáveis do backend e
+`user_type_permissions` associa essas capacidades aos tipos iniciais
+`aluno`, `professor` e `administrador`. A permissão ligada ao menu serve
+para filtrar a navegação, mas não substitui guards e validações de autorização
+nos endpoints.
+
+O conjunto inicial mantém `home` global para usuários autenticados. Professores
+e administradores recebem `reports.dashboard.view`; alunos e administradores
+recebem `appointments.create` e `appointments.read.own`. Os agrupadores
+`reports` e `appointments` não possuem permissão própria e só devem aparecer
+quando ao menos um filho permanecer visível.
 
 ### Configuração em camadas
 

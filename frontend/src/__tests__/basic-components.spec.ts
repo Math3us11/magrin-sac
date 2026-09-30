@@ -1,8 +1,10 @@
 import { mount } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 import { object, string } from 'yup'
 
 import AppButton from '@/components/basic/AppButton.vue'
+import AppConfirmDialog from '@/components/basic/AppConfirmDialog.vue'
 import AppForm from '@/components/basic/AppForm.vue'
 import AppInput from '@/components/basic/AppInput.vue'
 
@@ -49,5 +51,40 @@ describe('componentes básicos', () => {
     expect(wrapper.get('button').attributes('aria-busy')).toBe('true')
     expect(wrapper.get('button').attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toBe('Salvando...')
+  })
+
+  it('AppConfirmDialog anuncia a confirmação, controla o foco e emite as ações', async () => {
+    const wrapper = mount(AppConfirmDialog, {
+      attachTo: document.body,
+      props: {
+        description: 'Esta ação precisa ser confirmada.',
+        open: true,
+        title: 'Confirmar ação?',
+      },
+    })
+
+    await nextTick()
+
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]')
+    const cancelButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-dialog-cancel"]',
+    )
+    const confirmButton = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="confirm-dialog-confirm"]',
+    )
+
+    expect(dialog?.getAttribute('aria-modal')).toBe('true')
+    expect(document.activeElement).toBe(cancelButton)
+
+    confirmButton?.click()
+    await nextTick()
+    expect(wrapper.emitted('confirm')).toHaveLength(1)
+
+    cancelButton?.click()
+    await nextTick()
+    expect(wrapper.emitted('cancel')).toHaveLength(1)
+    expect(wrapper.emitted('update:open')).toEqual([[false]])
+
+    wrapper.unmount()
   })
 })

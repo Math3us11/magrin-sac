@@ -6,7 +6,8 @@ de Ciência da Computação.
 ## Estado atual
 
 - documentação inicial consolidada;
-- repositório Git inicializado na branch `main`;
+- repositório Git com `develop` como branch padrão e `main` reservada para
+  entregas;
 - frontend Vue criado;
 - backend NestJS criado com Sequelize, MariaDB, health check e autenticação
   stateful inicial;
@@ -52,8 +53,16 @@ Crie `backend/.env` a partir de `backend/.env.example`. Depois:
 
 ```bash
 pnpm --filter backend db:create
-pnpm --filter backend db:check
+pnpm --filter backend db:setup
 pnpm start:dev
+```
+
+Para criar a primeira conta administrativa local, preencha somente no seu
+`backend/.env` as variáveis `BOOTSTRAP_ADMIN_*` descritas em `.env.example` e
+execute:
+
+```bash
+pnpm --filter backend db:bootstrap:admin
 ```
 
 A API fica em `http://localhost:3000/api`. O health check é
