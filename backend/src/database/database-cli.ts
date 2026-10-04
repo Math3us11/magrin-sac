@@ -1,11 +1,17 @@
 import type { MigrationMeta } from 'umzug';
 import { createConfiguredDatabase } from './database.admin.js';
+import {
+  provisionAdministrator,
+  readBootstrapAdministratorInput,
+} from './database.bootstrap-admin.js';
 import { createDatabaseConnection } from './database.connection.js';
 import { createDatabaseMigrator } from './database.migrator.js';
 
-type DatabaseCommand = 'check' | 'create' | 'migrate' | 'migrate:status' | 'migrate:undo' | 'setup';
+type DatabaseCommand =
+  'bootstrap:admin' | 'check' | 'create' | 'migrate' | 'migrate:status' | 'migrate:undo' | 'setup';
 
 const DATABASE_COMMANDS = new Set<DatabaseCommand>([
+  'bootstrap:admin',
   'check',
   'create',
   'migrate',
@@ -20,7 +26,7 @@ function parseCommand(value: string | undefined): DatabaseCommand {
   }
 
   throw new Error(
-    'Expected one command: check, create, migrate, migrate:undo, migrate:status or setup',
+    'Expected one command: bootstrap:admin, check, create, migrate, migrate:undo, migrate:status or setup',
   );
 }
 
@@ -56,6 +62,17 @@ async function run(): Promise<void> {
     await sequelize.authenticate();
 
     switch (command) {
+      case 'bootstrap:admin': {
+        const pendingMigrations = await migrations.pending();
+
+        if (pendingMigrations.length > 0) {
+          throw new Error('Apply all pending migrations before provisioning an administrator.');
+        }
+
+        const result = await provisionAdministrator(sequelize, readBootstrapAdministratorInput());
+        console.log(`Administrator ${result.action}: ${result.email}`);
+        break;
+      }
       case 'check':
         console.log('Database connection succeeded.');
         break;
@@ -76,4 +93,9 @@ async function run(): Promise<void> {
   }
 }
 
-await run();
+try {
+  await run();
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'Database command failed.');
+  process.exitCode = 1;
+}

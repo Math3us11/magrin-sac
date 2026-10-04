@@ -13,7 +13,7 @@ withDefaults(
     loading?: boolean
     loadingLabel?: string
     type?: 'button' | 'reset' | 'submit'
-    variant?: 'ghost' | 'primary' | 'secondary'
+    variant?: 'danger' | 'ghost' | 'primary' | 'secondary'
   }>(),
   {
     block: false,
@@ -26,6 +26,7 @@ withDefaults(
 )
 
 const variantClasses = computed(() => ({
+  danger: 'bg-status-danger text-white shadow-lg shadow-status-danger/20 hover:brightness-95',
   ghost: 'bg-transparent text-content hover:bg-surface-subtle',
   primary:
     'bg-brand-primary text-on-primary shadow-lg shadow-brand-primary/20 hover:bg-brand-primary-hover',

@@ -1,5 +1,6 @@
-import { Transform } from 'class-transformer';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsDefined, IsEmail, MaxLength, ValidateNested } from 'class-validator';
+import { EncryptedCredentialDto } from '../../../helpers/credential-encryption/credential-encryption.dto.js';
 
 export class LoginDto {
   @Transform(({ value }: { value: unknown }) =>
@@ -9,8 +10,8 @@ export class LoginDto {
   @MaxLength(254)
   declare email: string;
 
-  @IsString()
-  @MinLength(1)
-  @MaxLength(128)
-  declare password: string;
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => EncryptedCredentialDto)
+  declare credential: EncryptedCredentialDto;
 }

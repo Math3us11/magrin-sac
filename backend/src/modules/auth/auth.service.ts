@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { Sequelize } from 'sequelize-typescript';
@@ -9,15 +14,27 @@ import { AuthSession } from '../../models/auth-session.model.js';
 import { User } from '../../models/user.model.js';
 import type { AuthenticatedSession } from '../../types/authenticated-session.type.js';
 import type { CurrentUserDto } from './dto/current-user.dto.js';
-import type { LoginDto } from './dto/login.dto.js';
 
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 const INVALID_SESSION_MESSAGE = 'Sessão inválida ou expirada.';
-const SAFE_USER_ATTRIBUTES = ['id', 'name', 'email', 'birthDate', 'userType', 'isActive'] as const;
+const SAFE_USER_ATTRIBUTES = [
+  'id',
+  'name',
+  'email',
+  'birthDate',
+  'userType',
+  'isActive',
+  'mustChangePassword',
+] as const;
 
 export type LoginResult = {
   token: string;
   user: CurrentUserDto;
+};
+
+type LoginInput = {
+  email: string;
+  password: string;
 };
 
 @Injectable()
@@ -35,7 +52,7 @@ export class AuthService {
     this.authConfig = configService.getOrThrow<AuthConfig>('auth');
   }
 
-  async login(input: LoginDto): Promise<LoginResult> {
+  async login(input: LoginInput): Promise<LoginResult> {
     const user = await this.userModel.unscoped().findOne({
       attributes: [...SAFE_USER_ATTRIBUTES, 'passwordHash'],
       where: { email: input.email },
@@ -110,6 +127,62 @@ export class AuthService {
     };
   }
 
+  async completeFirstAccess(userId: number, newPassword: string): Promise<{ message: string }> {
+    const user = await this.userModel.unscoped().findByPk(userId, {
+      attributes: ['id', 'isActive', 'mustChangePassword', 'passwordHash'],
+    });
+
+    if (!user?.isActive) throw new UnauthorizedException(INVALID_SESSION_MESSAGE);
+    if (!user.mustChangePassword) {
+      throw new ConflictException('A definição da senha inicial não está pendente.');
+    }
+
+    const repeatsTemporaryPassword = await this.passwordHashService.matches(
+      newPassword,
+      user.passwordHash,
+    );
+    if (repeatsTemporaryPassword) {
+      throw new BadRequestException('A nova senha deve ser diferente da senha temporária.');
+    }
+
+    const passwordHash = await this.passwordHashService.hash(newPassword);
+    const now = new Date();
+
+    await this.sequelize.transaction(async (transaction) => {
+      const [updatedUsers] = await this.userModel.update(
+        {
+          mustChangePassword: false,
+          passwordHash,
+          updatedBy: user.id,
+        },
+        {
+          fields: ['mustChangePassword', 'passwordHash', 'updatedBy'],
+          transaction,
+          where: {
+            id: user.id,
+            isActive: true,
+            mustChangePassword: true,
+            passwordHash: user.passwordHash,
+          },
+        },
+      );
+
+      if (updatedUsers !== 1) {
+        throw new ConflictException('A definição da senha inicial não está pendente.');
+      }
+
+      await this.authSessionModel.update(
+        { revokedAt: now, updatedBy: user.id },
+        {
+          transaction,
+          where: { revokedAt: null, userId: user.id },
+        },
+      );
+    });
+
+    return { message: 'Senha definida com sucesso. Entre novamente para continuar.' };
+  }
+
   async logout(token: string | null): Promise<void> {
     if (!token) return;
 
@@ -139,6 +212,7 @@ export class AuthService {
       birthDate: user.birthDate,
       email: user.email,
       id: user.id,
+      mustChangePassword: user.mustChangePassword,
       name: user.name,
       userType: user.userType,
     };

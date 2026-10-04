@@ -63,7 +63,8 @@ da agenda.
 **Estado:** aceita.
 
 A confirmação revalida a disponibilidade dentro de uma transação e depende de
-proteção efetiva no MariaDB contra mais de um agendamento ativo no horário.
+proteção efetiva no MariaDB contra sobreposição entre agendamentos ativos no
+mesmo período da janela.
 
 Motivo: verificações no frontend ou um `SELECT` anterior não impedem duas
 requisições simultâneas.
@@ -224,6 +225,171 @@ URLs ou respostas sem necessidade explícita.
 
 Motivo: preservar rastreabilidade e manter o primeiro modelo simples, sem
 permitir que uma identidade excluída seja recriada silenciosamente.
+
+## ADR-019 — Envelope híbrido para credenciais de senha
+
+**Estado:** aceita.
+
+Login, cadastro administrativo e definição da senha no primeiro acesso enviam a
+credencial em um envelope híbrido. O navegador gera uma chave AES-GCM de 256
+bits para cada operação e protege essa chave com a chave pública RSA-OAEP
+SHA-256 fornecida pelo backend. O envelope autentica finalidade, `keyId` e
+horário do servidor e possui validade curta.
+
+A chave privada RSA permanece exclusivamente no backend, configurada por
+`PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64` ou por um cofre de segredos. Ela nunca
+é exposta por variável `VITE_*`, persistida em `system_parameters` ou copiada
+para o banco. Em desenvolvimento e testes, a ausência da variável cria uma
+chave efêmera por processo; produção falha na inicialização sem uma chave
+configurada.
+
+Motivo: impedir que a senha apareça em texto legível no corpo JSON observado
+entre as camadas da aplicação, sem distribuir um segredo simétrico no bundle do
+frontend. Algoritmos e primitivas são fornecidos por Web Crypto no cliente e
+`node:crypto` no servidor; não há algoritmo criptográfico próprio.
+
+Consequência: HTTPS continua obrigatório, porque o envelope não substitui a
+autenticação do servidor, a integridade do tráfego ou as proteções contra replay
+do TLS. O backend descriptografa a senha apenas em memória e mantém Argon2id
+como proteção persistente. Rotação da chave altera o `keyId`; o cliente consulta
+a chave pública imediatamente antes de cada envio.
+
+Na definição da senha inicial, a finalidade autenticada do envelope é
+`first-access-password`. A confirmação permanece apenas na interface; o backend
+recebe a nova senha uma vez, cria um novo hash Argon2id e nunca devolve a senha
+temporária.
+
+A confirmação de exclusão de usuário também usa o envelope, com a finalidade
+isolada `user-deletion-confirmation`. Assim, a senha administrativa não aparece
+em texto legível no payload e o envelope não pode ser reutilizado no login ou em
+outro fluxo.
+
+## ADR-020 — Exclusão lógica de cadastro indevido
+
+**Estado:** aceita.
+
+Um administrador com `users.manage` pode excluir um cadastro de usuário criado
+indevidamente após confirmar a própria senha. A operação é lógica: desativa o
+usuário, registra `deleted_at`, `deleted_by` e `updated_by`, revoga suas sessões
+ativas e preserva vínculos e histórico. A própria conta do administrador não
+pode ser excluída por esse fluxo.
+
+Motivo: retirar da operação cotidiana um cadastro que não deveria existir sem
+apagar evidências, autoria ou dados necessários à integridade histórica.
+
+Consequência: e-mail e CPF continuam reservados depois da exclusão lógica. O
+fluxo não substitui a futura política institucional de retenção, anonimização e
+atendimento de solicitações LGPD.
+
+## ADR-021 — Agenda própria do professor
+
+**Estado:** aceita.
+
+O primeiro recorte da agenda atribui ao professor a capacidade
+`availability.manage.own`. Ela libera a rota `/professor/agenda` e representa
+somente as disponibilidades pertencentes ao usuário autenticado. Administração
+de agendas de terceiros deverá usar uma capacidade separada.
+
+Motivo: oferecer um início simples e aderente ao menor privilégio, sem misturar
+a agenda pessoal do professor com poderes globais da coordenação.
+
+Consequência: o backend futuro deverá derivar o proprietário da sessão, e não de
+um identificador arbitrário enviado pelo frontend. Antecedência mínima, janela
+de agendamento e alterações sobre horários reservados continuam pendentes em
+`OPEN_QUESTIONS.md`.
+
+## ADR-022 — Formulário inicial de disponibilidade e timezone
+
+**Estado:** aceita.
+
+O timezone institucional é `America/Porto_Velho`. O primeiro cadastro de
+disponibilidade permite que o professor escolha livremente data, início, fim e
+uma ou ambas as modalidades `presencial` e `online`. O término deve ser
+posterior ao início, o período deve estar no futuro e intervalos preparados para
+a mesma data não podem se sobrepor. Sala e link não fazem parte deste recorte.
+
+A interface monta uma lista de horários para revisão antes da publicação. O
+formulário usa o componente genérico `AppModal`; fluxos modais com domínio ou
+complexidade próprios podem ganhar componentes especializados sem ampliar a
+responsabilidade da base.
+
+Motivo: permitir intervalos reais da agenda sem impor uma duração ainda não
+aprovada, tornar o fuso explícito e reduzir cadastros repetitivos por meio da
+revisão em lote.
+
+Consequência: a futura API deverá repetir todas as validações, verificar
+conflitos persistidos e derivar o professor da sessão. Instantes serão
+normalizados na persistência e convertidos para `America/Porto_Velho` nas
+fronteiras. Sala e link poderão ser modelados depois sem fazer parte do contrato
+inicial.
+
+As modalidades são normalizadas pela opção de sistema `APPOINTMENT_MODALITY`,
+com os itens atômicos `presencial` e `online`. A tabela
+`availability_modalities` relaciona cada disponibilidade a um ou aos dois
+itens. “Ambas” não é persistida como modalidade, pois representa a combinação
+das duas possibilidades e não uma escolha válida de um agendamento.
+
+O envio do lote é atômico. Dentro da transação, o backend bloqueia a linha do
+professor, consulta sobreposições e somente então persiste as disponibilidades e
+seus vínculos. Isso serializa publicações concorrentes da mesma agenda e impede
+que duas requisições passem simultaneamente pela verificação.
+
+O modo “Dias da semana” não cria uma regra recorrente no banco. O frontend
+expande a semana selecionada, os dias escolhidos e cada janela em disponibilidades
+concretas, mostra o resultado na revisão e envia o mesmo lote do modo por data.
+Uma faixa representa uma janela consumível por vários agendamentos com
+intervalos não sobrepostos, e não uma reserva indivisível com duração fixa.
+
+## ADR-023 — Publicação temporária por Cloudflare Tunnel
+
+**Estado:** aceita para demonstração; não define produção.
+
+Para apresentações externas durante o desenvolvimento, um túnel nomeado da
+Cloudflare publica um único serviço HTTP preso a `127.0.0.1:3100`. O NestJS
+entrega tanto `/api/*` quanto o build SPA do Vue, mantendo frontend e API na
+mesma origem pública. Cloudflare Access restringe a entrada aos participantes
+autorizados e o MariaDB permanece exclusivamente local.
+
+O iniciador remoto mantém `APP_ENV=development`, altera apenas a configuração
+efetiva dessa execução e força `AUTH_SESSION_COOKIE_SECURE=true`. Antes de iniciar
+o backend ele gera os builds e aplica migrations; antes de iniciar o túnel, o
+script confirma as credenciais, o health check do banco e a entrega do frontend.
+
+Motivo: permitir demonstrações pelo domínio já administrado sem abrir portas no
+roteador, separar API em outro hostname ou migrar prematuramente o NestJS e o
+Sequelize para outro runtime.
+
+Consequência: a aplicação depende do computador, MariaDB e conector locais
+permanecerem ligados durante a apresentação. O fluxo não oferece SLA, backup,
+alta disponibilidade nem resolve a pendência de infraestrutura de produção em
+`OPEN_QUESTIONS.md`.
+
+## ADR-024 — Main isolada como versão estável de demonstração
+
+**Estado:** aceita.
+
+A branch `main` é a única fonte permitida para o ambiente publicado pelo
+Cloudflare Tunnel. Um worktree local em `.worktrees/stable` mantém essa versão
+disponível simultaneamente ao diretório principal, que pode permanecer em
+`develop` ou numa branch `feat/*`. O comando público `pnpm stable` executa a
+`main` no worktree, e `pnpm remote` falha se for chamado em outra branch.
+
+Promoções continuam explícitas: funcionalidades entram em `develop` e somente
+uma revisão aprovada atualiza `main`. `pnpm stable:sync` apenas avança o worktree
+por fast-forward até `origin/main`; ele não promove desenvolvimento nem cria
+merge automaticamente.
+
+O ambiente estável usa `STABLE_DB_DATABASE`, enquanto o desenvolvimento usa
+`DB_DATABASE`. Os dois schemas podem viver no mesmo MariaDB, mas migrations e
+dados de teste de uma versão não alteram a outra.
+
+Motivo: permitir correções e funcionalidades em andamento sem mudar a versão
+apresentada, além de evitar que migrations de desenvolvimento tornem o build
+estável incompatível.
+
+Consequência: uma nova versão somente chega ao domínio depois de ser integrada
+à `main`, sincronizada no worktree e reiniciada. O worktree é gerado localmente,
+fica ignorado pelo Git e não deve receber edições manuais.
 
 ## Como adicionar uma decisão
 

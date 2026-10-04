@@ -29,6 +29,10 @@ function emitSubmit(values: GenericObject, actions: FormActions<GenericObject>) 
   emit('submit', values, actions)
 }
 
+function setFieldValue(field: string, value: unknown) {
+  form.setFieldValue(field, value)
+}
+
 function focusFirstInvalidField({ errors }: InvalidSubmissionContext<GenericObject>) {
   const firstInvalidField = Object.keys(errors)[0]
 
@@ -52,6 +56,8 @@ const handleSubmit = form.handleSubmit(emitSubmit, focusFirstInvalidField)
       :errors="form.errors.value"
       :is-submitting="form.isSubmitting.value"
       :meta="form.meta.value"
+      :set-field-value="setFieldValue"
+      :values="form.values"
     ></slot>
   </form>
 </template>

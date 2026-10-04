@@ -113,6 +113,9 @@ importers:
       '@tailwindcss/vite':
         specifier: ^4.3.3
         version: 4.3.3(vite@8.2.2(@types/node@24.13.3)(jiti@2.7.0))
+      maska:
+        specifier: ^3.2.1
+        version: 3.2.1
       pinia:
         specifier: ^4.0.2
         version: 4.0.3(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.42(typescript@6.0.3))
@@ -2531,6 +2534,9 @@ packages:
   mariadb@3.5.4:
     resolution: {integrity: sha512-3m0vdfgRkjle5/9hHl4R7rlVvnDA7QfuFSNkdIAQNROWKOS0J3b9IQK9HaZSCGEVKiDUbFXFiINfC+cmR5P/aA==}
     engines: {node: '>= 20.0.0'}
+
+  maska@3.2.1:
+    resolution: {integrity: sha512-YXMSyY6QPhf+knXWpHEWMswFQMGzYv5rjIOSPgjLibKkA8AlfBf2HT7XHJoTL6Pm1obXQ+tsM1AnyC/AkcVGnQ==}
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -6022,6 +6028,8 @@ snapshots:
       denque: 2.1.0
       iconv-lite: 0.7.3
       lru-cache: 11.5.2
+
+  maska@3.2.1: {}
 
   math-intrinsics@1.1.0: {}
 

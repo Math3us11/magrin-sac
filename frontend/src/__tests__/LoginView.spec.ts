@@ -1,8 +1,10 @@
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
+import { useAuthStore } from '@/stores/auth'
 import LoginView from '@/views/LoginView.vue'
 
 afterEach(() => {
@@ -96,5 +98,43 @@ describe('LoginView', () => {
       'E-mail ou senha inválidos.',
     )
     expect(wrapper.get('input[name="password"]').element).toHaveProperty('value', '')
+  })
+
+  it('exibe a segunda etapa no primeiro acesso e volta ao login após definir a senha', async () => {
+    const wrapper = await mountLoginView()
+    const auth = useAuthStore()
+    auth.user = {
+      birthDate: null,
+      email: 'aluno@example.com',
+      id: 3,
+      mustChangePassword: true,
+      name: 'Aluno Teste',
+      userType: 'aluno',
+    }
+    await nextTick()
+
+    expect(wrapper.get('h2').text()).toBe('Defina sua nova senha.')
+    expect(wrapper.find('input[type="email"]').exists()).toBe(false)
+    expect(wrapper.get('input[name="newPassword"]').attributes('autocomplete')).toBe('new-password')
+
+    await wrapper.get('input[name="newPassword"]').setValue('nova-senha-segura')
+    await wrapper.get('input[name="passwordConfirmation"]').setValue('senha-diferente')
+    await wrapper.get('[data-testid="first-access-form"]').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('As senhas devem ser iguais.'))
+
+    const completeFirstAccess = vi
+      .spyOn(auth, 'completeFirstAccess')
+      .mockImplementation(async () => {
+        auth.user = null
+        return 'Senha definida com sucesso. Entre novamente para continuar.'
+      })
+    await wrapper.get('input[name="passwordConfirmation"]').setValue('nova-senha-segura')
+    await wrapper.get('[data-testid="first-access-form"]').trigger('submit')
+
+    await vi.waitFor(() => expect(wrapper.get('h2').text()).toBe('Bem-vindo de volta.'))
+    expect(completeFirstAccess).toHaveBeenCalledWith('nova-senha-segura')
+    expect(wrapper.get('[data-testid="login-success"]').text()).toContain(
+      'Senha definida com sucesso.',
+    )
   })
 })
