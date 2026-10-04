@@ -14,8 +14,10 @@ import {
   calendarCheckIcon,
   chartCombinedIcon,
   circleAlertIcon,
+  circleCheckIcon,
   historyIcon,
   infoIcon,
+  keyRoundIcon,
   lockKeyholeIcon,
   mailIcon,
   moonIcon,
@@ -23,7 +25,12 @@ import {
 } from '@/icons'
 import { ApiError } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
-import { loginValidationSchema, type LoginFormValues } from '@/validations/auth.schema'
+import {
+  firstAccessPasswordValidationSchema,
+  loginValidationSchema,
+  type FirstAccessPasswordFormValues,
+  type LoginFormValues,
+} from '@/validations/auth.schema'
 
 useDocumentTitle('Entrar | Sistema de Agendamento')
 
@@ -33,11 +40,20 @@ const router = useRouter()
 const { isDark, toggleTheme } = useTheme()
 
 const errorMessage = ref('')
+const successMessage = ref('')
 const whiteLogoSource = '/logo_branca.png'
 const extendedLogoSource = '/logo_extensa.png'
 
 const themeButtonLabel = computed(() => (isDark.value ? 'Usar tema claro' : 'Usar tema escuro'))
 const systemUnavailable = computed(() => route.query.unavailable === '1')
+const pageTitle = computed(() =>
+  auth.requiresPasswordChange ? 'Defina sua nova senha.' : 'Bem-vindo de volta.',
+)
+const pageDescription = computed(() =>
+  auth.requiresPasswordChange
+    ? 'Este é seu primeiro acesso. Crie uma senha pessoal para substituir a senha temporária.'
+    : 'Entre com suas credenciais institucionais para acessar a gestão de atendimentos.',
+)
 
 function redirectAfterLogin(): string {
   const redirect = route.query.redirect
@@ -49,12 +65,19 @@ function redirectAfterLogin(): string {
 async function submitLogin(values: GenericObject, actions: FormActions<GenericObject>) {
   const { email, password } = values as LoginFormValues
   errorMessage.value = ''
+  successMessage.value = ''
 
   try {
     await auth.login({
       email,
       password,
     })
+
+    if (auth.requiresPasswordChange) {
+      actions.setFieldValue('password', '', false)
+      return
+    }
+
     await router.replace(redirectAfterLogin())
   } catch (error) {
     errorMessage.value =
@@ -62,6 +85,23 @@ async function submitLogin(values: GenericObject, actions: FormActions<GenericOb
         ? error.message
         : 'Não foi possível entrar. Tente novamente em instantes.'
     actions.setFieldValue('password', '', false)
+  }
+}
+
+async function submitFirstAccess(values: GenericObject, actions: FormActions<GenericObject>) {
+  const { newPassword } = values as FirstAccessPasswordFormValues
+  errorMessage.value = ''
+
+  try {
+    successMessage.value = await auth.completeFirstAccess(newPassword)
+    actions.resetForm()
+  } catch (error) {
+    errorMessage.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível definir a nova senha. Tente novamente em instantes.'
+    actions.setFieldValue('newPassword', '', false)
+    actions.setFieldValue('passwordConfirmation', '', false)
   }
 }
 </script>
@@ -166,10 +206,10 @@ async function submitLogin(values: GenericObject, actions: FormActions<GenericOb
           Portal administrativo
         </p>
         <h2 class="mt-4 text-3xl font-bold tracking-[-0.035em] text-content sm:text-4xl">
-          Bem-vindo de volta.
+          {{ pageTitle }}
         </h2>
         <p class="mt-3 leading-7 text-content-muted">
-          Entre com suas credenciais institucionais para acessar a gestão de atendimentos.
+          {{ pageDescription }}
         </p>
 
         <div
@@ -180,7 +220,22 @@ async function submitLogin(values: GenericObject, actions: FormActions<GenericOb
           Não foi possível confirmar sua sessão anterior. Você ainda pode tentar entrar novamente.
         </div>
 
+        <div
+          v-if="successMessage"
+          data-testid="login-success"
+          class="mt-6 flex gap-3 rounded-xl border border-status-success bg-status-success-soft px-4 py-3 text-sm leading-6 text-content"
+          role="status"
+        >
+          <Icon
+            class="mt-0.5 h-5 w-5 shrink-0 text-status-success"
+            :icon="circleCheckIcon"
+            aria-hidden="true"
+          />
+          <span>{{ successMessage }}</span>
+        </div>
+
         <AppForm
+          v-if="!auth.requiresPasswordChange"
           class="mt-9 space-y-5"
           :validation-schema="loginValidationSchema"
           @submit="submitLogin"
@@ -244,6 +299,76 @@ async function submitLogin(values: GenericObject, actions: FormActions<GenericOb
           </AppButton>
         </AppForm>
 
+        <AppForm
+          v-else
+          data-testid="first-access-form"
+          class="mt-9 space-y-5"
+          :validation-schema="firstAccessPasswordValidationSchema"
+          @submit="submitFirstAccess"
+        >
+          <AppInput
+            id="newPassword"
+            autocomplete="new-password"
+            label="Nova senha"
+            :maxlength="128"
+            name="newPassword"
+            placeholder="Crie sua nova senha"
+            required
+            revealable
+            type="password"
+          >
+            <template #prefix>
+              <Icon class="h-5 w-5" :icon="keyRoundIcon" />
+            </template>
+          </AppInput>
+
+          <AppInput
+            id="passwordConfirmation"
+            autocomplete="new-password"
+            label="Confirme a nova senha"
+            :maxlength="128"
+            name="passwordConfirmation"
+            placeholder="Digite a nova senha novamente"
+            required
+            revealable
+            type="password"
+          >
+            <template #prefix>
+              <Icon class="h-5 w-5" :icon="lockKeyholeIcon" />
+            </template>
+          </AppInput>
+
+          <p class="text-sm leading-6 text-content-muted">
+            Use ao menos 8 caracteres. A nova senha deve ser diferente da senha temporária.
+          </p>
+
+          <div
+            v-if="errorMessage"
+            data-testid="login-error"
+            class="flex gap-3 rounded-xl border border-status-danger bg-status-danger-soft px-4 py-3 text-sm leading-6 text-content"
+            role="alert"
+          >
+            <Icon
+              class="mt-0.5 h-5 w-5 shrink-0 text-status-danger"
+              :icon="circleAlertIcon"
+              aria-hidden="true"
+            />
+            <span>{{ errorMessage }}</span>
+          </div>
+
+          <AppButton
+            block
+            type="submit"
+            :loading="auth.isSubmitting"
+            loading-label="Definindo nova senha..."
+          >
+            Definir nova senha
+            <template #icon>
+              <Icon class="h-4 w-4" :icon="arrowRightIcon" aria-hidden="true" />
+            </template>
+          </AppButton>
+        </AppForm>
+
         <div class="mt-8 border-t border-outline pt-6">
           <div class="flex items-start gap-3">
             <span
@@ -253,8 +378,14 @@ async function submitLogin(values: GenericObject, actions: FormActions<GenericOb
               <Icon class="h-4 w-4" :icon="infoIcon" />
             </span>
             <p class="text-sm leading-6 text-content-muted">
-              Contas administrativas e docentes são criadas internamente. O cadastro de alunos será
-              disponibilizado após a definição da validação institucional.
+              <template v-if="auth.requiresPasswordChange">
+                Ao concluir, sua sessão temporária será encerrada e você voltará ao login para
+                entrar com a nova senha.
+              </template>
+              <template v-else>
+                Contas administrativas e docentes são criadas internamente. O cadastro de alunos
+                será disponibilizado após a definição da validação institucional.
+              </template>
             </p>
           </div>
         </div>

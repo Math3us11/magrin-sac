@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
+import { vMaska } from 'maska/vue'
 import { computed, ref, useId, useSlots } from 'vue'
 import { Field } from 'vee-validate'
 
@@ -7,7 +8,9 @@ import { eyeIcon, eyeOffIcon } from '@/icons'
 
 defineOptions({ inheritAttrs: false })
 
-type InputType = 'date' | 'email' | 'number' | 'password' | 'search' | 'tel' | 'text' | 'url'
+type InputType =
+  'date' | 'email' | 'number' | 'password' | 'search' | 'tel' | 'text' | 'time' | 'url'
+type InputMask = string | string[] | ((input: string) => string)
 
 const props = withDefaults(
   defineProps<{
@@ -17,6 +20,7 @@ const props = withDefaults(
     id?: string
     inputmode?: 'decimal' | 'email' | 'none' | 'numeric' | 'search' | 'tel' | 'text' | 'url'
     label: string
+    mask?: InputMask
     maxlength?: number
     name: string
     placeholder?: string
@@ -31,6 +35,7 @@ const props = withDefaults(
     helpText: undefined,
     id: undefined,
     inputmode: undefined,
+    mask: undefined,
     maxlength: undefined,
     placeholder: undefined,
     readonly: false,
@@ -80,6 +85,26 @@ function describedBy(errorMessage?: string): string | undefined {
         </span>
 
         <input
+          v-if="mask"
+          v-maska="{ mask }"
+          v-bind="{ ...$attrs, ...field }"
+          :id="inputId"
+          :aria-describedby="describedBy(errorMessage)"
+          :aria-invalid="Boolean(errorMessage)"
+          :aria-required="required || undefined"
+          :autocomplete="autocomplete"
+          class="app-input"
+          :class="{ 'pl-12': hasPrefix, 'pr-24': hasSuffix, 'app-input-error': errorMessage }"
+          :disabled="disabled"
+          :inputmode="inputmode"
+          :maxlength="maxlength"
+          :placeholder="placeholder"
+          :readonly="readonly"
+          :required="required"
+          :type="inputType"
+        />
+        <input
+          v-else
           v-bind="{ ...$attrs, ...field }"
           :id="inputId"
           :aria-describedby="describedBy(errorMessage)"

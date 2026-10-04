@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   PASSWORD_MIN_LENGTH,
+  firstAccessPasswordValidationSchema,
   loginValidationSchema,
   newPasswordRule,
 } from '@/validations/auth.schema'
@@ -21,5 +22,24 @@ describe('schemas de autenticação', () => {
       'A senha deve ter pelo menos ' + PASSWORD_MIN_LENGTH + ' caracteres.',
     )
     await expect(newPasswordRule.validate('12345678')).resolves.toBe('12345678')
+  })
+
+  it('exige confirmação idêntica na definição da senha inicial', async () => {
+    await expect(
+      firstAccessPasswordValidationSchema.validate({
+        newPassword: 'nova-senha-segura',
+        passwordConfirmation: 'outra-senha',
+      }),
+    ).rejects.toThrow('As senhas devem ser iguais.')
+
+    await expect(
+      firstAccessPasswordValidationSchema.validate({
+        newPassword: 'nova-senha-segura',
+        passwordConfirmation: 'nova-senha-segura',
+      }),
+    ).resolves.toEqual({
+      newPassword: 'nova-senha-segura',
+      passwordConfirmation: 'nova-senha-segura',
+    })
   })
 })

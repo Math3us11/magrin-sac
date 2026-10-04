@@ -36,6 +36,12 @@ indicadores confiáveis.
 - classifica a demanda;
 - acompanha itens em tratativa.
 
+### Professor
+
+- acessa a própria agenda;
+- publica e mantém as próprias disponibilidades conforme as regras aprovadas;
+- não administra a agenda de outros professores sem uma permissão adicional.
+
 ### Usuário administrativo
 
 Pode apoiar agenda, cadastros, atendimento e consulta, conforme permissões que
@@ -79,6 +85,8 @@ Dashboard recalcula indicadores
 - sessão revogável com timeout por inatividade e duração absoluta;
 - controle de acesso por perfil e permissão;
 - ativação e desativação de usuários;
+- exclusão lógica de cadastro administrativo indevido, mediante confirmação da
+  senha do administrador e preservação do histórico;
 - isolamento dos dados de cada aluno.
 
 O mecanismo de validação necessário ao futuro cadastro de alunos permanece
@@ -129,19 +137,19 @@ perfil privilegiado durante um cadastro público.
 
 ## Casos de uso de referência
 
-| ID | Caso de uso | Prioridade inicial |
-|---|---|---|
-| UC01 | Autenticar usuário | MVP |
-| UC02 | Consultar horários disponíveis | MVP |
-| UC03 | Realizar agendamento | MVP |
-| UC04 | Consultar meus agendamentos | MVP |
-| UC05 | Cancelar agendamento | MVP |
-| UC06 | Gerenciar disponibilidade | MVP |
-| UC07 | Consultar agenda de atendimentos | MVP |
-| UC08 | Registrar realização do atendimento | MVP |
-| UC09 | Atualizar status da demanda | MVP |
-| UC10 | Consultar estatísticas de atendimento | MVP |
-| UC11 | Gerenciar usuários e permissões | MVP mínimo |
+| ID   | Caso de uso                           | Prioridade inicial |
+| ---- | ------------------------------------- | ------------------ |
+| UC01 | Autenticar usuário                    | MVP                |
+| UC02 | Consultar horários disponíveis        | MVP                |
+| UC03 | Realizar agendamento                  | MVP                |
+| UC04 | Consultar meus agendamentos           | MVP                |
+| UC05 | Cancelar agendamento                  | MVP                |
+| UC06 | Gerenciar disponibilidade             | MVP                |
+| UC07 | Consultar agenda de atendimentos      | MVP                |
+| UC08 | Registrar realização do atendimento   | MVP                |
+| UC09 | Atualizar status da demanda           | MVP                |
+| UC10 | Consultar estatísticas de atendimento | MVP                |
+| UC11 | Gerenciar usuários e permissões       | MVP mínimo         |
 
 ## Fora do MVP
 

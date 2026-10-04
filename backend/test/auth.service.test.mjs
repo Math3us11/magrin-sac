@@ -4,6 +4,7 @@ import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../dist/modules/auth/auth.service.js';
 import { RequestOriginGuard } from '../dist/guards/request-origin.guard.js';
+import { SessionAuthGuard } from '../dist/guards/session-auth.guard.js';
 
 const activeUser = {
   birthDate: '2000-01-02',
@@ -11,6 +12,7 @@ const activeUser = {
   email: 'aluno@example.com',
   id: 3,
   isActive: true,
+  mustChangePassword: false,
   name: 'Aluno Teste',
   passwordHash: 'stored-password-hash',
   userType: 'aluno',
@@ -20,6 +22,7 @@ function createAuthService(overrides = {}) {
   const state = {
     createdSession: null,
     sessionUpdate: null,
+    updatedUser: null,
     updatedSessions: null,
   };
   const session = {
@@ -31,7 +34,14 @@ function createAuthService(overrides = {}) {
   };
   const userModel = {
     findByPk: async () => overrides.currentUser ?? activeUser,
-    unscoped: () => ({ findOne: async () => overrides.loginUser ?? activeUser }),
+    unscoped: () => ({
+      findByPk: async () => overrides.firstAccessUser ?? activeUser,
+      findOne: async () => overrides.loginUser ?? activeUser,
+    }),
+    update: async (values) => {
+      state.updatedUser = values;
+      return [overrides.updatedUserCount ?? 1];
+    },
   };
   const authSessionModel = {
     create: async (values) => {
@@ -56,7 +66,11 @@ function createAuthService(overrides = {}) {
     sign: async () => 'signed.jwt.value',
   };
   const passwordHashService = {
-    matches: async () => overrides.passwordMatches ?? true,
+    hash: async (password) => `hash:${password}`,
+    matches: async (password) =>
+      password === 'new-secure-password'
+        ? (overrides.newPasswordMatches ?? false)
+        : (overrides.passwordMatches ?? true),
   };
   const configService = new ConfigService({
     auth: { jwt: { ttlSeconds: 3600 } },
@@ -84,6 +98,7 @@ test('login válido cria sessão e retorna somente dados públicos do usuário',
     birthDate: activeUser.birthDate,
     email: activeUser.email,
     id: activeUser.id,
+    mustChangePassword: false,
     name: activeUser.name,
     userType: activeUser.userType,
   });
@@ -119,6 +134,36 @@ test('autenticação rejeita sessão revogada ou inexistente', async () => {
   await assert.rejects(service.authenticate('signed.jwt.value'), UnauthorizedException);
 });
 
+test('primeiro acesso substitui a senha temporária e revoga todas as sessões', async () => {
+  const pendingUser = { ...activeUser, mustChangePassword: true };
+  const { service, state } = createAuthService({ firstAccessUser: pendingUser });
+
+  const result = await service.completeFirstAccess(activeUser.id, 'new-secure-password');
+
+  assert.equal(state.updatedUser.mustChangePassword, false);
+  assert.equal(state.updatedUser.passwordHash, 'hash:new-secure-password');
+  assert.equal(state.updatedUser.updatedBy, activeUser.id);
+  assert.equal(state.updatedSessions.updatedBy, activeUser.id);
+  assert.ok(state.updatedSessions.revokedAt instanceof Date);
+  assert.match(result.message, /Senha definida com sucesso/u);
+});
+
+test('primeiro acesso rejeita a reutilização da senha temporária', async () => {
+  const pendingUser = { ...activeUser, mustChangePassword: true };
+  const { service, state } = createAuthService({
+    firstAccessUser: pendingUser,
+    newPasswordMatches: true,
+  });
+
+  await assert.rejects(
+    service.completeFirstAccess(activeUser.id, 'new-secure-password'),
+    (error) =>
+      error instanceof Error &&
+      error.message === 'A nova senha deve ser diferente da senha temporária.',
+  );
+  assert.equal(state.updatedUser, null);
+});
+
 test('logout revoga a sessão válida no banco', async () => {
   const { service, state } = createAuthService();
   await service.logout('signed.jwt.value');
@@ -148,4 +193,36 @@ test('proteção de origem aceita o frontend configurado e rejeita outra origem'
     () => guard.canActivate(createHttpContext('POST', 'https://malicious.example')),
     ForbiddenException,
   );
+});
+
+function createSessionContext() {
+  const request = {};
+
+  return {
+    context: {
+      getClass: () => class TestController {},
+      getHandler: () => () => undefined,
+      switchToHttp: () => ({ getRequest: () => request }),
+    },
+  };
+}
+
+test('sessão com troca de senha pendente fica restrita aos endpoints liberados', async () => {
+  const { context } = createSessionContext();
+  const authService = {
+    authenticate: async () => ({
+      sessionId: 7,
+      user: { ...activeUser, mustChangePassword: true },
+    }),
+  };
+  const cookieService = { read: () => 'signed.jwt.value' };
+  const blockedGuard = new SessionAuthGuard(authService, cookieService, {
+    getAllAndOverride: () => false,
+  });
+  const allowedGuard = new SessionAuthGuard(authService, cookieService, {
+    getAllAndOverride: () => true,
+  });
+
+  await assert.rejects(blockedGuard.canActivate(context), ForbiddenException);
+  assert.equal(await allowedGuard.canActivate(context), true);
 });

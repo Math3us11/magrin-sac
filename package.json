@@ -9,6 +9,11 @@
   "scripts": {
     "dev": "pnpm --filter frontend dev",
     "start:dev": "pnpm --filter backend start:dev",
+    "stable:prepare": "node scripts/prepare-stable-worktree.mjs",
+    "stable:sync": "node scripts/sync-stable-worktree.mjs",
+    "stable": "node scripts/run-stable.mjs",
+    "remote": "node scripts/run-remote.mjs",
+    "tunnel": "node scripts/run-cloudflare-tunnel.mjs",
     "build": "pnpm --recursive --if-present build",
     "type-check": "pnpm --filter frontend type-check",
     "lint": "pnpm --recursive --if-present lint",

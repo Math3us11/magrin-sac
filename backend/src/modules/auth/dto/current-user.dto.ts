@@ -5,6 +5,7 @@ export class CurrentUserDto implements AuthenticatedUser {
   declare birthDate: string | null;
   declare email: string;
   declare id: number;
+  declare mustChangePassword: boolean;
   declare name: string;
   declare userType: UserType;
 }

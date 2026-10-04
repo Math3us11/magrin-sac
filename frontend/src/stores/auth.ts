@@ -2,7 +2,12 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import { ApiError } from '@/services/api'
-import { createSession, deleteSession, getCurrentUser } from '@/services/auth'
+import {
+  completeFirstAccessPassword,
+  createSession,
+  deleteSession,
+  getCurrentUser,
+} from '@/services/auth'
 import type { AuthenticatedUser, LoginCredentials } from '@/types/auth'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -11,6 +16,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isSubmitting = ref(false)
 
   const isAuthenticated = computed(() => user.value !== null)
+  const requiresPasswordChange = computed(() => user.value?.mustChangePassword === true)
 
   async function initialize() {
     if (initialized.value) return
@@ -37,6 +43,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function completeFirstAccess(newPassword: string): Promise<string> {
+    isSubmitting.value = true
+
+    try {
+      const response = await completeFirstAccessPassword(newPassword)
+      user.value = null
+      initialized.value = true
+      return response.message
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
   async function logout() {
     try {
       await deleteSession()
@@ -47,12 +66,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   return {
+    completeFirstAccess,
     initialize,
     initialized,
     isAuthenticated,
     isSubmitting,
     login,
     logout,
+    requiresPasswordChange,
     user,
   }
 })
