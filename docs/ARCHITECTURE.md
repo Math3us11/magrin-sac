@@ -89,6 +89,43 @@ porta 3000.
 O backend usa o pacote `mariadb` como driver do Sequelize. O Vite e o Vitest
 permanecem exclusivos do frontend.
 
+### Ambiente remoto de demonstração
+
+Para apresentações, o monólito pode ser publicado temporariamente por um túnel
+nomeado da Cloudflare:
+
+```text
+Internet
+  → https://agenda.magrinapp.com
+  → Cloudflare Access
+  → Cloudflare Tunnel
+  → http://127.0.0.1:3100
+       ├── /api/* → controllers NestJS
+       └── demais GETs → build SPA do Vue
+  → MariaDB local, sem exposição pública
+```
+
+Nesse modo, o NestJS serve os arquivos gerados em `frontend/dist` e aplica
+fallback para `index.html` somente em requisições GET não pertencentes a
+`/api`. A branch `main` fica materializada no worktree ignorado
+`.worktrees/stable`, enquanto o diretório principal permanece livre para
+`develop` e branches de funcionalidade. `pnpm stable` inicia o comando remoto
+dentro desse worktree; o iniciador rejeita qualquer branch diferente de `main`.
+
+O banco também é isolado: `DB_DATABASE` pertence ao desenvolvimento e
+`STABLE_DB_DATABASE` identifica o schema usado pela demonstração. O comando
+estável compila os dois pacotes, cria o banco quando necessário, aplica suas
+migrations e inicia o serviço preso ao loopback. `pnpm tunnel` só inicia o
+conector depois de validar credencial, health check com banco alcançável e
+entrega da SPA.
+
+O ambiente permanece `APP_ENV=development`, pois esta é uma demonstração do
+sistema ainda em construção. Apesar disso, a execução remota força o cookie de
+sessão como `Secure`, usa HTTPS na origem pública e restringe `CORS_ORIGIN` ao
+hostname configurado. Cloudflare Access deve ser criado antes da rota DNS. Essa
+topologia não define hospedagem de produção, disponibilidade contínua, backup ou
+responsabilidade operacional.
+
 Os guards do Vue Router melhoram a navegação, mas não são fronteira de
 segurança. Cada operação protegida continua validando autenticação e autorização
 no backend.
@@ -450,6 +487,8 @@ Variáveis previstas:
 
 ```env
 APP_ENV=development
+APP_HOST=127.0.0.1
+APP_SERVE_FRONTEND=false
 APP_TIMEZONE=America/Porto_Velho
 VITE_API_BASE_URL=/api
 PORT=3000
@@ -458,9 +497,11 @@ DB_DIALECT=mariadb
 DB_HOST=localhost
 DB_PORT=3306
 DB_DATABASE=magrin_sac
+STABLE_DB_DATABASE=magrin_sac_stable
 DB_USERNAME=
 DB_PASSWORD=
 AUTH_SESSION_COOKIE_NAME=magrin_sac_session
+AUTH_SESSION_COOKIE_SECURE=false
 AUTH_SESSION_JWT_AUDIENCE=magrin-sac-frontend
 AUTH_SESSION_JWT_ISSUER=magrin-sac-api
 AUTH_SESSION_JWT_SECRET=
@@ -469,6 +510,10 @@ PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
+CLOUDFLARE_TUNNEL_ID=
+CLOUDFLARE_PUBLIC_HOSTNAME=agenda.magrinapp.com
+CLOUDFLARE_TUNNEL_ORIGIN=http://127.0.0.1:3100
+CLOUDFLARE_TUNNEL_CREDENTIALS_FILE=
 ```
 
 Novas variáveis devem ser adicionadas ao exemplo global e à validação do pacote

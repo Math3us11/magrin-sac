@@ -89,10 +89,12 @@ no banco; `auth_sessions.token_id` guarda seu `jti` para vinculá-lo à sessão
 revogável.
 
 `SessionCookieService` lê, grava e remove o JWT em cookie `HttpOnly`,
-`SameSite=Lax`, com caminho `/api` e `Secure` em produção. Defina as variáveis
-`AUTH_SESSION_*` do `.env.example` global antes de iniciar a API. Para HS256,
-gere pelo menos 32 bytes aleatórios, armazene a representação codificada no
-ambiente e nunca versione esse valor.
+`SameSite=Lax`, com caminho `/api` e `Secure` em produção. A variável opcional
+`AUTH_SESSION_COOKIE_SECURE` permite exigir `Secure` também no ambiente remoto
+de demonstração, que continua identificado como desenvolvimento. Defina as
+variáveis `AUTH_SESSION_*` do `.env.example` global antes de iniciar a API. Para
+HS256, gere pelo menos 32 bytes aleatórios, armazene a representação codificada
+no ambiente e nunca versione esse valor.
 
 Requisições de escrita da autenticação exigem o cabeçalho `Origin` igual a
 `CORS_ORIGIN`. O navegador deve enviar cookies com `credentials: 'include'`.

@@ -201,6 +201,12 @@ Objetivo: preparar uma entrega segura e demonstrável.
 
 Entregas:
 
+- [x] preparar execução temporária do build e o Cloudflare Tunnel, mantendo o
+      ambiente de desenvolvimento;
+- [x] configurar a política Cloudflare Access, a rota DNS e validar o bloqueio
+      externo sem sessão;
+- [x] isolar a `main` em worktree e separar os bancos da versão estável e do
+      desenvolvimento;
 - revisão de segurança e LGPD;
 - acessibilidade dos fluxos principais;
 - testes responsivos e nos navegadores-alvo;

@@ -90,4 +90,30 @@ pnpm build
 pnpm check
 ```
 
+## Demonstração remota com Cloudflare Tunnel
+
+O projeto pode publicar temporariamente o build completo em
+`https://agenda.magrinapp.com`, sem abrir portas no roteador. A API e o frontend
+ficam no mesmo processo local em `127.0.0.1:3100`; o MariaDB não é publicado.
+
+O código publicado vem sempre da branch `main`, mantida em um worktree local
+separado. O diretório principal pode continuar em `develop` ou numa branch de
+funcionalidade sem alterar a demonstração. Prepare o worktree uma vez:
+
+```powershell
+pnpm.cmd stable:prepare
+```
+
+Depois do provisionamento descrito em `docs/CLOUDFLARE.md`, use dois terminais:
+
+```powershell
+pnpm.cmd stable
+pnpm.cmd tunnel
+```
+
+Esse fluxo mantém `APP_ENV=development` de forma explícita. Ele gera builds
+estáveis, aplica migrations pendentes e força o cookie de sessão como `Secure`
+durante o acesso HTTPS. `pnpm remote` rejeita qualquer branch diferente de
+`main`. Não representa a infraestrutura de produção definitiva.
+
 Consulte `docs/README.md` antes de alterações de arquitetura ou escopo.

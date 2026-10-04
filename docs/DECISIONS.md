@@ -340,6 +340,57 @@ concretas, mostra o resultado na revisão e envia o mesmo lote do modo por data.
 Uma faixa representa uma janela consumível por vários agendamentos com
 intervalos não sobrepostos, e não uma reserva indivisível com duração fixa.
 
+## ADR-023 — Publicação temporária por Cloudflare Tunnel
+
+**Estado:** aceita para demonstração; não define produção.
+
+Para apresentações externas durante o desenvolvimento, um túnel nomeado da
+Cloudflare publica um único serviço HTTP preso a `127.0.0.1:3100`. O NestJS
+entrega tanto `/api/*` quanto o build SPA do Vue, mantendo frontend e API na
+mesma origem pública. Cloudflare Access restringe a entrada aos participantes
+autorizados e o MariaDB permanece exclusivamente local.
+
+O iniciador remoto mantém `APP_ENV=development`, altera apenas a configuração
+efetiva dessa execução e força `AUTH_SESSION_COOKIE_SECURE=true`. Antes de iniciar
+o backend ele gera os builds e aplica migrations; antes de iniciar o túnel, o
+script confirma as credenciais, o health check do banco e a entrega do frontend.
+
+Motivo: permitir demonstrações pelo domínio já administrado sem abrir portas no
+roteador, separar API em outro hostname ou migrar prematuramente o NestJS e o
+Sequelize para outro runtime.
+
+Consequência: a aplicação depende do computador, MariaDB e conector locais
+permanecerem ligados durante a apresentação. O fluxo não oferece SLA, backup,
+alta disponibilidade nem resolve a pendência de infraestrutura de produção em
+`OPEN_QUESTIONS.md`.
+
+## ADR-024 — Main isolada como versão estável de demonstração
+
+**Estado:** aceita.
+
+A branch `main` é a única fonte permitida para o ambiente publicado pelo
+Cloudflare Tunnel. Um worktree local em `.worktrees/stable` mantém essa versão
+disponível simultaneamente ao diretório principal, que pode permanecer em
+`develop` ou numa branch `feat/*`. O comando público `pnpm stable` executa a
+`main` no worktree, e `pnpm remote` falha se for chamado em outra branch.
+
+Promoções continuam explícitas: funcionalidades entram em `develop` e somente
+uma revisão aprovada atualiza `main`. `pnpm stable:sync` apenas avança o worktree
+por fast-forward até `origin/main`; ele não promove desenvolvimento nem cria
+merge automaticamente.
+
+O ambiente estável usa `STABLE_DB_DATABASE`, enquanto o desenvolvimento usa
+`DB_DATABASE`. Os dois schemas podem viver no mesmo MariaDB, mas migrations e
+dados de teste de uma versão não alteram a outra.
+
+Motivo: permitir correções e funcionalidades em andamento sem mudar a versão
+apresentada, além de evitar que migrations de desenvolvimento tornem o build
+estável incompatível.
+
+Consequência: uma nova versão somente chega ao domínio depois de ser integrada
+à `main`, sincronizada no worktree e reiniciada. O worktree é gerado localmente,
+fica ignorado pelo Git e não deve receber edições manuais.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão
