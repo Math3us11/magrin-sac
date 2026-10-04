@@ -13,6 +13,23 @@ import type { NavigationItem, NavigationResponse } from '@/types/navigation'
 
 const navigationItems: NavigationItem[] = [
   {
+    children: [
+      {
+        children: [],
+        code: 'agenda.availability',
+        iconKey: 'clock-3',
+        id: 7,
+        label: 'Disponibilidades',
+        routeName: 'professor-availability',
+      },
+    ],
+    code: 'agenda',
+    iconKey: 'calendar-check',
+    id: 6,
+    label: 'Agenda',
+    routeName: null,
+  },
+  {
     children: [],
     code: 'home',
     iconKey: 'house',
@@ -37,11 +54,28 @@ const navigationItems: NavigationItem[] = [
     label: 'Relatórios',
     routeName: null,
   },
+  {
+    children: [
+      {
+        children: [],
+        code: 'administration.users',
+        iconKey: 'users',
+        id: 5,
+        label: 'Usuários',
+        routeName: 'administration-users',
+      },
+    ],
+    code: 'administration',
+    iconKey: 'shield-check',
+    id: 4,
+    label: 'Administração',
+    routeName: null,
+  },
 ]
 
 const navigationResponse: NavigationResponse = {
   items: navigationItems,
-  permissions: ['reports.dashboard.view'],
+  permissions: ['availability.manage.own', 'reports.dashboard.view', 'users.manage'],
 }
 
 afterEach(() => {
@@ -81,8 +115,10 @@ describe('navegação autenticada', () => {
     await navigation.load()
 
     expect(navigation.initialized).toBe(true)
-    expect(navigation.items).toHaveLength(2)
+    expect(navigation.items).toHaveLength(4)
+    expect(navigation.hasPermission('availability.manage.own')).toBe(true)
     expect(navigation.hasPermission('reports.dashboard.view')).toBe(true)
+    expect(navigation.hasPermission('users.manage')).toBe(true)
 
     navigation.reset()
 
@@ -97,8 +133,18 @@ describe('navegação autenticada', () => {
       routes: [
         { path: '/', name: 'home', component: { template: '<div />' } },
         {
+          path: '/professor/agenda',
+          name: 'professor-availability',
+          component: { template: '<div />' },
+        },
+        {
           path: '/relatorios/dashboard',
           name: 'reports-dashboard',
+          component: { template: '<div />' },
+        },
+        {
+          path: '/administracao/usuarios',
+          name: 'administration-users',
           component: { template: '<div />' },
         },
       ],
@@ -118,8 +164,18 @@ describe('navegação autenticada', () => {
     })
 
     expect(wrapper.text()).toContain('Início')
+    expect(wrapper.text()).toContain('Agenda')
+    expect(wrapper.text()).toContain('Disponibilidades')
     expect(wrapper.text()).toContain('Dashboard')
+    expect(wrapper.text()).toContain('Administração')
+    expect(wrapper.text()).toContain('Usuários')
     expect(wrapper.find('img').exists()).toBe(false)
+    expect(wrapper.classes()).toContain('lg:sticky')
+    expect(wrapper.classes()).toContain('lg:top-18')
+    expect(wrapper.classes()).toContain('lg:h-[calc(100dvh-4.5rem)]')
+    expect(wrapper.get('[data-testid="sidebar-scroll-area"]').classes()).toContain(
+      'overflow-y-auto',
+    )
 
     const reportsButton = wrapper
       .findAll('button')
@@ -144,8 +200,18 @@ describe('navegação autenticada', () => {
         { path: '/', name: 'home', component: { template: '<div />' } },
         { path: '/login', name: 'login', component: { template: '<div />' } },
         {
+          path: '/professor/agenda',
+          name: 'professor-availability',
+          component: { template: '<div />' },
+        },
+        {
           path: '/relatorios/dashboard',
           name: 'reports-dashboard',
+          component: { template: '<div />' },
+        },
+        {
+          path: '/administracao/usuarios',
+          name: 'administration-users',
           component: { template: '<div />' },
         },
       ],
@@ -160,7 +226,8 @@ describe('navegação autenticada', () => {
 
     expect(wrapper.classes()).toContain('grid')
     expect(wrapper.get('header').classes()).toContain('lg:col-span-2')
-    expect(wrapper.get('aside').classes()).toContain('lg:static')
+    expect(wrapper.get('aside').classes()).toContain('lg:sticky')
+    expect(wrapper.get('aside').classes()).toContain('lg:self-start')
     expect(wrapper.get('aside').classes()).toContain('row-start-2')
     expect(wrapper.get('main').classes()).toContain('lg:col-start-2')
     expect(wrapper.find('footer').exists()).toBe(false)

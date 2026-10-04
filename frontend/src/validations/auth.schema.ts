@@ -1,4 +1,4 @@
-import { object, string, type InferType } from 'yup'
+import { object, ref, string, type InferType } from 'yup'
 
 export const PASSWORD_MIN_LENGTH = 8
 export const PASSWORD_MAX_LENGTH = 128
@@ -24,4 +24,12 @@ export const newPasswordRule = string()
   .min(PASSWORD_MIN_LENGTH, `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`)
   .max(PASSWORD_MAX_LENGTH, `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`)
 
+export const firstAccessPasswordValidationSchema = object({
+  newPassword: newPasswordRule,
+  passwordConfirmation: string()
+    .required('Confirme a nova senha.')
+    .oneOf([ref('newPassword')], 'As senhas devem ser iguais.'),
+})
+
+export type FirstAccessPasswordFormValues = InferType<typeof firstAccessPasswordValidationSchema>
 export type LoginFormValues = InferType<typeof loginValidationSchema>

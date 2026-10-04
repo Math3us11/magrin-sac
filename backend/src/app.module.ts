@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { fileURLToPath } from 'node:url';
 import appConfig from './config/app.config.js';
 import authConfig from './config/auth.config.js';
 import databaseConfig from './config/database.config.js';
@@ -16,10 +17,13 @@ import { NavigationModule } from './modules/navigation/navigation.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
+const ROOT_ENV_FILE = fileURLToPath(new URL('../../.env', import.meta.url));
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       cache: true,
+      envFilePath: ROOT_ENV_FILE,
       isGlobal: true,
       load: [appConfig, authConfig, databaseConfig],
       validationSchema: environmentValidationSchema,

@@ -62,6 +62,58 @@ const router = createRouter({
       },
     },
     {
+      path: '/professor/agenda',
+      name: 'professor-availability',
+      component: () => import('@/views/professor/AvailabilityView.vue'),
+      meta: {
+        requiredPermission: 'availability.manage.own',
+        requiresAuth: true,
+        title: 'Minha agenda',
+      },
+    },
+    {
+      path: '/administracao/usuarios',
+      name: 'administration-users',
+      component: () => import('@/views/administration/UsersView.vue'),
+      meta: {
+        requiredPermission: 'users.manage',
+        requiresAuth: true,
+        title: 'Usuários',
+      },
+    },
+    {
+      path: '/administracao/usuarios/novo',
+      name: 'administration-users-new',
+      component: () => import('@/views/administration/UserCreateView.vue'),
+      meta: {
+        requiredPermission: 'users.manage',
+        requiresAuth: true,
+        title: 'Cadastrar usuário',
+      },
+    },
+    {
+      path: '/administracao/usuarios/:userId',
+      name: 'administration-users-view',
+      component: () => import('@/views/administration/UserDetailsView.vue'),
+      props: { mode: 'view' },
+      meta: {
+        requiredPermission: 'users.manage',
+        requiresAuth: true,
+        title: 'Visualizar usuário',
+      },
+    },
+    {
+      path: '/administracao/usuarios/:userId/editar',
+      name: 'administration-users-edit',
+      component: () => import('@/views/administration/UserDetailsView.vue'),
+      props: { mode: 'edit' },
+      meta: {
+        requiredPermission: 'users.manage',
+        requiresAuth: true,
+        title: 'Editar usuário',
+      },
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
@@ -84,6 +136,11 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     navigation.reset()
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  if (auth.requiresPasswordChange) {
+    navigation.reset()
+    return to.name === 'login' ? true : { name: 'login', query: { redirect: to.fullPath } }
   }
 
   if (to.meta.guestOnly && auth.isAuthenticated) return { name: 'home' }

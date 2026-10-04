@@ -9,10 +9,13 @@ import {
   chevronDownIcon,
   chevronRightIcon,
   circleAlertIcon,
+  clockIcon,
   historyIcon,
   houseIcon,
   panelLeftCloseIcon,
   panelLeftOpenIcon,
+  shieldCheckIcon,
+  usersIcon,
   xIcon,
 } from '@/icons'
 import type { NavigationItem } from '@/types/navigation'
@@ -38,8 +41,11 @@ const expandedGroups = ref<Set<string>>(new Set())
 const iconMap = {
   'calendar-check': calendarCheckIcon,
   'chart-no-axes-combined': chartCombinedIcon,
+  'clock-3': clockIcon,
   history: historyIcon,
   house: houseIcon,
+  'shield-check': shieldCheckIcon,
+  users: usersIcon,
 }
 
 function resolveIcon(iconKey: string | null) {
@@ -90,7 +96,7 @@ watch(
 <template>
   <aside
     id="app-sidebar"
-    class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-outline bg-surface shadow-2xl transition-[transform,width] duration-200 ease-out lg:static lg:inset-auto lg:z-20 lg:h-full lg:translate-x-0 lg:shadow-none"
+    class="fixed inset-y-0 left-0 z-50 flex w-72 flex-col overflow-hidden border-r border-outline bg-surface shadow-2xl transition-[transform,width] duration-200 ease-out lg:sticky lg:bottom-auto lg:left-auto lg:right-auto lg:top-18 lg:z-20 lg:h-[calc(100dvh-4.5rem)] lg:self-start lg:translate-x-0 lg:shadow-none"
     :class="[
       mobileOpen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible',
       collapsed ? 'lg:w-24' : 'lg:w-72',
@@ -106,7 +112,10 @@ watch(
       <Icon class="h-5 w-5" :icon="xIcon" aria-hidden="true" />
     </button>
 
-    <div class="min-h-0 flex-1 overflow-y-auto px-3 pb-5 pt-16 lg:py-5">
+    <div
+      class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-5 pt-16 lg:py-5"
+      data-testid="sidebar-scroll-area"
+    >
       <p
         class="mb-3 px-3 text-[0.65rem] font-bold uppercase tracking-[0.16em] text-content-muted"
         :class="collapsed ? 'lg:sr-only' : ''"

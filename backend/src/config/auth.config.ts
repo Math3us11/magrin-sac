@@ -20,7 +20,7 @@ export default registerAs('auth', (): AuthConfig => ({
     name: process.env.AUTH_SESSION_COOKIE_NAME as string,
     path: '/api',
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    secure: (process.env.APP_ENV ?? process.env.NODE_ENV) === 'production',
   },
   jwt: {
     audience: process.env.AUTH_SESSION_JWT_AUDIENCE as string,

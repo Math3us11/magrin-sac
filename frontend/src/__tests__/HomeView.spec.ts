@@ -17,6 +17,7 @@ describe('HomeView', () => {
       birthDate: null,
       email: 'admin@example.com',
       id: 1,
+      mustChangePassword: false,
       name: 'Matheus Administrador',
       userType: 'administrador',
     }
@@ -71,6 +72,7 @@ describe('HomeView', () => {
       birthDate: null,
       email: 'professor@example.com',
       id: 2,
+      mustChangePassword: false,
       name: 'Docente Exemplo',
       userType: 'professor',
     }
@@ -86,5 +88,43 @@ describe('HomeView', () => {
 
     expect(wrapper.find('[data-testid="quick-links"]').exists()).toBe(false)
     expect(wrapper.text()).toContain('conforme as permissões disponíveis')
+  })
+
+  it('oferece a agenda própria quando o professor possui a permissão', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const auth = useAuthStore()
+    auth.user = {
+      birthDate: null,
+      email: 'professor@example.com',
+      id: 2,
+      mustChangePassword: false,
+      name: 'Docente Exemplo',
+      userType: 'professor',
+    }
+    const navigation = useNavigationStore()
+    navigation.permissions = ['availability.manage.own']
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', name: 'home', component: HomeView },
+        {
+          path: '/professor/agenda',
+          name: 'professor-availability',
+          component: { template: '<div />' },
+        },
+      ],
+    })
+    await router.push('/')
+    await router.isReady()
+
+    const wrapper = mount(HomeView, { global: { plugins: [pinia, router] } })
+
+    expect(wrapper.get('[data-testid="quick-links"]').text()).toContain('Minha agenda')
+    expect(wrapper.get('[data-testid="quick-links"] a').attributes('href')).toBe(
+      '/professor/agenda',
+    )
   })
 })

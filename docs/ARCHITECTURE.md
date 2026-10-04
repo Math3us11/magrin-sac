@@ -25,18 +25,18 @@ Node.js 24 + NestJS + TypeScript
 
 ## Stack
 
-| Camada | Tecnologia |
-|---|---|
-| Runtime | Node.js 24 LTS, pnpm 11 |
-| Frontend | Vue 3, TypeScript, Vite, Tailwind CSS, Vee Validate 4, Yup e Iconify |
-| Backend | NestJS, TypeScript |
-| API | REST, JSON |
-| ORM | Sequelize 6, sequelize-typescript |
-| Migrações | Umzug |
-| Banco | MariaDB |
-| WhatsApp | Twilio API for WhatsApp |
-| Teste de WhatsApp | Twilio WhatsApp Sandbox |
-| Arquitetura | Monólito modular |
+| Camada            | Tecnologia                                                                  |
+| ----------------- | --------------------------------------------------------------------------- |
+| Runtime           | Node.js 24 LTS, pnpm 11                                                     |
+| Frontend          | Vue 3, TypeScript, Vite, Tailwind CSS, Vee Validate 4, Yup, Iconify e Maska |
+| Backend           | NestJS, TypeScript                                                          |
+| API               | REST, JSON                                                                  |
+| ORM               | Sequelize 6, sequelize-typescript                                           |
+| Migrações         | Umzug                                                                       |
+| Banco             | MariaDB                                                                     |
+| WhatsApp          | Twilio API for WhatsApp                                                     |
+| Teste de WhatsApp | Twilio WhatsApp Sandbox                                                     |
+| Arquitetura       | Monólito modular                                                            |
 
 ## Frontend implementado
 
@@ -54,12 +54,33 @@ O diretório `frontend/` foi criado com:
 - cliente HTTP baseado em `fetch`, sempre com cookies habilitados;
 - store Pinia de autenticação e restauração da sessão por `GET /api/me`;
 - tela de login responsiva, proteção de navegação e logout;
-- shell autenticado com header, footer e sidebar responsiva alimentada pela API;
+- shell autenticado com header e sidebar responsiva alimentada pela API;
 - store de navegação com permissões atuais e estados de carregamento e erro;
+- store global de notificações e `AppNotify` para feedback de sucesso,
+  informação, atenção e erro interpretado pelo cliente HTTP;
+- store global de loading com operações identificadas, mantendo o `AppLoading`
+  ativo enquanto existir ao menos uma operação bloqueante em andamento;
 - componentes básicos de formulário em components/basic, integrados ao
   Vee Validate e a schemas Yup;
+- `AppLoading` reutilizável para bloquear visualmente a interface durante
+  operações globais, com descrição acessível e ícone configurável, montado uma
+  única vez no componente raiz;
+- `AppTable` reutilizável com definição declarativa de colunas, tamanhos,
+  registros, busca, filtros, paginação controlada, slots de célula e estados de
+  carregamento, vazio e erro, além de área tabular com altura limitada e busca
+  textual submetida explicitamente;
+- máscaras opcionais de entrada encapsuladas no `AppInput` com Maska;
 - ícones por Iconify Vue com dados Lucide empacotados localmente;
+- wizard administrativo de usuários com cursos, períodos e matérias carregados
+  da API e matérias filtradas pelos cursos selecionados;
+- view administrativa compartilhada para visualizar e editar usuários, com
+  campos bloqueados no modo de consulta e as mesmas regras acadêmicas do
+  cadastro no modo de edição;
 - workspace pnpm configurado na raiz do monorepo.
+
+Views de fluxos específicos são agrupadas por menu pai. Por exemplo, as telas
+de administração ficam em `views/administration/`; views globais, como login e
+início, permanecem diretamente em `views/`.
 
 A origem da futura API usa `VITE_API_BASE_URL`, com fallback para `/api`.
 Durante o desenvolvimento, o Vite encaminha `/api` para o backend local na
@@ -96,6 +117,7 @@ O diretório `backend/` foi criado com:
 - comando idempotente para criar o banco configurado;
 - health check em `GET /api/health`, incluindo autenticação no banco;
 - login, logout e identidade atual com sessão stateful em cookie `HttpOnly`;
+- envelope híbrido de credenciais com AES-GCM e RSA-OAEP antes do envio;
 - hash e verificação de senhas com Argon2id;
 - rotina interna e idempotente para provisionar a primeira conta
   administrativa sem endpoint público;
@@ -120,6 +142,7 @@ frontend/
         AppForm.vue
         AppInput.vue
     views/
+      administration/
     router/
     stores/
     services/
@@ -138,6 +161,10 @@ backend/
       cookie/
         cookie.module.ts
         cookie.service.ts
+      credential-encryption/
+        credential-encryption.dto.ts
+        credential-encryption.module.ts
+        credential-encryption.service.ts
       jwt/
         jwt.module.ts
         jwt.service.ts
@@ -188,10 +215,20 @@ Cada helper transversal possui pasta, service e module próprios. O
 Controllers protegidos podem combinar `SessionAuthGuard` com `@CurrentUser()`.
 O guard valida token, sessão e usuário uma vez e o decorator entrega a identidade
 já autenticada ao controller, sem duplicar leitura de cookie nos módulos.
+Sessões cujo usuário ainda precisa substituir a senha temporária são bloqueadas
+pelo mesmo guard em todos os recursos, exceto nos handlers explicitamente
+marcados para identidade atual e conclusão do primeiro acesso. A troca atualiza
+o hash e revoga as sessões ativas em uma única transação.
 
 ### `modules/users`
 
-Usuários, alunos, perfis, permissões, ativação e desativação.
+Usuários, alunos, perfis, permissões, ativação e desativação. O primeiro recorte
+expõe, somente para quem possui `users.manage`, os catálogos necessários ao
+cadastro administrativo: cursos ativos, períodos acadêmicos e relações ativas
+entre curso e matéria. A listagem administrativa é paginada e seleciona somente
+campos não sensíveis necessários à tabela. A consulta individual e a atualização
+completa também exigem `users.manage`; somente a consulta individual protegida
+retorna CPF, telefone e vínculos para a manutenção administrativa.
 
 ### `modules/navigation`
 
@@ -265,6 +302,27 @@ sem pontuação, e permanece excluído das consultas padrão do model. A autoriz
 de cada recurso é obrigatória mesmo quando um identificador sequencial for
 conhecido por outro usuário.
 
+`courses` mantém o catálogo acadêmico usado pelos futuros vínculos de alunos,
+professores e disciplinas. O primeiro recorte separa graduação de
+pós-graduação e não presume modalidade ou grau acadêmico sem fonte consistente.
+
+`subjects` mantém um catálogo independente de matérias com código, nome e estado
+ativo. `course_subjects` relaciona as matérias disponíveis em cada curso sem
+atribuir período ou afirmar uma versão de grade. `user_subjects` registra o
+vínculo concreto de um usuário com essa combinação de curso e matéria. O item da
+opção `ACADEMIC_PERIOD` é obrigatório para aluno e nulo para professor, cujo
+período dependerá da futura oferta ou turma. O período do usuário não limita o
+catálogo de matérias do curso.
+
+O seed inicial de `course_subjects` reaproveita os grupos do levantamento que
+originou o catálogo e cria 627 relações para dez cursos: Agronomia, Ciências
+Contábeis, Biomedicina, Ciência da Computação, Medicina, Direito, Enfermagem,
+Farmácia, Fisioterapia e Medicina Veterinária. Cursos sem matriz verificada
+permanecem sem relações, em vez de receber associações inferidas.
+
+O versionamento das grades curriculares, equivalências e conclusão de matérias
+continuam separados até a validação institucional correspondente.
+
 `auth_sessions` armazena o `jti` do JWT e o estado da sessão. O helper de JWT
 assina e verifica apenas identificadores mínimos; depois da verificação
 criptográfica, o backend consulta a sessão e o usuário antes de autorizar a
@@ -300,10 +358,46 @@ recebem `appointments.create` e `appointments.read.own`. Os agrupadores
 `reports` e `appointments` não possuem permissão própria e só devem aparecer
 quando ao menos um filho permanecer visível.
 
+Administradores também recebem `users.manage`, que libera o agrupador
+`administration` e seu filho `administration.users`. A rota correspondente é
+protegida no frontend. No backend, um decorator transversal declara a permissão
+necessária e o guard recalcula a capacidade em cada requisição. Os endpoints de
+opções, listagem, consulta, criação e edição de usuário reutilizam essa proteção;
+a escrita também exige origem permitida.
+
+Professores recebem `availability.manage.own`, que libera o agrupador `agenda`,
+o item `agenda.availability` e a rota frontend `professor-availability`. Esta
+capacidade representa somente a agenda do usuário autenticado; uma futura
+administração global deve usar permissão distinta e nunca ampliar implicitamente
+o escopo de `own`.
+
+`availabilities` armazena o proprietário, os instantes em UTC e o estado
+operacional. `availability_modalities` relaciona cada intervalo a um ou dois
+itens ativos da opção `APPOINTMENT_MODALITY`; a combinação presencial + online
+é exibida como “ambas”, sem criar um valor composto no catálogo. A publicação
+de um lote bloqueia a linha do professor, verifica sobreposições e persiste
+intervalos e modalidades na mesma transação. O frontend envia horários locais
+de `America/Porto_Velho`, mas não envia o identificador do professor.
+
+O cadastro administrativo envia um único payload ao módulo `users`. O
+controller valida o DTO e delega ao service, que confere identidade única,
+perfil e vínculos acadêmicos antes de criar `users` e `user_subjects` na mesma
+transação. A senha temporária só chega ao service em memória e é convertida em
+hash Argon2id antes da persistência. Na fronteira HTTP, o controller abre o
+envelope híbrido emitido pelo frontend; services de domínio continuam recebendo
+somente a senha transitória em memória. O frontend usa Web Crypto com AES-GCM e
+RSA-OAEP, e HTTPS permanece obrigatório.
+
+A atualização administrativa reutiliza as validações de identidade, perfil e
+vínculo, mas não recebe senha. Usuário e vínculos são atualizados em uma única
+transação; relações removidas ficam inativas, relações existentes podem ser
+reativadas e `updated_by` identifica o ator.
+
 ### Configuração em camadas
 
 Configurações de bootstrap e segredos continuam fora do banco. Isso inclui
-conexão MariaDB, credenciais e tokens de provedores. A
+conexão MariaDB, credenciais, tokens de provedores e a chave privada usada para
+abrir envelopes de senha. A
 tabela `system_parameters` guarda somente parâmetros operacionais não secretos.
 `integration_endpoints` pode guardar URL e nomes das variáveis que apontam para
 segredos externos, nunca os valores secretos.
@@ -319,7 +413,8 @@ A criação do agendamento precisa combinar:
 1. validação de entrada e autorização;
 2. nova leitura da disponibilidade;
 3. transação;
-4. proteção no banco contra mais de um agendamento ativo no horário;
+4. bloqueio da janela e consulta transacional para impedir sobreposição entre
+   agendamentos ativos;
 5. protocolo único;
 6. commit;
 7. notificação posterior ao commit.
@@ -348,11 +443,15 @@ commit, desde que preserve o agendamento e deixe caminho explícito para reenvio
 
 ## Configuração
 
-O repositório deverá versionar `.env.example`, nunca `.env` real. Variáveis
-previstas:
+O repositório versiona um único `.env.example` na raiz e nunca o `.env` real.
+Frontend, backend e comandos de banco carregam o `.env` da raiz. O Vite expõe
+somente variáveis `VITE_*`; esse prefixo não pode ser usado para segredos.
+Variáveis previstas:
 
 ```env
-NODE_ENV=development
+APP_ENV=development
+APP_TIMEZONE=America/Porto_Velho
+VITE_API_BASE_URL=/api
 PORT=3000
 CORS_ORIGIN=http://localhost:5173
 DB_DIALECT=mariadb
@@ -366,13 +465,14 @@ AUTH_SESSION_JWT_AUDIENCE=magrin-sac-frontend
 AUTH_SESSION_JWT_ISSUER=magrin-sac-api
 AUTH_SESSION_JWT_SECRET=
 AUTH_SESSION_JWT_TTL_SECONDS=
+PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64=
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_WHATSAPP_FROM=
 ```
 
-Nomes finais e variáveis de frontend serão definidos no scaffold e registrados
-no README da raiz.
+Novas variáveis devem ser adicionadas ao exemplo global e à validação do pacote
+responsável por consumi-las.
 
 ## Evolução
 

@@ -8,6 +8,7 @@ import { circleAlertIcon } from '@/icons'
 const props = withDefaults(
   defineProps<{
     cancelLabel?: string
+    confirmDisabled?: boolean
     confirmLabel?: string
     description: string
     loading?: boolean
@@ -18,6 +19,7 @@ const props = withDefaults(
   }>(),
   {
     cancelLabel: 'Voltar',
+    confirmDisabled: false,
     confirmLabel: 'Confirmar',
     loading: false,
     loadingLabel: 'Confirmando...',
@@ -53,7 +55,7 @@ function closeDialog() {
 }
 
 function confirmAction() {
-  if (!props.loading) emit('confirm')
+  if (!props.loading && !props.confirmDisabled) emit('confirm')
 }
 
 function getFocusableElements(): HTMLElement[] {
@@ -118,7 +120,10 @@ watch(
     isPageStateLocked = true
 
     await nextTick()
-    dialog.value?.querySelector<HTMLElement>('[data-testid="confirm-dialog-cancel"]')?.focus()
+    const initialFocus =
+      dialog.value?.querySelector<HTMLElement>('[data-confirm-dialog-autofocus]') ??
+      dialog.value?.querySelector<HTMLElement>('[data-testid="confirm-dialog-cancel"]')
+    initialFocus?.focus()
   },
   { immediate: true },
 )
@@ -165,6 +170,10 @@ onUnmounted(restorePageState)
             </div>
           </div>
 
+          <div v-if="$slots.default" class="mt-6">
+            <slot></slot>
+          </div>
+
           <div class="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <AppButton
               variant="ghost"
@@ -176,6 +185,7 @@ onUnmounted(restorePageState)
             </AppButton>
             <AppButton
               :variant="confirmVariant"
+              :disabled="confirmDisabled"
               :loading="loading"
               :loading-label="loadingLabel"
               data-testid="confirm-dialog-confirm"

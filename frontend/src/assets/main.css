@@ -28,6 +28,8 @@
   --theme-color-focus: #0054b2;
   --theme-color-success: #176b57;
   --theme-color-success-soft: #e5f4ef;
+  --theme-color-info: #0054b2;
+  --theme-color-info-soft: #e6f0fc;
   --theme-color-warning: #805b00;
   --theme-color-warning-soft: #fff2cc;
   --theme-color-danger: #a52520;
@@ -68,6 +70,8 @@
   --theme-color-focus: #8dc1ff;
   --theme-color-success: #70d6b8;
   --theme-color-success-soft: #12372f;
+  --theme-color-info: #75b2ff;
+  --theme-color-info-soft: #142d4d;
   --theme-color-warning: #f2c96d;
   --theme-color-warning-soft: #3d3016;
   --theme-color-danger: #ff918c;
@@ -95,6 +99,8 @@
   --color-focus: var(--theme-color-focus);
   --color-status-success: var(--theme-color-success);
   --color-status-success-soft: var(--theme-color-success-soft);
+  --color-status-info: var(--theme-color-info);
+  --color-status-info-soft: var(--theme-color-info-soft);
   --color-status-warning: var(--theme-color-warning);
   --color-status-warning-soft: var(--theme-color-warning-soft);
   --color-status-danger: var(--theme-color-danger);

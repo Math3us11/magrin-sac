@@ -21,6 +21,7 @@
     "@iconify-icons/lucide": "^2.0.13",
     "@iconify/vue": "^5.0.3",
     "@tailwindcss/vite": "^4.3.3",
+    "maska": "^3.2.1",
     "pinia": "^4.0.2",
     "tailwindcss": "^4.3.3",
     "vee-validate": "^4.15.1",

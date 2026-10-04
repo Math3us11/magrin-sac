@@ -101,5 +101,7 @@ pnpm format
 
 ## Configuração
 
-Copie `.env.example` para `.env.local` apenas quando precisar alterar a origem
-da API. O padrão `/api` funciona com um proxy de mesma origem.
+O Vite lê o `.env` global localizado na raiz do monorepo. A variável pública
+`VITE_API_BASE_URL` permite alterar a origem da API; o padrão `/api` funciona
+com o proxy de mesma origem. Nunca prefixe segredos com `VITE_`, pois esses
+valores são incluídos no bundle entregue ao navegador.

@@ -37,6 +37,13 @@ const todayLabel = new Intl.DateTimeFormat('pt-BR', {
 
 const quickLinks = [
   {
+    description: 'Publique e acompanhe seus horários de atendimento.',
+    icon: calendarCheckIcon,
+    permission: 'availability.manage.own',
+    routeName: 'professor-availability',
+    title: 'Minha agenda',
+  },
+  {
     description: 'Acompanhe os principais indicadores de atendimento.',
     icon: chartCombinedIcon,
     permission: 'reports.dashboard.view',

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { RequestOriginGuard } from '../../guards/request-origin.guard.js';
+import { PermissionGuard } from '../../guards/permission.guard.js';
 import { SessionAuthGuard } from '../../guards/session-auth.guard.js';
 import { HelpersModule } from '../../helpers/helpers.module.js';
 import { AuthSession } from '../../models/auth-session.model.js';
@@ -13,11 +14,24 @@ import { PermissionService } from './permission.service.js';
 
 @Module({
   controllers: [AuthController],
-  exports: [AuthService, HelpersModule, PermissionService, SessionAuthGuard],
+  exports: [
+    AuthService,
+    HelpersModule,
+    PermissionGuard,
+    PermissionService,
+    RequestOriginGuard,
+    SessionAuthGuard,
+  ],
   imports: [
     HelpersModule,
     SequelizeModule.forFeature([AuthSession, Permission, User, UserTypePermission]),
   ],
-  providers: [AuthService, PermissionService, RequestOriginGuard, SessionAuthGuard],
+  providers: [
+    AuthService,
+    PermissionGuard,
+    PermissionService,
+    RequestOriginGuard,
+    SessionAuthGuard,
+  ],
 })
 export class AuthModule {}

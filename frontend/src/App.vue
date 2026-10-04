@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
+import { storeToRefs } from 'pinia'
 
+import AppLoading from '@/components/basic/AppLoading.vue'
+import AppNotify from '@/components/basic/AppNotify.vue'
 import AppShell from '@/components/layout/AppShell.vue'
+import { useLoadingStore } from '@/stores/loading'
 
 const route = useRoute()
+const loadingStore = useLoadingStore()
+const {
+  active: loadingActive,
+  description: loadingDescription,
+  icon: loadingIcon,
+} = storeToRefs(loadingStore)
 const showShell = computed(() => !route.meta.hideShell)
 </script>
 
@@ -25,5 +35,8 @@ const showShell = computed(() => !route.meta.hideShell)
     <main v-else id="conteudo-principal" class="min-h-screen">
       <RouterView />
     </main>
+
+    <AppNotify />
+    <AppLoading :active="loadingActive" :description="loadingDescription" :icon="loadingIcon" />
   </div>
 </template>

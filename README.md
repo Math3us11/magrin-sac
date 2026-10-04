@@ -41,6 +41,17 @@ nvm use 24
 pnpm install
 ```
 
+Copie o arquivo global de exemplo para a raiz do repositório e preencha os
+valores locais:
+
+```bash
+cp .env.example .env
+```
+
+No PowerShell, use `Copy-Item .env.example .env`. Frontend, backend e comandos
+de banco leem esse mesmo arquivo. Somente variáveis prefixadas com `VITE_` são
+expostas ao código executado no navegador; nunca use esse prefixo em segredos.
+
 ## Executar o frontend
 
 ```bash
@@ -49,7 +60,7 @@ pnpm dev --host
 
 ## Preparar e executar o backend
 
-Crie `backend/.env` a partir de `backend/.env.example`. Depois:
+Com o `.env` global configurado na raiz:
 
 ```bash
 pnpm --filter backend db:create
@@ -58,7 +69,7 @@ pnpm start:dev
 ```
 
 Para criar a primeira conta administrativa local, preencha somente no seu
-`backend/.env` as variáveis `BOOTSTRAP_ADMIN_*` descritas em `.env.example` e
+`.env` global as variáveis `BOOTSTRAP_ADMIN_*` descritas em `.env.example` e
 execute:
 
 ```bash

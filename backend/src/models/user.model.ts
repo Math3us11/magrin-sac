@@ -16,7 +16,7 @@ export enum UserType {
 
 @Table({
   defaultScope: {
-    attributes: { exclude: ['cpf', 'passwordHash'] },
+    attributes: { exclude: ['cpf', 'passwordHash', 'phone'] },
   },
   modelName: 'User',
   paranoid: true,
@@ -46,8 +46,14 @@ export class User extends Model {
   @Column({ allowNull: false, type: DataType.CHAR(11), unique: true })
   declare cpf: string;
 
+  @Column({ allowNull: true, type: DataType.STRING(11) })
+  declare phone: string | null;
+
   @Column({ allowNull: false, defaultValue: true, type: DataType.BOOLEAN })
   declare isActive: boolean;
+
+  @Column({ allowNull: false, defaultValue: false, type: DataType.BOOLEAN })
+  declare mustChangePassword: boolean;
 
   @CreatedAt
   @Column({ allowNull: false, type: DataType.DATE })

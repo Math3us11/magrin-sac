@@ -12,9 +12,18 @@ documento de requisitos original.
 
 - Autenticar usuários e distinguir perfis autorizados (`RF01`–`RF03`, `RF06`).
 - Cadastrar, editar, ativar e desativar usuários autorizados (`RF05`).
+- Permitir que um administrador exclua logicamente um cadastro indevido após
+  confirmar a própria senha, registrando o responsável e preservando o
+  histórico. A própria conta administrativa não pode ser excluída por esse
+  fluxo.
 - Manter os dados mínimos do aluno (`RF07`).
+- Exigir telefone com DDD no cadastro e na edição administrativa para viabilizar
+  os fluxos de notificação.
 - Não oferecer autocadastro de professor ou administrador; essas contas são
   provisionadas internamente.
+- Exigir que a senha temporária seja substituída no primeiro acesso antes de
+  liberar qualquer operação autenticada, encerrar as sessões temporárias após a
+  troca e solicitar um novo login.
 - Manter o autocadastro de aluno indisponível até existir uma validação
   institucional adequada.
 - Garantir que o aluno consulte apenas seus próprios dados (`RNF18`).
@@ -23,9 +32,15 @@ documento de requisitos original.
 
 ### Disponibilidade
 
-- Cadastrar datas, horários, duração e modalidade (`RF08`–`RF11`).
+- Permitir que o professor acesse uma área própria de agenda, sem conceder
+  gerenciamento das disponibilidades de outros professores.
+- Cadastrar data, início e fim livres e pelo menos uma modalidade entre
+  presencial e online (`RF08`–`RF11`), exigindo término posterior ao início e
+  sem solicitar sala ou link no primeiro recorte.
 - Bloquear horários livres e impedir disponibilidades conflitantes
   (`RF12`, `RF13`).
+- Interpretar e exibir a agenda no timezone institucional
+  `America/Porto_Velho`, normalizando os instantes na persistência.
 - Consultar agenda por data ou período e mostrar ao aluno apenas opções aptas
   (`RF14`, `RF15`).
 - Remover da consulta um horário com agendamento ativo (`RF16`).
@@ -34,7 +49,8 @@ documento de requisitos original.
 
 - Selecionar data, horário e modalidade e informar assunto (`RF17`–`RF20`).
 - Revalidar a disponibilidade na confirmação (`RF21`).
-- Impedir dupla reserva e conflito do próprio aluno (`RF22`, `RF23`).
+- Impedir sobreposição com outro agendamento ativo dentro da janela e conflito
+  do próprio aluno (`RF22`, `RF23`).
 - Gerar protocolo único (`RF24`, `RN04`).
 - Consultar próximos agendamentos e histórico (`RF25`, `RF26`).
 - Cancelar conforme regras configuradas e auditar a operação (`RF27`, `RF28`,
@@ -83,6 +99,10 @@ documento de requisitos original.
 
 - Hash seguro de senha quando houver credenciais locais (`RNF15`).
 - HTTPS em ambientes publicados (`RNF16`).
+- Não expor chaves simétricas no bundle do frontend nem guardar segredos na
+  tabela de parâmetros operacionais.
+- Proteger senhas no payload com AES-GCM por operação e RSA-OAEP, mantendo a
+  chave privada somente no servidor e sem substituir a exigência de HTTPS.
 - Autorização obrigatória no servidor (`RNF17`, `RNF18`).
 - Validação e sanitização de entrada (`RNF19`, `RNF20`).
 - Sessão segura e registro controlado de tentativas suspeitas
@@ -90,6 +110,8 @@ documento de requisitos original.
 - Access token JWT em cookie `HttpOnly`, com assinatura e claims validadas antes
   de consultar a sessão stateful. Inatividade, duração absoluta, revogação e
   usuário ativo são sempre validados no backend.
+- Não retornar a senha temporária ao frontend; comunicar somente o indicador de
+  troca obrigatória e impedir no backend o uso da sessão fora desse fluxo.
 - CPF normalizado com 11 dígitos, único no banco e omitido de logs, URLs e
   respostas que não precisem explicitamente desse dado.
 - Menor privilégio, LGPD e ausência de dados pessoais em URLs e logs
@@ -132,7 +154,8 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
 ## Regras de negócio invariantes
 
 - Aluno inativo não agenda (`RN01`).
-- Um horário não recebe mais de um agendamento ativo (`RN02`).
+- Um mesmo subintervalo não recebe mais de um agendamento ativo; a janela pode
+  conter vários agendamentos não sobrepostos (`RN02`).
 - Um aluno não mantém agendamentos conflitantes (`RN03`).
 - Todo agendamento possui protocolo e disponibilidade (`RN04`, `RN05`).
 - Todo atendimento realizado se relaciona a um agendamento (`RN06`).

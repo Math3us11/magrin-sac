@@ -1,7 +1,9 @@
 import Joi from 'joi';
 
 export const environmentValidationSchema = Joi.object({
-  NODE_ENV: Joi.string().valid('development', 'test', 'production').default('development'),
+  APP_ENV: Joi.string().valid('development', 'test', 'production').optional(),
+  APP_TIMEZONE: Joi.string().valid('America/Porto_Velho').required(),
+  NODE_ENV: Joi.string().valid('development', 'test', 'production').optional(),
   PORT: Joi.number().port().default(3000),
   CORS_ORIGIN: Joi.string().uri().required(),
   AUTH_SESSION_COOKIE_NAME: Joi.string()
@@ -11,6 +13,7 @@ export const environmentValidationSchema = Joi.object({
   AUTH_SESSION_JWT_ISSUER: Joi.string().trim().min(1).default('magrin-sac-api'),
   AUTH_SESSION_JWT_SECRET: Joi.string().min(32).required(),
   AUTH_SESSION_JWT_TTL_SECONDS: Joi.number().integer().min(60).required(),
+  PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64: Joi.string().allow('').base64().optional(),
   DB_DIALECT: Joi.string().valid('mariadb').required(),
   DB_HOST: Joi.string().hostname().required(),
   DB_PORT: Joi.number().port().required(),

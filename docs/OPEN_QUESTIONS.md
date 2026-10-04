@@ -48,17 +48,20 @@ excepcionais da coordenação.
 Definir quantidade de agendamentos futuros por aluno e se um cancelamento libera
 imediatamente um novo agendamento.
 
-### 5. Timezone institucional
+### 5. Timezone institucional — resolvida
 
-Definir o fuso oficial e regras para persistência/exibição de data e hora.
-
-**Recomendação técnica:** persistir instantes normalizados e converter na
-fronteira, sem assumir que o fuso do servidor é o fuso da instituição.
+**Decisão:** o timezone institucional é `America/Porto_Velho`. Datas e horários
+são informados e exibidos nesse fuso; o backend deverá persistir os instantes de
+forma normalizada e converter nas fronteiras, sem depender do fuso do servidor.
+Consulte a ADR-022.
 
 ### 6. Modelo de disponibilidade
 
-Definir duração padrão, antecedência mínima, janela máxima de agendamento,
-recorrência e comportamento de horários já reservados quando a agenda muda.
+O primeiro formulário usa início e fim livres, com término obrigatoriamente
+posterior ao início. O modo semanal expande a semana selecionada, seus dias e
+janelas em disponibilidades concretas sem persistir recorrência. Ainda é
+necessário definir antecedência mínima, janela máxima de agendamento e
+comportamento de horários já reservados quando a agenda muda.
 
 ## Bloqueadores do módulo de atendimento e indicadores
 
@@ -94,15 +97,17 @@ decisão.
 
 ## Pendências do fluxo e integrações
 
-### 12. Atendimento online
+### 12. Atendimento online — decisão parcial
 
-Definir se o MVP apenas marca a modalidade ou armazena link manual. Geração de
-sala e integração com videoconferência permanecem fora do MVP.
+O primeiro cadastro apenas marca a modalidade, sem solicitar link. Geração de
+sala e integração com videoconferência permanecem fora do MVP. A origem de um
+eventual link futuro ainda precisa ser definida.
 
-### 13. Atendimento presencial
+### 13. Atendimento presencial — decisão parcial
 
-Definir local fixo ou configurável, quantidade de salas e necessidade de
-capacidade.
+O primeiro cadastro apenas marca a modalidade, sem solicitar sala. Local fixo
+ou configurável, quantidade de salas e necessidade de capacidade permanecem
+pendentes para uma evolução posterior.
 
 ### 14. WhatsApp
 
@@ -148,6 +153,22 @@ do primeiro fluxo vertical.
 
 Confirmar que o MVP é individual. Caso contrário, o modelo de capacidade,
 participantes, presença e métricas precisa ser redesenhado antes do banco.
+
+### 23. Grade curricular
+
+Definir como representar versões de matriz, períodos, carga horária,
+pré-requisitos, componentes obrigatórios e eletivos. Até essa decisão, cursos e
+matérias permanecem em catálogos independentes e nenhuma grade é inferida a
+partir dos documentos de referência. O período de 1 a 12 já é um vocabulário
+administrável no vínculo entre usuário e matéria; ainda falta decidir se uma
+futura versão de grade terá também um período recomendado próprio.
+
+### 24. Histórico acadêmico e conclusão de matérias
+
+Definir como registrar aprovação, reprovação, aproveitamento, dispensa e
+conclusão. Essa decisão será necessária para impedir que um aluno selecione como
+novo vínculo uma matéria já concluída, sem tratar apenas a existência de um
+registro anterior como aprovação.
 
 ## Registro de respostas
 
