@@ -18,6 +18,7 @@ run(
   [...packageManager.argsPrefix, "install", "--frozen-lockfile"],
   {
     cwd: STABLE_WORKTREE_PATH,
+    env: { ...process.env, CI: process.env.CI ?? "true" },
   },
 );
 console.log("[STABLE] Versão estável sincronizada com origin/main.");
