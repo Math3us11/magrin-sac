@@ -23,7 +23,10 @@ function configureFrontend(app: NestExpressApplication, appConfig: AppConfig): v
     );
   }
 
-  app.useStaticAssets(FRONTEND_DIST_PATH, { index: false });
+  app.useStaticAssets(FRONTEND_DIST_PATH, {
+    dotfiles: 'allow',
+    index: false,
+  });
   app.use((request: Request, response: Response, next: NextFunction) => {
     const isApiRequest = request.path === '/api' || request.path.startsWith('/api/');
     const acceptsHtml = request.accepts('html');
@@ -33,7 +36,7 @@ function configureFrontend(app: NestExpressApplication, appConfig: AppConfig): v
       return;
     }
 
-    response.sendFile(FRONTEND_INDEX_PATH);
+    response.sendFile(FRONTEND_INDEX_PATH, { dotfiles: 'allow' });
   });
 }
 
