@@ -24,7 +24,8 @@ Os documentos distinguem:
 8. `DESIGN_SYSTEM.md` — cores institucionais, temas, tokens e uso das logos.
 9. `ROADMAP.md` — sequência sugerida para iniciar a implementação.
 10. `CODEX_VSCODE.md` — preparação e verificação do Codex no VS Code.
-11. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
+11. `GIT_WORKFLOW.md` — branches, Pull Requests e promoção da versão estável.
+12. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
 
 ## Fontes consolidadas
 
