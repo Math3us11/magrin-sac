@@ -176,6 +176,29 @@ versionados.
 - Garantir navegação por teclado, foco visível, rótulos e mensagens textuais.
 - Não duplicar no frontend uma regra crítica sem equivalente no backend.
 
+## Fluxo Git obrigatório
+
+- `develop` é a branch padrão e a base de toda nova alteração.
+- `main` representa exclusivamente a versão estável publicada pelo túnel.
+- Antes de editar código ou documentação, atualizar `develop` e criar uma branch
+  curta e específica a partir dela, usando os prefixos `feat/`, `fix/`,
+  `docs/`, `refactor/`, `test/` ou `chore/`.
+- Não desenvolver nem criar commits diretamente em `develop` ou `main`.
+- Funcionalidades e correções entram por Pull Request da branch de trabalho para
+  `develop`.
+- A promoção da versão estável ocorre somente por Pull Request de `develop` para
+  `main`; nunca fazer push direto para essas branches protegidas.
+- Quando o usuário pedir para versionar ou concluir uma alteração, executar as
+  verificações proporcionais ao risco, criar o commit na branch de trabalho e
+  apresentar ou criar o PR correto. Não realizar o merge sem autorização
+  explícita.
+- Depois de um merge, sincronizar a branch local correspondente por
+  fast-forward. Remover branches já integradas somente com autorização.
+- O worktree `.worktrees/stable` é reservado à `main`, não recebe edições
+  manuais e deve ser atualizado com `pnpm stable:sync` após uma promoção.
+
+O procedimento completo está em `docs/GIT_WORKFLOW.md`.
+
 ## Testes mínimos
 
 Antes de considerar uma alteração concluída, executar os scripts existentes de

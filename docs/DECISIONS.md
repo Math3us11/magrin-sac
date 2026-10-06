@@ -374,10 +374,13 @@ disponível simultaneamente ao diretório principal, que pode permanecer em
 `develop` ou numa branch `feat/*`. O comando público `pnpm stable` executa a
 `main` no worktree, e `pnpm remote` falha se for chamado em outra branch.
 
-Promoções continuam explícitas: funcionalidades entram em `develop` e somente
-uma revisão aprovada atualiza `main`. `pnpm stable:sync` apenas avança o worktree
-por fast-forward até `origin/main`; ele não promove desenvolvimento nem cria
-merge automaticamente.
+Promoções continuam explícitas: cada alteração nasce em uma branch de trabalho,
+entra em `develop` por Pull Request e somente outro Pull Request de `develop`
+para `main` atualiza a versão estável. Pushes diretos para as duas branches são
+bloqueados. Como o repositório possui atualmente um único mantenedor, o PR é
+obrigatório, mas não exige uma aprovação impossível do próprio autor.
+`pnpm stable:sync` apenas avança o worktree por fast-forward até `origin/main`;
+ele não promove desenvolvimento nem cria merge automaticamente.
 
 O ambiente estável usa `STABLE_DB_DATABASE`, enquanto o desenvolvimento usa
 `DB_DATABASE`. Os dois schemas podem viver no mesmo MariaDB, mas migrations e

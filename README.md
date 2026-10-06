@@ -90,6 +90,29 @@ pnpm build
 pnpm check
 ```
 
+## Fluxo de branches e Pull Requests
+
+`develop` é a base do desenvolvimento e `main` contém somente a versão estável
+usada pelo túnel. Cada alteração deve começar em uma branch própria criada a
+partir da `develop` atualizada:
+
+```bash
+git switch develop
+git pull --ff-only origin develop
+git switch -c feat/nome-da-funcionalidade
+```
+
+O fluxo de integração é:
+
+```text
+feat/* | fix/* | docs/* → Pull Request → develop
+develop                 → Pull Request → main → túnel
+```
+
+Não faça push direto para `develop` ou `main`. Consulte
+`docs/GIT_WORKFLOW.md` para os comandos de versionamento, atualização local,
+limpeza das branches e promoção da versão estável.
+
 ## Demonstração remota com Cloudflare Tunnel
 
 O projeto pode publicar temporariamente o build completo em
