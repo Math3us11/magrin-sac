@@ -6,11 +6,12 @@ import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { User } from '../../models/user.model.js';
 import { AuthModule } from '../auth/auth.module.js';
+import { AdminAvailabilityController } from './admin-availability.controller.js';
 import { AvailabilityController } from './availability.controller.js';
 import { AvailabilityService } from './availability.service.js';
 
 @Module({
-  controllers: [AvailabilityController],
+  controllers: [AdminAvailabilityController, AvailabilityController],
   imports: [
     AuthModule,
     SequelizeModule.forFeature([

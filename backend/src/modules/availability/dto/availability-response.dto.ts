@@ -1,5 +1,5 @@
 import type { AvailabilityState } from '../../../models/availability.model.js';
-import type { AppointmentModality } from './create-availability.dto.js';
+import type { AppointmentModality } from '../../../types/appointment-modality.type.js';
 
 export class AvailabilityItemResponseDto {
   declare endsAt: string;

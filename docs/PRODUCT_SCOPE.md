@@ -50,6 +50,10 @@ ainda serão detalhadas.
 ### Administrador do sistema
 
 Gerencia usuários, perfis, parâmetros e permissões técnicas e administrativas.
+Possui uma visão global, somente de consulta no primeiro recorte, das
+disponibilidades e dos agendamentos. Ações em nome de aluno ou professor exigem
+permissão específica e autoria auditável; o perfil não ignora automaticamente
+as regras de domínio.
 
 ## Fluxo principal do MVP
 

@@ -1,23 +1,22 @@
 import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { Op, type Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
-import type { AppConfig } from '../../config/app.config.js';
+import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability, AvailabilityState } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { User, UserType } from '../../models/user.model.js';
+import { AppointmentModality } from '../../types/appointment-modality.type.js';
 import type {
   AvailabilityItemResponseDto,
   CreateAvailabilityResponseDto,
   ListOwnAvailabilityResponseDto,
 } from './dto/availability-response.dto.js';
-import {
-  AppointmentModality,
-  type CreateAvailabilityBatchDto,
-} from './dto/create-availability.dto.js';
+import type { CreateAvailabilityBatchDto } from './dto/create-availability.dto.js';
+import type { ListAdminAvailabilityQueryDto } from './dto/list-admin-availability.dto.js';
+import type { ListAdminAvailabilityResponseDto } from './dto/list-admin-availability-response.dto.js';
 
 const MODALITY_OPTION = 'APPOINTMENT_MODALITY';
 
@@ -27,78 +26,8 @@ type PreparedAvailability = {
   startsAt: Date;
 };
 
-function zonedParts(value: Date, timeZone: string) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    day: '2-digit',
-    hour: '2-digit',
-    hourCycle: 'h23',
-    minute: '2-digit',
-    month: '2-digit',
-    second: '2-digit',
-    timeZone,
-    year: 'numeric',
-  }).formatToParts(value);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((candidate) => candidate.type === type)?.value);
-
-  return {
-    day: part('day'),
-    hour: part('hour'),
-    minute: part('minute'),
-    month: part('month'),
-    second: part('second'),
-    year: part('year'),
-  };
-}
-
-function localDateTimeToUtc(date: string, time: string, timeZone: string): Date {
-  const [year, month, day] = date.split('-').map(Number);
-  const [hour, minute] = time.split(':').map(Number);
-
-  if (
-    year === undefined ||
-    month === undefined ||
-    day === undefined ||
-    hour === undefined ||
-    minute === undefined
-  ) {
-    throw new BadRequestException('Data ou horário inválido.');
-  }
-
-  const wallClock = Date.UTC(year, month - 1, day, hour, minute);
-  let result = new Date(wallClock);
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const rendered = zonedParts(result, timeZone);
-    const renderedAsUtc = Date.UTC(
-      rendered.year,
-      rendered.month - 1,
-      rendered.day,
-      rendered.hour,
-      rendered.minute,
-      rendered.second,
-    );
-    result = new Date(wallClock - (renderedAsUtc - result.getTime()));
-  }
-
-  const verification = zonedParts(result, timeZone);
-  if (
-    verification.year !== year ||
-    verification.month !== month ||
-    verification.day !== day ||
-    verification.hour !== hour ||
-    verification.minute !== minute
-  ) {
-    throw new BadRequestException('Data ou horário inexistente no timezone institucional.');
-  }
-
-  return result;
-}
-
 @Injectable()
 export class AvailabilityService {
-  private readonly timeZone: string;
-
   constructor(
     @InjectModel(Availability) private readonly availabilityModel: typeof Availability,
     @InjectModel(AvailabilityModality)
@@ -108,10 +37,8 @@ export class AvailabilityService {
     private readonly systemOptionItemModel: typeof SystemOptionItem,
     @InjectModel(User) private readonly userModel: typeof User,
     @InjectConnection() private readonly sequelize: Sequelize,
-    configService: ConfigService,
-  ) {
-    this.timeZone = configService.getOrThrow<AppConfig>('app').timeZone;
-  }
+    private readonly institutionDateTime: InstitutionDateTimeService,
+  ) {}
 
   async createBatch(
     input: CreateAvailabilityBatchDto,
@@ -195,13 +122,72 @@ export class AvailabilityService {
     };
   }
 
+  async listAll(query: ListAdminAvailabilityQueryDto): Promise<ListAdminAvailabilityResponseDto> {
+    const rangeStart = this.institutionDateTime.localToUtc(query.from, '00:00');
+    const rangeEnd = this.institutionDateTime.localToUtc(this.addDateDays(query.to, 1), '00:00');
+
+    if (rangeEnd <= rangeStart) {
+      throw new BadRequestException('A data final deve ser igual ou posterior à data inicial.');
+    }
+
+    const availabilities = await this.availabilityModel.findAll({
+      order: [
+        ['startsAt', 'ASC'],
+        ['id', 'ASC'],
+      ],
+      where: {
+        endsAt: { [Op.gt]: rangeStart },
+        startsAt: { [Op.lt]: rangeEnd },
+        ...(query.state ? { state: query.state } : {}),
+      },
+    });
+    const modalityMap = await this.getModalitiesByAvailability(availabilities.map(({ id }) => id));
+    const filtered = availabilities.filter(
+      ({ id }) => !query.modality || (modalityMap.get(id) ?? []).includes(query.modality),
+    );
+    const professorIds = [...new Set(filtered.map(({ professorId }) => professorId))];
+    const professors = await this.userModel.unscoped().findAll({
+      attributes: ['id', 'isActive', 'name'],
+      paranoid: false,
+      where: { id: { [Op.in]: professorIds }, userType: UserType.PROFESSOR },
+    });
+    const professorsById = new Map(
+      professors.map(({ id, isActive, name }) => [id, { id, isActive, name }] as const),
+    );
+    const items = filtered.flatMap((availability) => {
+      const professor = professorsById.get(availability.professorId);
+      if (!professor) return [];
+
+      return [
+        {
+          endsAt: availability.endsAt.toISOString(),
+          id: availability.id,
+          modalities: modalityMap.get(availability.id) ?? [],
+          professor,
+          startsAt: availability.startsAt.toISOString(),
+          state: availability.state,
+        },
+      ];
+    });
+
+    return {
+      availabilities: items,
+      range: { from: query.from, to: query.to },
+      summary: {
+        active: items.filter(({ state }) => state === AvailabilityState.ACTIVE).length,
+        blocked: items.filter(({ state }) => state === AvailabilityState.BLOCKED).length,
+        cancelled: items.filter(({ state }) => state === AvailabilityState.CANCELLED).length,
+      },
+    };
+  }
+
   private prepareBatch(input: CreateAvailabilityBatchDto): PreparedAvailability[] {
     const now = Date.now();
     const prepared = input.items
       .map((item) => ({
-        endsAt: localDateTimeToUtc(item.date, item.endTime, this.timeZone),
+        endsAt: this.institutionDateTime.localToUtc(item.date, item.endTime),
         modalities: item.modalities,
-        startsAt: localDateTimeToUtc(item.date, item.startTime, this.timeZone),
+        startsAt: this.institutionDateTime.localToUtc(item.date, item.startTime),
       }))
       .sort((first, second) => first.startsAt.getTime() - second.startsAt.getTime());
 
@@ -220,6 +206,12 @@ export class AvailabilityService {
     }
 
     return prepared;
+  }
+
+  private addDateDays(value: string, amount: number): string {
+    const date = new Date(`${value}T12:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() + amount);
+    return date.toISOString().slice(0, 10);
   }
 
   private async lockAndValidateProfessor(

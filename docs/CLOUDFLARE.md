@@ -99,15 +99,16 @@ Na primeira utilização, prepare o worktree da `main`:
 pnpm.cmd stable:prepare
 ```
 
-Quando uma nova versão já tiver sido integrada e enviada para `origin/main`,
-sincronize a cópia estável:
+Quando o Pull Request `develop → main` já tiver sido mesclado e a nova versão
+estiver disponível em `origin/main`, sincronize a cópia estável:
 
 ```powershell
 pnpm.cmd stable:sync
 ```
 
-Esses comandos não promovem `develop` para `main`. A promoção continua sendo
-uma decisão explícita de release por merge ou pull request.
+Esses comandos não promovem `develop` para `main`. A promoção ocorre somente
+por Pull Request, sem push direto para as branches protegidas. O procedimento
+completo está em `GIT_WORKFLOW.md`.
 
 Confirme que o MariaDB está ativo. No primeiro terminal:
 

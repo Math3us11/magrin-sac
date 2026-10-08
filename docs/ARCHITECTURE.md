@@ -69,6 +69,10 @@ O diretório `frontend/` foi criado com:
   registros, busca, filtros, paginação controlada, slots de célula e estados de
   carregamento, vazio e erro, além de área tabular com altura limitada e busca
   textual submetida explicitamente;
+- `AppTextarea` reutilizável, integrado ao Vee Validate, para campos textuais
+  multilinha com ajuda, erro acessível e estados de leitura ou bloqueio;
+- `AppSelect` reutilizável para seleções simples controladas ou integradas ao
+  Vee Validate, mantendo o mesmo foco e tratamento de erro dos demais campos;
 - máscaras opcionais de entrada encapsuladas no `AppInput` com Maska;
 - ícones por Iconify Vue com dados Lucide empacotados localmente;
 - wizard administrativo de usuários com cursos, períodos e matérias carregados
@@ -280,7 +284,14 @@ Datas, horários, duração, modalidade, bloqueios e conflitos da agenda publica
 ### `modules/appointments`
 
 Criação, consulta, cancelamento, protocolo, regras do aluno e reserva segura da
-disponibilidade.
+disponibilidade. O primeiro recorte implementado consulta as janelas ativas por
+mês e modalidade, desconta os intervalos de agendamentos confirmados e devolve
+somente trechos livres e a identificação pública do professor. A confirmação
+usa transação, locks da conta e da disponibilidade, revalidação de conflitos e
+protocolo aleatório único antes de responder ao frontend. A área autenticada do
+aluno consulta próximos compromissos, histórico paginado ou um período de até
+62 dias para o calendário; em todos os casos o serviço aplica o identificador
+da sessão no filtro e não aceita identidade de aluno enviada pelo cliente.
 
 ### `modules/attendance`
 
@@ -292,8 +303,10 @@ Consultas agregadas e rastreáveis aos registros que compõem os indicadores.
 
 ### `modules/notifications`
 
-Templates, orquestração, provedor Twilio, tentativas e falhas. Nenhum outro
-módulo importa a SDK do provedor.
+Orquestração, porta do provedor WhatsApp, tentativas e falhas. Nenhum outro
+módulo importa a SDK do provedor. A implementação atual registra cada tentativa
+em `notifications`, mascara o destino e usa um provider indisponível explícito
+até a configuração futura da Twilio.
 
 ### `modules/audit`
 
@@ -402,10 +415,17 @@ necessária e o guard recalcula a capacidade em cada requisição. Os endpoints 
 opções, listagem, consulta, criação e edição de usuário reutilizam essa proteção;
 a escrita também exige origem permitida.
 
+As capacidades `availability.read.any` e `appointments.read.any` liberam para o
+administrador a rota `administration-schedule` e os endpoints globais de
+consulta. Elas não ampliam permissões `own`, não funcionam como bypass geral do
+guard e não concedem escrita em nome de terceiros. A agenda geral seleciona
+somente os dados necessários à operação e mantém credenciais e campos internos
+fora das respostas de listagem.
+
 Professores recebem `availability.manage.own`, que libera o agrupador `agenda`,
 o item `agenda.availability` e a rota frontend `professor-availability`. Esta
-capacidade representa somente a agenda do usuário autenticado; uma futura
-administração global deve usar permissão distinta e nunca ampliar implicitamente
+capacidade representa somente a agenda do usuário autenticado. A administração
+global usa as permissões distintas descritas acima e nunca amplia implicitamente
 o escopo de `own`.
 
 `availabilities` armazena o proprietário, os instantes em UTC e o estado
@@ -456,8 +476,11 @@ A criação do agendamento precisa combinar:
 6. commit;
 7. notificação posterior ao commit.
 
-A estratégia física de constraint/lock será definida junto ao modelo MariaDB e
-deve possuir teste concorrente.
+A implementação bloqueia primeiro a conta solicitante e depois a disponibilidade
+com `SELECT ... FOR UPDATE`. As consultas de sobreposição também são leituras
+com lock, garantindo visão atual após a espera. Essa ordem evita dupla reserva
+na mesma janela e conflito do mesmo usuário entre janelas diferentes; o fluxo
+possui teste concorrente automatizado.
 
 ## Notificações
 

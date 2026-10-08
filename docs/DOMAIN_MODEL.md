@@ -148,6 +148,15 @@ protocolo, modalidade, assunto, detalhes, estado e dados de cancelamento quando
 aplicável. Uma janela pode ser consumida por vários agendamentos ativos, desde
 que seus intervalos não se sobreponham.
 
+O modelo físico `appointments` preserva o histórico sem exclusão lógica e
+registra `availability_id`, `student_id`, `modality_option_item_id`, protocolo,
+intervalo, assunto, detalhes, estado, cancelamento e autoria. A chave estrangeira
+composta entre disponibilidade e modalidade garante no banco que a modalidade
+reservada pertence à janela publicada. Índices por janela e por aluno sustentam
+as consultas transacionais de conflito. A confirmação bloqueia primeiro o
+usuário solicitante e depois a disponibilidade, revalida estado, professor,
+modalidade, contenção e sobreposições antes da criação.
+
 ### Atendimento
 
 Registro do que ocorreu em um agendamento: realização ou ausência, observações
@@ -166,6 +175,12 @@ Registra transições da demanda, justificativa, responsável e data.
 
 Registra canal, tipo, destino protegido, estado da tentativa, erro sanitizado e
 datas. Não é fonte de verdade do agendamento.
+
+O modelo físico `notifications` referencia o agendamento e persiste canal, tipo,
+apenas uma dica mascarada do destino, estado, referência do provedor, código de
+erro sanitizado e data da tentativa. O telefone completo existe somente em
+memória durante a chamada ao provider. A primeira implementação registra falha
+quando o provider ainda não está configurado, preservando o caminho de reenvio.
 
 ### Auditoria
 
@@ -293,10 +308,9 @@ necessário ao histórico.
 
 ## Pontos para o modelo físico
 
-- Definir como MariaDB garantirá a unicidade de apenas um agendamento ativo por
-  disponibilidade.
-- Definir estratégia de concorrência: update condicional, lock ou outra forma
-  compatível com a constraint escolhida.
+- Implementar a confirmação com lock da disponibilidade e consulta transacional
+  dos intervalos ativos, permitindo vários agendamentos não sobrepostos na mesma
+  janela.
 - Armazenar instantes normalizados e convertê-los nas fronteiras para o timezone
   institucional `America/Porto_Velho`.
 - Definir política de exclusão lógica e retenção de dados pessoais.

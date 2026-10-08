@@ -374,10 +374,13 @@ disponível simultaneamente ao diretório principal, que pode permanecer em
 `develop` ou numa branch `feat/*`. O comando público `pnpm stable` executa a
 `main` no worktree, e `pnpm remote` falha se for chamado em outra branch.
 
-Promoções continuam explícitas: funcionalidades entram em `develop` e somente
-uma revisão aprovada atualiza `main`. `pnpm stable:sync` apenas avança o worktree
-por fast-forward até `origin/main`; ele não promove desenvolvimento nem cria
-merge automaticamente.
+Promoções continuam explícitas: cada alteração nasce em uma branch de trabalho,
+entra em `develop` por Pull Request e somente outro Pull Request de `develop`
+para `main` atualiza a versão estável. Pushes diretos para as duas branches são
+bloqueados. Como o repositório possui atualmente um único mantenedor, o PR é
+obrigatório, mas não exige uma aprovação impossível do próprio autor.
+`pnpm stable:sync` apenas avança o worktree por fast-forward até `origin/main`;
+ele não promove desenvolvimento nem cria merge automaticamente.
 
 O ambiente estável usa `STABLE_DB_DATABASE`, enquanto o desenvolvimento usa
 `DB_DATABASE`. Os dois schemas podem viver no mesmo MariaDB, mas migrations e
@@ -390,6 +393,30 @@ estável incompatível.
 Consequência: uma nova versão somente chega ao domínio depois de ser integrada
 à `main`, sincronizada no worktree e reiniciada. O worktree é gerado localmente,
 fica ignorado pelo Git e não deve receber edições manuais.
+
+## ADR-025 — Consulta global administrativa sem bypass de escopo
+
+**Estado:** aceita.
+
+O tipo `administrador` recebe capacidades explícitas para consultar todas as
+disponibilidades e todos os agendamentos: `availability.read.any` e
+`appointments.read.any`. Essas capacidades são diferentes das permissões
+`*.own` e protegem endpoints e uma rota administrativa próprios.
+
+O primeiro recorte é somente de consulta. Administradores não se tornam
+professores ou alunos por impersonação e não recebem um bypass geral dos guards.
+Criação, bloqueio, cancelamento ou alteração em nome de terceiros exigirão
+permissões de escrita próprias, identificação separada do titular e do ator,
+auditoria e as regras institucionais correspondentes.
+
+Motivo: oferecer a visão global necessária à administração sem enfraquecer o
+isolamento do aluno, a propriedade da agenda do professor ou a rastreabilidade
+de ações privilegiadas.
+
+Consequência: a navegação administrativa ganha a “Agenda geral”; listagens
+globais expõem somente os dados operacionais mínimos. Novos poderes
+administrativos não poderão ser obtidos apenas acrescentando o perfil a uma
+permissão `own` existente.
 
 ## Como adicionar uma decisão
 
