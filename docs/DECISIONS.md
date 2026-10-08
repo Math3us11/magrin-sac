@@ -394,6 +394,30 @@ Consequência: uma nova versão somente chega ao domínio depois de ser integrad
 à `main`, sincronizada no worktree e reiniciada. O worktree é gerado localmente,
 fica ignorado pelo Git e não deve receber edições manuais.
 
+## ADR-025 — Consulta global administrativa sem bypass de escopo
+
+**Estado:** aceita.
+
+O tipo `administrador` recebe capacidades explícitas para consultar todas as
+disponibilidades e todos os agendamentos: `availability.read.any` e
+`appointments.read.any`. Essas capacidades são diferentes das permissões
+`*.own` e protegem endpoints e uma rota administrativa próprios.
+
+O primeiro recorte é somente de consulta. Administradores não se tornam
+professores ou alunos por impersonação e não recebem um bypass geral dos guards.
+Criação, bloqueio, cancelamento ou alteração em nome de terceiros exigirão
+permissões de escrita próprias, identificação separada do titular e do ator,
+auditoria e as regras institucionais correspondentes.
+
+Motivo: oferecer a visão global necessária à administração sem enfraquecer o
+isolamento do aluno, a propriedade da agenda do professor ou a rastreabilidade
+de ações privilegiadas.
+
+Consequência: a navegação administrativa ganha a “Agenda geral”; listagens
+globais expõem somente os dados operacionais mínimos. Novos poderes
+administrativos não poderão ser obtidos apenas acrescentando o perfil a uma
+permissão `own` existente.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

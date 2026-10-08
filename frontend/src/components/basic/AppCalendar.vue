@@ -5,10 +5,22 @@ import { computed, ref, watch } from 'vue'
 import { calendarCheckIcon, chevronLeftIcon, chevronRightIcon } from '@/icons'
 import type { AppCalendarEvent, AppCalendarEventTone } from '@/types/calendar'
 
-const props = defineProps<{
-  events: AppCalendarEvent[]
-  initialDate?: string
-  today: string
+const props = withDefaults(
+  defineProps<{
+    events: AppCalendarEvent[]
+    initialDate?: string
+    showSelectedAgenda?: boolean
+    today: string
+  }>(),
+  {
+    initialDate: undefined,
+    showSelectedAgenda: true,
+  },
+)
+const emit = defineEmits<{
+  selectDate: [date: string]
+  selectEvent: [event: AppCalendarEvent]
+  visibleMonthChange: [month: string]
 }>()
 
 const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
@@ -44,16 +56,24 @@ function selectFirstDateInMonth(month: string) {
 function changeMonth(amount: -1 | 1) {
   visibleMonth.value = shiftUtcMonth(visibleMonth.value, amount)
   selectFirstDateInMonth(visibleMonth.value)
+  emit('selectDate', selectedDate.value)
+  emit('visibleMonthChange', visibleMonth.value)
 }
 
 function goToToday() {
   visibleMonth.value = props.today.slice(0, 7)
   selectedDate.value = props.today
+  emit('selectDate', selectedDate.value)
+  emit('visibleMonthChange', visibleMonth.value)
 }
 
 function selectDate(date: string) {
   selectedDate.value = date
-  if (!date.startsWith(visibleMonth.value)) visibleMonth.value = date.slice(0, 7)
+  if (!date.startsWith(visibleMonth.value)) {
+    visibleMonth.value = date.slice(0, 7)
+    emit('visibleMonthChange', visibleMonth.value)
+  }
+  emit('selectDate', date)
 }
 
 function formatMonth(value: string): string {
@@ -107,8 +127,12 @@ const calendarDays = computed(() => {
   const firstDate = new Date(`${firstDay}T12:00:00.000Z`)
   const offsetFromMonday = (firstDate.getUTCDay() + 6) % 7
   const gridStart = addUtcDays(firstDay, -offsetFromMonday)
+  const nextMonth = new Date(firstDate)
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1)
+  const monthDays = Math.round((nextMonth.getTime() - firstDate.getTime()) / 86_400_000)
+  const requiredWeeks = Math.max(5, Math.ceil((offsetFromMonday + monthDays) / 7))
 
-  return Array.from({ length: 42 }, (_, index) => {
+  return Array.from({ length: requiredWeeks * 7 }, (_, index) => {
     const date = addUtcDays(gridStart, index)
     const events = eventsForDate(date)
 
@@ -137,13 +161,13 @@ watch(
 </script>
 
 <template>
-  <section class="overflow-hidden" aria-label="Calendário da agenda">
+  <section class="app-calendar overflow-hidden" aria-label="Calendário da agenda">
     <header
-      class="flex flex-col gap-4 border-b border-outline px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
+      class="calendar-toolbar flex flex-col gap-3 border-b border-outline px-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
     >
       <div class="flex items-center gap-2" aria-label="Navegação do calendário">
         <button
-          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline bg-surface text-content transition-colors hover:border-brand-primary hover:text-brand-primary"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-outline bg-surface text-content transition-colors hover:border-brand-primary hover:text-brand-primary sm:h-10 sm:w-10"
           type="button"
           aria-label="Mês anterior"
           data-testid="calendar-previous-month"
@@ -152,13 +176,13 @@ watch(
           <Icon class="h-5 w-5" :icon="chevronLeftIcon" aria-hidden="true" />
         </button>
         <h3
-          class="min-w-44 px-2 text-center text-lg font-bold capitalize text-content"
+          class="min-w-0 flex-1 px-1 text-center text-base font-bold capitalize text-content sm:min-w-44 sm:flex-none sm:px-2 sm:text-lg"
           data-testid="calendar-month-label"
         >
           {{ formatMonth(visibleMonth) }}
         </h3>
         <button
-          class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-outline bg-surface text-content transition-colors hover:border-brand-primary hover:text-brand-primary"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-outline bg-surface text-content transition-colors hover:border-brand-primary hover:text-brand-primary sm:h-10 sm:w-10"
           type="button"
           aria-label="Próximo mês"
           data-testid="calendar-next-month"
@@ -169,7 +193,7 @@ watch(
       </div>
 
       <button
-        class="inline-flex h-10 w-fit items-center justify-center gap-2 rounded-xl border border-outline bg-surface px-4 text-sm font-bold text-content-muted transition-colors hover:border-brand-primary hover:text-brand-primary"
+        class="inline-flex h-9 w-fit items-center justify-center gap-2 rounded-xl border border-outline bg-surface px-3 text-xs font-bold text-content-muted transition-colors hover:border-brand-primary hover:text-brand-primary sm:h-10 sm:px-4 sm:text-sm"
         type="button"
         data-testid="calendar-today"
         @click="goToToday"
@@ -179,13 +203,13 @@ watch(
       </button>
     </header>
 
-    <div class="overflow-x-auto" tabindex="0" aria-label="Dias do mês">
-      <div class="min-w-[48rem]">
+    <div aria-label="Dias do mês">
+      <div class="w-full">
         <div class="grid grid-cols-7 border-b border-outline bg-surface-subtle" aria-hidden="true">
           <div
             v-for="weekday in weekdayLabels"
             :key="weekday"
-            class="px-3 py-2 text-center text-xs font-bold uppercase tracking-[0.08em] text-content-muted"
+            class="px-1 py-1.5 text-center text-[0.65rem] font-bold uppercase tracking-[0.06em] text-content-muted sm:px-2 sm:py-2 sm:text-xs sm:tracking-[0.08em]"
           >
             {{ weekday }}
           </div>
@@ -195,7 +219,7 @@ watch(
           <button
             v-for="day in calendarDays"
             :key="day.date"
-            class="group min-h-28 border-b border-r border-outline p-2 text-left align-top transition-colors hover:bg-surface-subtle focus-visible:relative focus-visible:z-10"
+            class="calendar-day group min-w-0 border-b border-r border-outline p-1 text-left align-top transition-colors hover:bg-surface-subtle focus-visible:relative focus-visible:z-10 sm:p-1.5 lg:p-2"
             :class="
               day.isSelected
                 ? 'bg-brand-primary-soft ring-2 ring-inset ring-brand-primary'
@@ -210,9 +234,9 @@ watch(
             @click="selectDate(day.date)"
           >
             <span class="flex items-center justify-between gap-2">
-              <span class="flex items-center gap-1.5">
+              <span class="flex min-w-0 items-center gap-1 sm:gap-1.5">
                 <span
-                  class="inline-flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-xs font-bold"
+                  class="calendar-day-number inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[0.68rem] font-bold sm:h-7 sm:min-w-7 sm:text-xs"
                   :class="
                     day.isToday
                       ? 'border border-brand-primary bg-surface text-brand-primary'
@@ -225,14 +249,14 @@ watch(
                 </span>
                 <span
                   v-if="day.isToday"
-                  class="text-[0.6rem] font-extrabold uppercase tracking-[0.08em] text-brand-primary"
+                  class="calendar-today-label text-[0.55rem] font-extrabold uppercase tracking-[0.06em] text-brand-primary sm:text-[0.6rem] sm:tracking-[0.08em]"
                 >
                   Hoje
                 </span>
               </span>
               <span
                 v-if="day.events.length"
-                class="inline-flex min-w-6 items-center justify-center rounded-md bg-brand-secondary-soft px-2 py-1 text-[0.65rem] font-extrabold text-brand-secondary"
+                class="calendar-count inline-flex min-w-5 items-center justify-center rounded-md bg-brand-secondary-soft px-1.5 py-0.5 text-[0.6rem] font-extrabold text-brand-secondary sm:min-w-6 sm:px-2 sm:py-1 sm:text-[0.65rem]"
                 :aria-label="`${day.events.length} ${day.events.length === 1 ? 'horário' : 'horários'}`"
                 :data-testid="`calendar-count-${day.date}`"
               >
@@ -240,11 +264,11 @@ watch(
               </span>
             </span>
 
-            <span class="mt-1 block space-y-1">
+            <span class="calendar-event-list mt-1 block space-y-1">
               <span
                 v-for="event in day.events.slice(0, 2)"
                 :key="event.id"
-                class="block truncate rounded-md px-2 py-1 text-[0.68rem] font-bold"
+                class="calendar-event-preview block truncate rounded-md px-1.5 py-0.5 text-[0.62rem] font-bold sm:px-2 sm:py-1 sm:text-[0.68rem]"
                 :class="toneClasses(event.tone)"
               >
                 {{ event.title }}
@@ -261,7 +285,11 @@ watch(
       </div>
     </div>
 
-    <section class="bg-surface-subtle px-4 py-5 sm:px-6" data-testid="calendar-selected-agenda">
+    <section
+      v-if="showSelectedAgenda"
+      class="bg-surface-subtle px-4 py-5 sm:px-6"
+      data-testid="calendar-selected-agenda"
+    >
       <div class="flex items-center gap-3">
         <span
           class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-primary-soft text-brand-primary"
@@ -305,8 +333,56 @@ watch(
               {{ event.statusLabel }}
             </span>
           </div>
+          <button
+            v-if="event.actionLabel"
+            class="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-brand-primary px-4 text-sm font-bold text-white transition-opacity hover:opacity-90"
+            type="button"
+            :data-testid="`calendar-event-action-${event.id}`"
+            @click="emit('selectEvent', event)"
+          >
+            {{ event.actionLabel }}
+          </button>
         </li>
       </ul>
     </section>
   </section>
 </template>
+
+<style scoped>
+.app-calendar {
+  container-type: inline-size;
+}
+
+.calendar-toolbar {
+  padding-block: clamp(0.625rem, 1.5vh, 1rem);
+}
+
+.calendar-day {
+  min-height: clamp(4.5rem, 10.5vh, 7rem);
+}
+
+@media (max-height: 820px) {
+  .calendar-day {
+    min-height: 4.5rem;
+  }
+
+  .calendar-event-list {
+    margin-top: 0.125rem;
+  }
+
+  .calendar-event-preview {
+    padding-block: 0.125rem;
+  }
+}
+
+@container (max-width: 42rem) {
+  .calendar-day {
+    min-height: 4rem;
+  }
+
+  .calendar-event-list,
+  .calendar-today-label {
+    display: none;
+  }
+}
+</style>

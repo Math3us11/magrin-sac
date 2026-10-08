@@ -32,13 +32,7 @@ const router = createRouter({
     {
       path: '/agendamentos/novo',
       name: 'appointments-new',
-      component: () => import('@/views/FeaturePlaceholderView.vue'),
-      props: {
-        description:
-          'A seleção de disponibilidade e a confirmação segura do atendimento serão construídas nesta área.',
-        eyebrow: 'Agendamentos',
-        title: 'Novo agendamento',
-      },
+      component: () => import('@/views/appointments/NewAppointmentView.vue'),
       meta: {
         requiredPermission: 'appointments.create',
         requiresAuth: true,
@@ -48,13 +42,7 @@ const router = createRouter({
     {
       path: '/agendamentos/meus',
       name: 'appointments-mine',
-      component: () => import('@/views/FeaturePlaceholderView.vue'),
-      props: {
-        description:
-          'Os próximos compromissos e o histórico de atendimentos do aluno ficarão reunidos aqui.',
-        eyebrow: 'Agendamentos',
-        title: 'Meus agendamentos',
-      },
+      component: () => import('@/views/appointments/MyAppointmentsView.vue'),
       meta: {
         requiredPermission: 'appointments.read.own',
         requiresAuth: true,
@@ -69,6 +57,16 @@ const router = createRouter({
         requiredPermission: 'availability.manage.own',
         requiresAuth: true,
         title: 'Minha agenda',
+      },
+    },
+    {
+      path: '/administracao/agenda',
+      name: 'administration-schedule',
+      component: () => import('@/views/administration/ScheduleView.vue'),
+      meta: {
+        requiredPermission: 'availability.read.any',
+        requiresAuth: true,
+        title: 'Agenda geral',
       },
     },
     {

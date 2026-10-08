@@ -10,11 +10,9 @@ import {
   Matches,
   ValidateNested,
 } from 'class-validator';
+import { AppointmentModality } from '../../../types/appointment-modality.type.js';
 
-export enum AppointmentModality {
-  IN_PERSON = 'presencial',
-  ONLINE = 'online',
-}
+export { AppointmentModality };
 
 export class CreateAvailabilityItemDto {
   @IsDateString({ strict: true })

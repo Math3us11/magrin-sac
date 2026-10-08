@@ -111,6 +111,9 @@ conjunto contém:
 - AppInput: reúne label, campo, ajuda, mensagem de erro, atributos ARIA,
   prefixo, sufixo, exibição opcional de senha e máscaras simples ou dinâmicas
   com Maska;
+- AppSelect: padroniza seleções simples com rótulo, ajuda, erro acessível,
+  indicador visual e integração tanto por `v-model` quanto pelo contexto do
+  Vee Validate;
 - AppMultiSelect: apresenta opções em dropdown com seleção única limitada ou
   múltipla, resumo da escolha e integração com o Vee Validate;
 - AppButton: padroniza variantes, largura, estado desabilitado e carregamento;
@@ -121,7 +124,9 @@ conjunto contém:
   o dia atual, resume a quantidade de horários e detalha a agenda do dia
   selecionado sem assumir regras específicas de disponibilidade. O mês ocupa o
   centro das setas de navegação; a ação `Ir para hoje` permanece separada, e o
-  dia atual usa tratamento visual diferente do contador de eventos;
+  dia atual usa tratamento visual diferente do contador de eventos. A grade
+  elimina semanas excedentes, reduz sua densidade conforme a altura disponível
+  e preserva dia e contador quando o contêiner não comporta os resumos internos;
 - AppConfirmDialog: concentra confirmações reutilizáveis com título, descrição,
   tom da ação, loading, bloqueio do fundo, retorno de foco e fechamento por
   botão, backdrop ou tecla Escape.
