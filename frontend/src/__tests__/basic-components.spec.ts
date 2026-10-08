@@ -11,6 +11,7 @@ import AppInput from '@/components/basic/AppInput.vue'
 import AppLoading from '@/components/basic/AppLoading.vue'
 import AppModal from '@/components/basic/AppModal.vue'
 import AppMultiSelect from '@/components/basic/AppMultiSelect.vue'
+import AppSelect from '@/components/basic/AppSelect.vue'
 import AppTable from '@/components/basic/AppTable.vue'
 import { infoIcon } from '@/icons'
 
@@ -67,6 +68,46 @@ describe('componentes básicos', () => {
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({ phone: '(65) 99999-9999' })
   })
 
+  it('AppSelect sincroniza filtros controlados e mantém os atributos acessíveis', async () => {
+    const wrapper = mount({
+      components: { AppSelect },
+      data: () => ({ modality: '' }),
+      template:
+        '<AppSelect v-model="modality" label="Modalidade" name="modality" required :options="[{ label: `Todas`, value: `` }, { label: `Online`, value: `online` }]" />',
+    })
+
+    const select = wrapper.get('select[name="modality"]')
+    await select.setValue('online')
+
+    expect((wrapper.vm as unknown as { modality: string }).modality).toBe('online')
+    expect(select.attributes('aria-required')).toBe('true')
+    expect(wrapper.text()).toContain('Modalidade')
+  })
+
+  it('AppSelect participa da validação e do envio do AppForm', async () => {
+    const onSubmit = vi.fn()
+    const wrapper = mount({
+      components: { AppButton, AppForm, AppSelect },
+      setup() {
+        return {
+          onSubmit,
+          schema: object({ modality: string().required('Selecione a modalidade.') }),
+        }
+      },
+      template:
+        '<AppForm :validation-schema="schema" @submit="onSubmit"><AppSelect label="Modalidade" name="modality" required :options="[{ label: `Selecione`, value: `` }, { label: `Online`, value: `online` }]" /><AppButton type="submit">Salvar</AppButton></AppForm>',
+    })
+
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Selecione a modalidade.'))
+    expect(onSubmit).not.toHaveBeenCalled()
+
+    await wrapper.get('select[name="modality"]').setValue('online')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual({ modality: 'online' })
+  })
+
   it('AppButton comunica o estado de carregamento e bloqueia novos cliques', () => {
     const wrapper = mount(AppButton, {
       props: {
@@ -119,6 +160,7 @@ describe('componentes básicos', () => {
 
     expect(wrapper.text()).toContain('outubro de 2026')
     expect(wrapper.get('[data-testid="calendar-month-label"]').text()).toBe('outubro de 2026')
+    expect(wrapper.findAll('[data-testid^="calendar-day-"]')).toHaveLength(35)
     expect(wrapper.get('[data-testid="calendar-today"]').text()).toBe('Ir para hoje')
     expect(wrapper.get('[data-testid="calendar-day-2026-10-04"]').text()).toContain('Hoje')
     expect(wrapper.get('[data-testid="calendar-count-2026-10-04"]').classes()).toContain(
@@ -132,6 +174,7 @@ describe('componentes básicos', () => {
     expect(selectedAgenda.text()).toContain('14:00–18:00')
     expect(selectedAgenda.text()).toContain('Online')
     expect(selectedAgenda.text()).not.toContain('08:00–12:00')
+    expect(wrapper.emitted('selectDate')?.slice(-1)[0]).toEqual(['2026-10-07'])
 
     await wrapper.get('[data-testid="calendar-next-month"]').trigger('click')
     expect(wrapper.text()).toContain('novembro de 2026')

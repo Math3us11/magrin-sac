@@ -44,6 +44,8 @@ documento de requisitos original.
 - Consultar agenda por data ou período e mostrar ao aluno apenas opções aptas
   (`RF14`, `RF15`).
 - Remover da consulta um horário com agendamento ativo (`RF16`).
+- Permitir ao administrador consultar disponibilidades de todos os professores
+  por período, estado e modalidade, sem reutilizar a permissão de agenda própria.
 
 ### Agendamento
 
@@ -53,6 +55,8 @@ documento de requisitos original.
   do próprio aluno (`RF22`, `RF23`).
 - Gerar protocolo único (`RF24`, `RN04`).
 - Consultar próximos agendamentos e histórico (`RF25`, `RF26`).
+- Permitir ao administrador consultar os agendamentos globais por período e
+  estado, sem expor essa capacidade a aluno ou professor.
 - Cancelar conforme regras configuradas e auditar a operação (`RF27`, `RF28`,
   `RF30`).
 - Alteração administrativa de data/horário (`RF29`) entra após o fluxo básico de

@@ -25,7 +25,7 @@ function createService({ existing = [] } = {}) {
     bulkCreate: async (rows) => {
       calls.createdModalities = rows;
     },
-    findAll: async () => [],
+    findAll: async () => [{ availabilityId: 90, modalityOptionItemId: 21 }],
   };
   const systemOptionModel = { findOne: async () => ({ id: 20 }) };
   const systemOptionItemModel = {
@@ -35,10 +35,11 @@ function createService({ existing = [] } = {}) {
             { id: 21, value: 'presencial' },
             { id: 22, value: 'online' },
           ]
-        : [],
+        : [{ id: 21, value: 'presencial' }],
   };
   const userModel = {
     unscoped: () => ({
+      findAll: async () => [{ id: 8, isActive: true, name: 'Professor Teste' }],
       findByPk: async (_id, options) => {
         calls.professorLookup = options;
         return { id: 8, isActive: true, userType: 'professor' };
@@ -47,8 +48,8 @@ function createService({ existing = [] } = {}) {
   };
   const transaction = { LOCK: { UPDATE: 'UPDATE' }, id: 'transaction' };
   const sequelize = { transaction: async (callback) => callback(transaction) };
-  const configService = {
-    getOrThrow: () => ({ timeZone: 'America/Porto_Velho' }),
+  const institutionDateTime = {
+    localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`),
   };
 
   return {
@@ -60,7 +61,7 @@ function createService({ existing = [] } = {}) {
       systemOptionItemModel,
       userModel,
       sequelize,
-      configService,
+      institutionDateTime,
     ),
   };
 }
@@ -161,4 +162,33 @@ test('rejeita intervalos sobrepostos dentro do mesmo lote', async () => {
   );
 
   assert.equal(calls.professorLookup, null);
+});
+
+test('administrador consulta disponibilidades de todos os professores no período', async () => {
+  const { service } = createService({
+    existing: [
+      {
+        endsAt: new Date('2099-10-03T19:00:00.000Z'),
+        id: 90,
+        professorId: 8,
+        startsAt: new Date('2099-10-03T18:00:00.000Z'),
+        state: 'ativa',
+      },
+    ],
+  });
+
+  const response = await service.listAll({
+    from: '2099-10-01',
+    modality: 'presencial',
+    to: '2099-10-31',
+  });
+
+  assert.equal(response.availabilities.length, 1);
+  assert.deepEqual(response.availabilities[0].professor, {
+    id: 8,
+    isActive: true,
+    name: 'Professor Teste',
+  });
+  assert.deepEqual(response.availabilities[0].modalities, ['presencial']);
+  assert.deepEqual(response.summary, { active: 1, blocked: 0, cancelled: 0 });
 });

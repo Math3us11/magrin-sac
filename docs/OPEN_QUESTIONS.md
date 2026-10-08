@@ -24,8 +24,15 @@ ser fixados silenciosamente no código.
 
 ### 2. Perfis e permissões
 
-Definir o que diferencia coordenador, usuário administrativo e administrador.
-Precisamos de uma matriz mínima de ações por perfil.
+**Decisão parcial:** o administrador possui consulta global das disponibilidades
+e dos agendamentos por permissões `*.read.any`, distintas das capacidades
+`*.own` de professor e aluno. A consulta global não autoriza automaticamente
+criação, bloqueio, cancelamento ou alteração em nome de terceiros. Essas ações
+exigirão permissões próprias, identificação do ator e auditoria. Consulte a
+ADR-025.
+
+**Pendente:** definir o que diferencia coordenador e usuário administrativo,
+além dos poderes excepcionais de alteração da agenda.
 
 ### 2.1. Provisionamento de contas — decisão parcial
 

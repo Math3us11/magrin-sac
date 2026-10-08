@@ -21,7 +21,17 @@ const credentialEncryptionMocks = vi.hoisted(() => ({
 vi.mock('@/services/credential-encryption', () => credentialEncryptionMocks)
 
 import { ApiError } from '@/services/api'
-import { createAvailabilities, listOwnAvailabilities } from '@/services/availability'
+import {
+  createAppointment,
+  listAdminAppointments,
+  listOwnAppointments,
+} from '@/services/appointments'
+import {
+  createAvailabilities,
+  listAdminAvailabilities,
+  listOwnAvailabilities,
+  listStudentAvailabilities,
+} from '@/services/availability'
 import { completeFirstAccessPassword, createSession } from '@/services/auth'
 import {
   createUser,
@@ -39,7 +49,7 @@ afterEach(() => {
 })
 
 describe('serviço de disponibilidades', () => {
-  it('consulta a agenda própria e publica o lote normalizado', async () => {
+  it('consulta as agendas do professor e do aluno e publica o lote normalizado', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -48,6 +58,12 @@ describe('serviço de disponibilidades', () => {
             availabilities: [],
             summary: { available: 0, blocked: 0, reserved: 0 },
           }),
+          { headers: { 'Content-Type': 'application/json' }, status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ availabilities: [], range: { from: '2099-10-01', to: '2099-10-31' } }),
           { headers: { 'Content-Type': 'application/json' }, status: 200 },
         ),
       )
@@ -63,6 +79,11 @@ describe('serviço de disponibilidades', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await listOwnAvailabilities()
+    await listStudentAvailabilities({
+      from: '2099-10-01',
+      modality: 'online',
+      to: '2099-10-31',
+    })
     await createAvailabilities({
       items: [
         {
@@ -81,6 +102,11 @@ describe('serviço de disponibilidades', () => {
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
+      '/api/availability?from=2099-10-01&to=2099-10-31&modality=online',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
       '/api/professor/availability',
       expect.objectContaining({
         body: JSON.stringify({
@@ -96,6 +122,107 @@ describe('serviço de disponibilidades', () => {
         credentials: 'include',
         method: 'POST',
       }),
+    )
+  })
+})
+
+describe('serviços da agenda administrativa', () => {
+  it('serializa os filtros globais em endpoints protegidos próprios', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ availabilities: [], summary: {} }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ appointments: [] }), {
+          headers: { 'Content-Type': 'application/json' },
+          status: 200,
+        }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listAdminAvailabilities({
+      from: '2099-10-01',
+      modality: 'online',
+      state: 'ativa',
+      to: '2099-10-31',
+    })
+    await listAdminAppointments({
+      from: '2099-10-01',
+      status: 'confirmado',
+      to: '2099-10-31',
+    })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/admin/availability?from=2099-10-01&to=2099-10-31&modality=online&state=ativa',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/appointments?from=2099-10-01&to=2099-10-31&status=confirmado',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+})
+
+describe('serviço de agendamentos', () => {
+  it('envia a confirmação para o endpoint próprio sem identificar outro usuário', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          appointment: { id: 30, protocol: 'AG-20991003-ABCDEF1234' },
+          message: 'Agendamento confirmado com sucesso.',
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 201 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const payload = {
+      availabilityId: 10,
+      details: 'Dúvidas sobre a documentação.',
+      endsAt: '2099-10-03T15:00:00.000Z',
+      modality: 'online' as const,
+      startsAt: '2099-10-03T14:00:00.000Z',
+      subject: 'Orientação acadêmica',
+    }
+
+    await createAppointment(payload)
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/appointments',
+      expect.objectContaining({
+        body: JSON.stringify(payload),
+        credentials: 'include',
+        method: 'POST',
+      }),
+    )
+    expect(fetchMock.mock.calls[0]?.[1]?.body).not.toContain('studentId')
+  })
+
+  it('consulta somente os agendamentos da sessão com filtros serializados', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ appointments: [], page: 2, pageSize: 8, total: 0 }), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await listOwnAppointments({
+      modality: 'online',
+      page: 2,
+      pageSize: 8,
+      scope: 'history',
+      status: 'concluido',
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/appointments/mine?scope=history&status=concluido&modality=online&page=2&pageSize=8',
+      expect.objectContaining({ credentials: 'include' }),
     )
   })
 })

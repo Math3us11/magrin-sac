@@ -126,13 +126,24 @@ Entregas:
       frontend, mantendo cada ocorrência concreta no contrato existente;
 - [x] apresentar as disponibilidades publicadas em um calendário mensal
       reutilizável, com navegação e detalhamento do dia selecionado;
-- aluno consulta horários;
-- aluno confirma agendamento;
-- protocolo único;
-- proteção concorrente no MariaDB;
-- área de próximos agendamentos;
-- agenda administrativa mínima;
-- testes concorrentes e de autorização.
+- [x] criar a estrutura física de agendamentos, vinculando aluno,
+      disponibilidade e modalidade permitida sem exclusão do histórico;
+- [x] permitir que o aluno consulte por mês e modalidade apenas os trechos
+      livres, sem expor reservas de outros alunos;
+- [x] preparar o formulário e a revisão do agendamento com subintervalo contido
+      na janela, modalidade permitida, assunto e informações complementares,
+      sem simular persistência no frontend;
+- [x] confirmar o agendamento no backend e no frontend, revalidando a janela e
+      derivando o usuário exclusivamente da sessão autenticada;
+- [x] gerar protocolo aleatório único protegido por índice no banco;
+- [x] proteger concorrência no MariaDB com locks da conta e da disponibilidade,
+      consultas de sobreposição com lock e teste de duas confirmações simultâneas;
+- [x] disponibilizar a área de agendamentos do aluno com próximo compromisso,
+      histórico paginado, filtros, calendário mensal e detalhes seguros,
+      sempre isolada pelo usuário da sessão;
+- [x] agenda administrativa mínima, somente de consulta, com permissões globais
+      distintas, filtros e identificação mínima de aluno e professor;
+- [x] cobrir concorrência da confirmação e ausência de `studentId` no contrato;
 
 Critério de saída: duas requisições simultâneas nunca confirmam o mesmo horário.
 
@@ -186,12 +197,15 @@ Objetivo: notificar sem comprometer o domínio.
 
 Entregas:
 
-- `NotificationService` e provider Twilio;
+- [x] criar `NotificationsService`, porta do provider WhatsApp e provider
+      indisponível explícito enquanto a Twilio não estiver configurada;
+- provider Twilio;
 - configuração do Sandbox;
 - confirmação e cancelamento;
 - lembretes após definição do mecanismo de execução;
-- persistência de tentativas;
-- falhas sanitizadas e caminho de reenvio.
+- [x] persistir tentativas de confirmação com destino mascarado;
+- [x] registrar falhas sanitizadas sem invalidar o agendamento;
+- caminho de reenvio.
 
 Critério de saída: indisponibilidade da Twilio não invalida agendamento.
 

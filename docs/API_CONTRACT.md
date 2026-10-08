@@ -284,11 +284,44 @@ recorte.
 ### Disponibilidade do aluno
 
 ```text
-GET /api/availability?from=...&to=...&modality=...
+GET /api/availability?from=AAAA-MM-DD&to=AAAA-MM-DD&modality=...
 ```
 
-Retorna apenas opções aptas no instante da consulta. A resposta não garante a
-reserva; a confirmação revalida a disponibilidade.
+`from` e `to` são obrigatórios, inclusivos e interpretados no timezone
+institucional. `modality` é opcional e aceita `presencial` ou `online`. A rota
+exige a permissão `appointments.create`.
+
+```json
+{
+  "range": {
+    "from": "2026-10-01",
+    "to": "2026-10-31"
+  },
+  "availabilities": [
+    {
+      "id": 15,
+      "startsAt": "2026-10-07T12:00:00.000Z",
+      "endsAt": "2026-10-07T16:00:00.000Z",
+      "professor": {
+        "id": 8,
+        "name": "Professor"
+      },
+      "modalities": ["presencial", "online"],
+      "freeIntervals": [
+        {
+          "startsAt": "2026-10-07T12:00:00.000Z",
+          "endsAt": "2026-10-07T14:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+```
+
+A API desconta agendamentos confirmados e retorna somente os trechos livres,
+sem expor identidade ou dados de outros alunos. A resposta representa um retrato
+do instante da consulta e não garante a reserva; a confirmação revalida a
+disponibilidade dentro de transação.
 
 ### Agendamentos do aluno
 
@@ -299,11 +332,12 @@ GET  /api/appointments/:appointmentId
 POST /api/appointments/:appointmentId/cancel
 ```
 
-Criação sugerida:
+O `POST` está implementado e exige `appointments.create`. O usuário reservado é
+sempre derivado da sessão autenticada; o payload não aceita `studentId`.
 
 ```json
 {
-  "availabilityId": "identificador-opaco",
+  "availabilityId": 15,
   "startsAt": "2026-10-05T18:30:00.000Z",
   "endsAt": "2026-10-05T19:10:00.000Z",
   "modality": "online",
@@ -317,27 +351,101 @@ criação bem-sucedida retorna o agendamento confirmado e seu protocolo. Se
 qualquer parte do intervalo tiver sido ocupada, a API responde conflito sem
 criar registro ativo.
 
+```json
+{
+  "appointment": {
+    "id": 30,
+    "protocol": "AG-20261007-A1B2C3D4E5",
+    "startsAt": "2026-10-05T18:30:00.000Z",
+    "endsAt": "2026-10-05T19:10:00.000Z",
+    "modality": "online",
+    "subject": "Assunto do atendimento",
+    "details": "Informações complementares",
+    "status": "confirmado",
+    "professor": { "id": 8, "name": "Professor" }
+  },
+  "message": "Agendamento confirmado com sucesso."
+}
+```
+
+A confirmação bloqueia no banco a conta solicitante e a disponibilidade, nessa
+ordem, e consulta com lock os intervalos confirmados da janela e do próprio
+usuário. Essa ordem serializa tanto reservas concorrentes da mesma janela quanto
+compromissos simultâneos do mesmo usuário em disponibilidades diferentes.
+
+O `GET /api/appointments/mine` está implementado e exige
+`appointments.read.own`. O identificador do aluno é obtido exclusivamente da
+sessão; o endpoint não aceita `studentId`. Há dois modos de consulta:
+
+```text
+GET /api/appointments/mine?scope=upcoming&page=1&pageSize=8
+GET /api/appointments/mine?scope=history&status=concluido&modality=online&page=1&pageSize=8
+GET /api/appointments/mine?from=2026-10-01&to=2026-10-31&modality=presencial
+```
+
+`upcoming` retorna apenas compromissos futuros confirmados em ordem crescente.
+`history` reúne compromissos passados e registros que já não estão confirmados,
+em ordem decrescente. A consulta por período alimenta o calendário, exige as
+duas datas e aceita no máximo 62 dias. `status` aceita `confirmado`, `cancelado`,
+`concluido` ou `ausencia`; `modality` aceita `presencial` ou `online`.
+
+A resposta inclui somente dados do próprio usuário: protocolo, intervalo,
+situação, assunto, detalhes fornecidos pelo aluno, modalidade, professor e,
+quando existente, o motivo do cancelamento. Dados de outros alunos e observações
+internas de atendimento não fazem parte do contrato.
+
+```json
+{
+  "appointments": [
+    {
+      "id": 30,
+      "protocol": "AG-20261007-A1B2C3D4E5",
+      "startsAt": "2026-10-08T12:00:00.000Z",
+      "endsAt": "2026-10-08T13:00:00.000Z",
+      "modality": "online",
+      "subject": "Orientação acadêmica",
+      "details": "Levar histórico acadêmico.",
+      "status": "confirmado",
+      "professor": { "id": 8, "name": "Professor" },
+      "cancelledAt": null,
+      "cancellationReason": null
+    }
+  ],
+  "page": 1,
+  "pageSize": 8,
+  "total": 1
+}
+```
+
 ### Administração de disponibilidade
 
 ```text
-GET   /api/admin/availability
-POST  /api/admin/availability
-PATCH /api/admin/availability/:availabilityId
-POST  /api/admin/availability/:availabilityId/block
+GET /api/admin/availability?from=AAAA-MM-DD&to=AAAA-MM-DD&modality=...&state=...
 ```
 
-Excluir fisicamente uma disponibilidade usada não deve fazer parte do contrato.
+O `GET` está implementado e exige `availability.read.any`. Retorna todas as
+disponibilidades do período, inclusive de professores inativos ou excluídos
+logicamente quando preservados no histórico, com identificação pública do
+professor, modalidades, estado e resumo agregado. `modality` e `state` são
+filtros opcionais.
+
+Criação, edição, bloqueio e cancelamento administrativos permanecem fora deste
+recorte. Quando implementados, usarão permissões de escrita distintas,
+registrarão o ator e não excluirão fisicamente uma disponibilidade usada.
 
 ### Agenda administrativa
 
 ```text
-GET /api/admin/appointments?from=...&to=...&status=...&page=...
-GET /api/admin/appointments/:appointmentId
-POST /api/admin/appointments/:appointmentId/cancel
+GET /api/admin/appointments?from=AAAA-MM-DD&to=AAAA-MM-DD&status=...
 ```
 
-Alteração direta de horário permanece condicionada à regra institucional e ao
-desenho de histórico.
+O `GET` está implementado e exige `appointments.read.any`. A resposta contém
+protocolo, intervalo, estado, assunto, modalidade e identificação mínima de
+aluno e professor. Credenciais, contato, detalhes internos e observações de
+atendimento não fazem parte dessa listagem.
+
+Consulta detalhada, cancelamento e alteração direta de horário permanecem
+condicionados às regras institucionais e ao desenho de histórico.
 
 ### Registro de atendimento
 
@@ -602,7 +710,7 @@ incorreta responde `403`; usuário inexistente ou já excluído responde `404`.
 
 ## Semântica de concorrência
 
-`POST /api/appointments` deve ser atômico. A sequência esperada é:
+`POST /api/appointments` é atômico. A sequência implementada é:
 
 1. autenticar e autorizar;
 2. validar payload;
@@ -614,9 +722,13 @@ incorreta responde `403`; usuário inexistente ou já excluído responde `404`.
 8. tentar notificação fora da transação principal.
 
 Uma falha de notificação nunca muda uma resposta de agendamento confirmado para
-falha de reserva.
+falha de reserva. A tentativa é persistida fora da transação principal com
+destino mascarado, estado e código de erro sanitizado. Enquanto o provider
+Twilio não estiver configurado, ela fica registrada como `falhou` com
+`provider_not_configured`.
 
 ## Próximo passo
 
-Depois do workshop de domínio, criar schemas de request/response, matriz de
-permissões por rota e exemplos de erro antes de implementar o frontend.
+Definir as regras institucionais de cancelamento antes de implementar
+`POST /api/appointments/:appointmentId/cancel`, incluindo prazo, ator, motivo e
+efeito sobre a disponibilidade, sem apagar o histórico.
