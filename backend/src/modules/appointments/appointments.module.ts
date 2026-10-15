@@ -11,9 +11,15 @@ import { AdminAppointmentsController } from './admin-appointments.controller.js'
 import { AppointmentsController } from './appointments.controller.js';
 import { AppointmentsService } from './appointments.service.js';
 import { AvailabilitySearchController } from './availability-search.controller.js';
+import { ProfessorAppointmentsController } from './professor-appointments.controller.js';
 
 @Module({
-  controllers: [AdminAppointmentsController, AppointmentsController, AvailabilitySearchController],
+  controllers: [
+    AdminAppointmentsController,
+    AppointmentsController,
+    AvailabilitySearchController,
+    ProfessorAppointmentsController,
+  ],
   imports: [
     AuthModule,
     NotificationsModule,

@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import AppButton from '@/components/basic/AppButton.vue'
 import AppCalendar from '@/components/basic/AppCalendar.vue'
 import AppSelect from '@/components/basic/AppSelect.vue'
+import AppointmentCancellationModal from '@/components/appointments/AppointmentCancellationModal.vue'
 import {
   getInstitutionDateTime,
   INSTITUTION_TIME_ZONE,
@@ -19,7 +20,7 @@ import {
   usersIcon,
 } from '@/icons'
 import { ApiError } from '@/services/api'
-import { listAdminAppointments } from '@/services/appointments'
+import { cancelAdminAppointment, listAdminAppointments } from '@/services/appointments'
 import { listAdminAvailabilities } from '@/services/availability'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
@@ -44,6 +45,10 @@ const appointments = ref<AdminAppointmentItem[]>([])
 const summary = ref({ active: 0, blocked: 0, cancelled: 0 })
 const loading = ref(true)
 const loadError = ref('')
+const appointmentToCancel = ref<AdminAppointmentItem | null>(null)
+const cancellationOpen = ref(false)
+const cancelling = ref(false)
+const cancellationError = ref('')
 let requestSequence = 0
 
 const availabilityStateLabels: Record<AvailabilityState, string> = {
@@ -76,6 +81,12 @@ const appointmentStatusOptions = [
   { label: 'Concluído', value: 'concluido' },
   { label: 'Ausência', value: 'ausencia' },
 ] as const
+
+const cancellationAppointmentLabel = computed(() => {
+  const appointment = appointmentToCancel.value
+  if (!appointment) return undefined
+  return `${appointment.protocol} · ${formatAppointmentDate(appointment.startsAt)}, ${formatTime(appointment.startsAt)}–${formatTime(appointment.endsAt)}`
+})
 
 function monthRange(month: string): { from: string; to: string } {
   const first = `${month}-01`
@@ -200,6 +211,32 @@ function applyFilters() {
   void loadSchedule()
 }
 
+function requestCancellation(appointment: AdminAppointmentItem) {
+  appointmentToCancel.value = appointment
+  cancellationError.value = ''
+  cancellationOpen.value = true
+}
+
+async function confirmCancellation({ password, reason }: { password?: string; reason: string }) {
+  if (!appointmentToCancel.value || !password || cancelling.value) return
+
+  cancelling.value = true
+  cancellationError.value = ''
+  try {
+    await cancelAdminAppointment(appointmentToCancel.value.id, reason, password)
+    cancellationOpen.value = false
+    appointmentToCancel.value = null
+    await loadSchedule()
+  } catch (error) {
+    cancellationError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível cancelar o agendamento. Tente novamente.'
+  } finally {
+    cancelling.value = false
+  }
+}
+
 onMounted(() => void loadSchedule())
 </script>
 
@@ -220,7 +257,7 @@ onMounted(() => void loadSchedule())
             <span
               class="rounded-full border border-outline bg-surface px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-content-muted"
             >
-              Somente consulta
+              Consulta e cancelamento
             </span>
           </div>
           <h1 class="mt-3 text-3xl font-bold tracking-tight text-content sm:text-4xl">
@@ -369,9 +406,33 @@ onMounted(() => void loadSchedule())
                 {{ appointment.modality === 'online' ? 'Online' : 'Presencial' }}
               </p>
             </div>
+            <p
+              v-if="appointment.cancellationReason"
+              class="mt-4 rounded-xl bg-surface-subtle px-4 py-3 text-sm text-content-muted"
+            >
+              <strong class="text-content">Motivo:</strong> {{ appointment.cancellationReason }}
+            </p>
+            <AppButton
+              v-if="appointment.status === 'confirmado'"
+              class="mt-5"
+              variant="danger"
+              :disabled="new Date(appointment.startsAt).getTime() <= Date.now()"
+              @click="requestCancellation(appointment)"
+            >
+              Cancelar agendamento
+            </AppButton>
           </li>
         </ul>
       </section>
     </div>
+
+    <AppointmentCancellationModal
+      v-model:open="cancellationOpen"
+      :appointment-label="cancellationAppointmentLabel"
+      :error="cancellationError"
+      :loading="cancelling"
+      requires-password
+      @confirm="confirmCancellation"
+    />
   </section>
 </template>

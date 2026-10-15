@@ -328,7 +328,6 @@ disponibilidade dentro de transação.
 ```text
 POST /api/appointments
 GET  /api/appointments/mine
-GET  /api/appointments/:appointmentId
 POST /api/appointments/:appointmentId/cancel
 ```
 
@@ -417,6 +416,27 @@ internas de atendimento não fazem parte do contrato.
 }
 ```
 
+O `POST /api/appointments/:appointmentId/cancel` exige
+`appointments.cancel.own`, motivo obrigatório de até 500 caracteres e que o
+agendamento confirmado pertença ao aluno autenticado. O início deve estar a no
+mínimo duas horas do instante da requisição:
+
+```json
+{ "reason": "Imprevisto acadêmico." }
+```
+
+### Atendimentos atribuídos ao professor
+
+```text
+GET  /api/professor/appointments?from=AAAA-MM-DD&to=AAAA-MM-DD&status=...
+POST /api/professor/appointments/:appointmentId/cancel
+```
+
+O `GET` exige `appointments.read.assigned`, aceita período de até 62 dias e
+retorna somente agendamentos ligados às disponibilidades do professor da sessão.
+O cancelamento exige `appointments.cancel.assigned`, motivo obrigatório e a
+mesma antecedência mínima de duas horas aplicada ao aluno.
+
 ### Administração de disponibilidade
 
 ```text
@@ -437,15 +457,53 @@ registrarão o ator e não excluirão fisicamente uma disponibilidade usada.
 
 ```text
 GET /api/admin/appointments?from=AAAA-MM-DD&to=AAAA-MM-DD&status=...
+POST /api/admin/appointments/:appointmentId/cancel
 ```
 
 O `GET` está implementado e exige `appointments.read.any`. A resposta contém
 protocolo, intervalo, estado, assunto, modalidade e identificação mínima de
-aluno e professor. Credenciais, contato, detalhes internos e observações de
-atendimento não fazem parte dessa listagem.
+aluno e professor, além do motivo e instante quando cancelado. Credenciais,
+contato, detalhes internos e observações de atendimento não fazem parte dessa
+listagem.
 
-Consulta detalhada, cancelamento e alteração direta de horário permanecem
-condicionados às regras institucionais e ao desenho de histórico.
+O cancelamento administrativo exige `appointments.cancel.any`, motivo
+obrigatório e confirmação da senha do administrador autenticado com a finalidade
+criptográfica `appointment-admin-cancellation`. É permitido até o início do
+atendimento, inclusive dentro das duas horas reservadas aos demais perfis. A
+senha não é persistida. Alteração direta de horário permanece fora deste recorte.
+
+```json
+{
+  "reason": "Correção operacional autorizada.",
+  "credential": {
+    "algorithm": "RSA-OAEP-256+A256GCM",
+    "ciphertext": "senha-cifrada-em-base64url",
+    "encryptedKey": "chave-aes-protegida-em-base64url",
+    "iv": "vetor-de-inicializacao",
+    "issuedAt": 1791043200000,
+    "keyId": "identificador-sha256-da-chave",
+    "purpose": "appointment-admin-cancellation"
+  }
+}
+```
+
+As três operações de cancelamento bloqueiam a disponibilidade e o agendamento
+na mesma transação, revalidam estado e autoria, mudam o estado para `cancelado`
+e preenchem `cancelled_at`, `cancelled_by`, `cancellation_reason` e `updated_by`.
+A resposta comum é:
+
+```json
+{
+  "appointment": {
+    "id": 30,
+    "status": "cancelado",
+    "cancelledAt": "2026-10-09T14:00:00.000Z",
+    "cancelledBy": 3,
+    "cancellationReason": "Imprevisto acadêmico."
+  },
+  "message": "Agendamento cancelado com sucesso."
+}
+```
 
 ### Registro de atendimento
 
@@ -729,6 +787,6 @@ Twilio não estiver configurado, ela fica registrada como `falhou` com
 
 ## Próximo passo
 
-Definir as regras institucionais de cancelamento antes de implementar
-`POST /api/appointments/:appointmentId/cancel`, incluindo prazo, ator, motivo e
-efeito sobre a disponibilidade, sem apagar o histórico.
+Iniciar o contrato de realização e ausência do atendimento após fechar as regras
+institucionais de resultado e continuidade. A tentativa de notificação de
+cancelamento foi adiada para a Fase 7 e não faz parte do próximo incremento.

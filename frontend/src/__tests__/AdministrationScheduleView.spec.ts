@@ -5,6 +5,7 @@ import { getInstitutionDateTime } from '@/config/date-time'
 import ScheduleView from '@/views/administration/ScheduleView.vue'
 
 const appointmentMocks = vi.hoisted(() => ({
+  cancelAdminAppointment: vi.fn(),
   listAdminAppointments: vi.fn(),
 }))
 const availabilityMocks = vi.hoisted(() => ({
@@ -36,6 +37,8 @@ describe('Agenda geral administrativa', () => {
       appointments: [
         {
           endsAt: `${date}T15:00:00.000Z`,
+          cancelledAt: null,
+          cancellationReason: null,
           id: 30,
           modality: 'online',
           professor: { id: 8, name: 'Professor Teste' },
@@ -50,17 +53,17 @@ describe('Agenda geral administrativa', () => {
     })
   })
 
-  it('apresenta disponibilidades e agendamentos globais sem ações de alteração', async () => {
+  it('apresenta disponibilidades e agendamentos globais com cancelamento auditável', async () => {
     const wrapper = mount(ScheduleView)
 
     await expect.poll(() => wrapper.text()).toContain('AG-2026-0001')
     expect(wrapper.get('h1').text()).toBe('Agenda geral')
-    expect(wrapper.text()).toContain('Somente consulta')
+    expect(wrapper.text()).toContain('Consulta e cancelamento')
     expect(wrapper.text()).toContain('Aluno Teste')
     expect(wrapper.text()).toContain('Professor Teste')
     expect(availabilityMocks.listAdminAvailabilities).toHaveBeenCalledOnce()
     expect(appointmentMocks.listAdminAppointments).toHaveBeenCalledOnce()
-    expect(wrapper.text()).not.toContain('Cancelar agendamento')
+    expect(wrapper.text()).toContain('Cancelar agendamento')
   })
 
   it('aplica filtros separadamente nas duas consultas administrativas', async () => {

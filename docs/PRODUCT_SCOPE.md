@@ -38,6 +38,9 @@ indicadores confiáveis.
 
 ### Professor
 
+- consulta os atendimentos vinculados às próprias disponibilidades;
+- cancela atendimento atribuído dentro da regra institucional;
+
 - acessa a própria agenda;
 - publica e mantém as próprias disponibilidades conforme as regras aprovadas;
 - não administra a agenda de outros professores sem uma permissão adicional.

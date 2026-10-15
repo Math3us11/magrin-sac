@@ -57,8 +57,12 @@ documento de requisitos original.
 - Consultar próximos agendamentos e histórico (`RF25`, `RF26`).
 - Permitir ao administrador consultar os agendamentos globais por período e
   estado, sem expor essa capacidade a aluno ou professor.
-- Cancelar conforme regras configuradas e auditar a operação (`RF27`, `RF28`,
-  `RF30`).
+- Permitir que aluno cancele o próprio agendamento e professor cancele o
+  atendimento atribuído com motivo obrigatório e antecedência mínima de duas
+  horas (`RF27`, `RF28`).
+- Permitir cancelamento administrativo até o início, inclusive dentro das duas
+  horas, somente com motivo e confirmação da senha do próprio administrador;
+  registrar instante, ator e autoria da atualização (`RF30`).
 - Alteração administrativa de data/horário (`RF29`) entra após o fluxo básico de
   cancelamento e nova reserva, salvo prioridade confirmada.
 
@@ -167,6 +171,8 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
 - Em tratativa exige informação de continuidade (`RN08`).
 - Não resolvido exige justificativa (`RN09`).
 - Cancelado não conta como realizado (`RN10`).
+- Somente agendamentos confirmados ocupam a disponibilidade; o cancelamento
+  preserva o histórico e libera imediatamente o intervalo.
 - Ausência é categoria separada e não recebe classificação automática
   (`RN12`).
 - Histórico e exceções administrativas são auditáveis (`RN13`, `RN14`).

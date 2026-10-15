@@ -4,6 +4,8 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
+  ParseIntPipe,
   Post,
   Query,
   UseGuards,
@@ -15,6 +17,8 @@ import { RequestOriginGuard } from '../../guards/request-origin.guard.js';
 import { SessionAuthGuard } from '../../guards/session-auth.guard.js';
 import type { AuthenticatedUser } from '../../types/authenticated-user.type.js';
 import { AppointmentsService } from './appointments.service.js';
+import { CancelAppointmentDto } from './dto/cancel-appointment.dto.js';
+import type { CancelAppointmentResponseDto } from './dto/cancel-appointment-response.dto.js';
 import { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { CreateAppointmentResponseDto } from './dto/create-appointment-response.dto.js';
 import { ListOwnAppointmentsQueryDto } from './dto/list-own-appointments.dto.js';
@@ -42,5 +46,16 @@ export class AppointmentsController {
     @Query() query: ListOwnAppointmentsQueryDto,
   ): Promise<ListOwnAppointmentsResponseDto> {
     return this.appointmentsService.listMine(query, user.id);
+  }
+
+  @Post(':appointmentId/cancel')
+  @RequirePermissions('appointments.cancel.own')
+  @HttpCode(HttpStatus.OK)
+  cancelMine(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('appointmentId', ParseIntPipe) appointmentId: number,
+    @Body() input: CancelAppointmentDto,
+  ): Promise<CancelAppointmentResponseDto> {
+    return this.appointmentsService.cancelMine(appointmentId, input.reason, user.id);
   }
 }

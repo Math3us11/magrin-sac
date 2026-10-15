@@ -157,6 +157,14 @@ as consultas transacionais de conflito. A confirmação bloqueia primeiro o
 usuário solicitante e depois a disponibilidade, revalida estado, professor,
 modalidade, contenção e sobreposições antes da criação.
 
+O cancelamento não apaga o agendamento. Aluno e professor precisam agir com no
+mínimo duas horas de antecedência e somente sobre registros próprios ou
+atribuídos; o administrador pode agir até o início mediante confirmação da
+própria senha. Motivo, instante, ator e autoria da atualização são obrigatórios.
+A transação bloqueia a disponibilidade e o agendamento antes da mudança de
+estado. Como apenas `confirmado` ocupa intervalo, a transição para `cancelado`
+libera o trecho sem alterar ou excluir a disponibilidade original.
+
 ### Atendimento
 
 Registro do que ocorreu em um agendamento: realização ou ausência, observações
