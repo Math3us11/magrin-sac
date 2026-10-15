@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import MyAppointmentsView from '@/views/appointments/MyAppointmentsView.vue'
 
 const appointmentMocks = vi.hoisted(() => ({
+  cancelOwnAppointment: vi.fn(),
   listOwnAppointments: vi.fn(),
 }))
 

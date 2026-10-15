@@ -130,6 +130,8 @@ test('administrador consulta agendamentos globais sem campos internos', async ()
   const response = await service.listAll({ from: '2099-10-01', to: '2099-10-31' });
 
   assert.deepEqual(response.appointments[0], {
+    cancelledAt: null,
+    cancellationReason: undefined,
     endsAt: '2099-10-03T15:00:00.000Z',
     id: 30,
     modality: 'online',
@@ -401,4 +403,99 @@ test('duas confirmações concorrentes reservam o mesmo intervalo somente uma ve
   assert.equal(results.filter(({ status }) => status === 'fulfilled').length, 1);
   assert.equal(results.filter(({ status }) => status === 'rejected').length, 1);
   assert.equal(appointments.length, 1);
+});
+
+function createCancellationService({
+  actor = { id: 4, isActive: true, passwordHash: 'hash', userType: 'aluno' },
+  appointmentOverrides = {},
+  passwordMatches = true,
+  professorId = 8,
+} = {}) {
+  const transaction = { LOCK: { UPDATE: 'UPDATE' } };
+  const updates = [];
+  const appointment = {
+    availabilityId: 10,
+    id: 30,
+    startsAt: new Date(Date.now() + 3 * 60 * 60 * 1000),
+    status: 'confirmado',
+    studentId: 4,
+    update: async (values, options) => {
+      updates.push({ options, values });
+      Object.assign(appointment, values);
+    },
+    ...appointmentOverrides,
+  };
+  const service = new AppointmentsService(
+    { findByPk: async () => appointment },
+    {
+      unscoped: () => ({
+        findByPk: async () => ({ id: 10, professorId }),
+      }),
+    },
+    {},
+    {},
+    {
+      unscoped: () => ({ findByPk: async () => actor }),
+    },
+    { transaction: async (callback) => callback(transaction) },
+    {},
+    {},
+    { matches: async () => passwordMatches },
+  );
+
+  return { appointment, service, transaction, updates };
+}
+
+test('aluno cancela o próprio agendamento com antecedência e registra auditoria', async () => {
+  const { service, transaction, updates } = createCancellationService();
+
+  const response = await service.cancelMine(30, '  Imprevisto acadêmico.  ', 4);
+
+  assert.equal(response.appointment.status, 'cancelado');
+  assert.equal(response.appointment.cancelledBy, 4);
+  assert.equal(response.appointment.cancellationReason, 'Imprevisto acadêmico.');
+  assert.equal(updates[0].values.updatedBy, 4);
+  assert.equal(updates[0].options.transaction, transaction);
+});
+
+test('aluno e professor não cancelam com menos de duas horas', async () => {
+  const { service } = createCancellationService({
+    appointmentOverrides: { startsAt: new Date(Date.now() + 90 * 60 * 1000) },
+  });
+
+  await assert.rejects(
+    service.cancelMine(30, 'Imprevisto.', 4),
+    /pelo menos 2 horas de antecedência/,
+  );
+  await assert.rejects(
+    service.cancelAssigned(30, 'Imprevisto.', 8),
+    /pelo menos 2 horas de antecedência/,
+  );
+});
+
+test('professor não cancela agendamento atribuído a outro professor', async () => {
+  const { service } = createCancellationService({ professorId: 9 });
+
+  await assert.rejects(service.cancelAssigned(30, 'Conflito de agenda.', 8), /não encontrado/);
+});
+
+test('administrador cancela dentro de duas horas somente após validar a própria senha', async () => {
+  const actor = {
+    id: 1,
+    isActive: true,
+    passwordHash: 'hash',
+    userType: 'administrador',
+  };
+  const allowed = createCancellationService({
+    actor,
+    appointmentOverrides: { startsAt: new Date(Date.now() + 30 * 60 * 1000) },
+  });
+  const response = await allowed.service.cancelAny(30, 'Correção administrativa.', 1, 'senha');
+  assert.equal(response.appointment.cancelledBy, 1);
+
+  const denied = createCancellationService({ actor, passwordMatches: false });
+  await assert.rejects(
+    denied.service.cancelAny(30, 'Correção administrativa.', 1, 'incorreta'),
+    /Senha de confirmação inválida/,
+  );
 });

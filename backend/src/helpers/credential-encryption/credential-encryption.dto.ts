@@ -2,6 +2,7 @@ import { IsIn, IsInt, IsString, Matches, MaxLength, Min } from 'class-validator'
 
 export const CREDENTIAL_ENCRYPTION_ALGORITHM = 'RSA-OAEP-256+A256GCM' as const;
 export const CREDENTIAL_PURPOSES = [
+  'appointment-admin-cancellation',
   'first-access-password',
   'login',
   'user-deletion-confirmation',

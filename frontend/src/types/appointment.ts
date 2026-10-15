@@ -32,6 +32,8 @@ export type CreateAppointmentResponse = {
 }
 
 export type AdminAppointmentItem = {
+  cancelledAt: string | null
+  cancellationReason: string | null
   endsAt: string
   id: number
   modality: AvailabilityModality
@@ -47,6 +49,17 @@ export type AdminAppointmentItem = {
     name: string
   }
   subject: string
+}
+
+export type CancelAppointmentResponse = {
+  appointment: {
+    cancelledAt: string
+    cancelledBy: number
+    cancellationReason: string
+    id: number
+    status: 'cancelado'
+  }
+  message: string
 }
 
 export type ListAdminAppointmentsParams = {

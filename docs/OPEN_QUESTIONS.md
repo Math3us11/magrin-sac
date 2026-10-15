@@ -45,10 +45,19 @@ administrador inserida de forma controlada no banco.
 futuro cadastro de aluno. Até essa definição, não existe rota nem formulário de
 cadastro público e a interface não permite selecionar um perfil privilegiado.
 
-### 3. Regras de cancelamento
+### 3. Regras de cancelamento — resolvida
 
-Definir antecedência mínima, motivo obrigatório, liberação do horário e poderes
-excepcionais da coordenação.
+**Decisão:** aluno pode cancelar somente o próprio agendamento confirmado e o
+professor somente um agendamento vinculado à própria disponibilidade, ambos com
+motivo obrigatório e antecedência mínima de duas horas. O administrador pode
+cancelar qualquer agendamento confirmado até seu início, inclusive dentro das
+duas horas, mas deve informar motivo e confirmar a própria senha.
+
+O cancelamento preserva o registro, grava `cancelled_at`, `cancelled_by`,
+`cancellation_reason` e `updated_by`, e libera imediatamente o intervalo porque
+somente agendamentos confirmados ocupam disponibilidade. A senha administrativa
+serve apenas para confirmação, trafega no envelope criptografado e não é
+persistida.
 
 ### 4. Limite de agendamentos
 
@@ -116,10 +125,14 @@ O primeiro cadastro apenas marca a modalidade, sem solicitar sala. Local fixo
 ou configurável, quantidade de salas e necessidade de capacidade permanecem
 pendentes para uma evolução posterior.
 
-### 14. WhatsApp
+### 14. WhatsApp — adiada
 
 Confirmar conta Twilio, política de opt-in, formato dos números, templates,
 limites do Sandbox e destino permitido em desenvolvimento.
+
+**Decisão de planejamento:** a integração e as notificações adicionais ficam
+adiadas para a Fase 7. O trabalho atual segue para atendimento e demanda; a base
+já existente de notificações permanece isolada e não será ampliada nesta fase.
 
 ### 15. Lembretes
 

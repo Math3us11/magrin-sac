@@ -2,8 +2,8 @@
 
 ## Estado
 
-Sequência recomendada. A Fase 1 está em andamento: os scaffolds de frontend e
-backend foram criados; o modelo físico de domínio permanece pendente.
+Sequência recomendada. As Fases 1 a 3 foram concluídas e a Fase 4 está em
+andamento com o cancelamento auditável implementado para os três perfis.
 
 ## Fase 0 — Alinhamento essencial
 
@@ -13,7 +13,8 @@ Entregas:
 
 - decidir autenticação e matriz mínima de permissões;
 - [x] decidir o timezone institucional como `America/Porto_Velho`;
-- definir regras de disponibilidade, cancelamento e limite por aluno;
+- [x] definir as regras de cancelamento;
+- definir regras restantes de disponibilidade e limite por aluno;
 - validar conceito de realizado, ausência e estados da demanda;
 - aprovar modelo de domínio inicial;
 - aprovar os contratos do primeiro fluxo vertical.
@@ -153,11 +154,11 @@ Objetivo: completar o ciclo da reserva sem perder rastreabilidade.
 
 Entregas:
 
-- cancelamento conforme regra aprovada;
-- liberação controlada da disponibilidade;
-- motivo e ator;
-- trilha de auditoria;
-- histórico do aluno e da coordenação.
+- [x] cancelamento conforme regra aprovada para aluno, professor e administrador;
+- [x] liberação controlada da disponibilidade;
+- [x] motivo e ator;
+- [x] trilha de auditoria nas colunas do agendamento;
+- [x] histórico do aluno, professor e coordenação;
 
 Critério de saída: cancelamento altera a disponibilidade corretamente e preserva
 o histórico.
@@ -195,6 +196,9 @@ contadores divergentes.
 
 Objetivo: notificar sem comprometer o domínio.
 
+**Planejamento:** integração e novos eventos de notificação adiados até a
+conclusão dos fluxos de atendimento, demanda e indicadores.
+
 Entregas:
 
 - [x] criar `NotificationsService`, porta do provider WhatsApp e provider
@@ -231,7 +235,7 @@ Entregas:
 
 ## Próxima ação recomendada
 
-Realizar uma reunião curta de domínio usando os seis primeiros bloqueadores de
-`OPEN_QUESTIONS.md`. Depois, criar a migration inicial e implementar a Fase 3
-como fluxo vertical, evitando construir todos os cadastros antes de provar a
-reserva concorrente.
+Iniciar a Fase 5 pelo registro de realização e ausência. Antes da migration,
+fechar o evento que caracteriza atendimento realizado, a diferença entre não
+resolvido e em tratativa e os campos mínimos de continuidade. A notificação de
+cancelamento permanece adiada para a Fase 7.

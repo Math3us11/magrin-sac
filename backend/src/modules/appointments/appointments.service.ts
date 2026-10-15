@@ -1,9 +1,16 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { randomBytes } from 'node:crypto';
 import { Op, type Transaction, type WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
+import { PasswordHashService } from '../../helpers/password/password.service.js';
 import { Appointment, AppointmentStatus } from '../../models/appointment.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability, AvailabilityState } from '../../models/availability.model.js';
@@ -13,6 +20,7 @@ import type { AppointmentModality } from '../../types/appointment-modality.type.
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { CreateAppointmentResponseDto } from './dto/create-appointment-response.dto.js';
+import type { CancelAppointmentResponseDto } from './dto/cancel-appointment-response.dto.js';
 import type { ListAdminAppointmentsQueryDto } from './dto/list-admin-appointments.dto.js';
 import type { ListAdminAppointmentsResponseDto } from './dto/list-admin-appointments-response.dto.js';
 import type { ListAvailabilityQueryDto } from './dto/list-availability-query.dto.js';
@@ -55,6 +63,10 @@ type CommittedAppointment = {
   response: CreateAppointmentResponseDto;
 };
 
+type CancellationScope = 'admin' | 'professor' | 'student';
+
+const CANCELLATION_CUTOFF_MS = 2 * 60 * 60 * 1000;
+
 function addDateDays(value: string, amount: number): string {
   const date = new Date(`${value}T12:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + amount);
@@ -74,7 +86,45 @@ export class AppointmentsService {
     @InjectConnection() private readonly sequelize: Sequelize,
     private readonly institutionDateTime: InstitutionDateTimeService,
     private readonly notificationsService: NotificationsService,
+    private readonly passwordHashService: PasswordHashService,
   ) {}
+
+  cancelMine(
+    appointmentId: number,
+    reason: string,
+    requesterId: number,
+  ): Promise<CancelAppointmentResponseDto> {
+    return this.cancel(appointmentId, reason, requesterId, 'student');
+  }
+
+  cancelAssigned(
+    appointmentId: number,
+    reason: string,
+    requesterId: number,
+  ): Promise<CancelAppointmentResponseDto> {
+    return this.cancel(appointmentId, reason, requesterId, 'professor');
+  }
+
+  async cancelAny(
+    appointmentId: number,
+    reason: string,
+    actorId: number,
+    confirmationPassword: string,
+  ): Promise<CancelAppointmentResponseDto> {
+    const actor = await this.userModel.unscoped().findByPk(actorId, {
+      attributes: ['id', 'isActive', 'passwordHash', 'userType'],
+    });
+    const passwordMatches = await this.passwordHashService.matches(
+      confirmationPassword,
+      actor?.passwordHash,
+    );
+
+    if (!actor?.isActive || actor.userType !== UserType.ADMINISTRATOR || !passwordMatches) {
+      throw new ForbiddenException('Senha de confirmação inválida.');
+    }
+
+    return this.cancel(appointmentId, reason, actorId, 'admin');
+  }
 
   async create(
     input: CreateAppointmentDto,
@@ -511,17 +561,48 @@ export class AppointmentsService {
     return `AG-${date}-${randomBytes(5).toString('hex').toUpperCase()}`;
   }
 
-  async listAll(query: ListAdminAppointmentsQueryDto): Promise<ListAdminAppointmentsResponseDto> {
+  listAssigned(
+    query: ListAdminAppointmentsQueryDto,
+    professorId: number,
+  ): Promise<ListAdminAppointmentsResponseDto> {
+    return this.listAll(query, professorId);
+  }
+
+  async listAll(
+    query: ListAdminAppointmentsQueryDto,
+    professorId?: number,
+  ): Promise<ListAdminAppointmentsResponseDto> {
     const rangeStart = this.institutionDateTime.localToUtc(query.from, '00:00');
     const rangeEnd = this.institutionDateTime.localToUtc(addDateDays(query.to, 1), '00:00');
 
     if (rangeEnd <= rangeStart) {
       throw new BadRequestException('A data final deve ser igual ou posterior à data inicial.');
     }
+    if (
+      professorId !== undefined &&
+      (rangeEnd.getTime() - rangeStart.getTime()) / 86_400_000 > 62
+    ) {
+      throw new BadRequestException('O período da consulta deve ter no máximo 62 dias.');
+    }
+
+    let assignedAvailabilityIds: number[] | undefined;
+    if (professorId !== undefined) {
+      const assignedAvailabilities = await this.availabilityModel.unscoped().findAll({
+        attributes: ['id'],
+        paranoid: false,
+        where: { professorId },
+      });
+      assignedAvailabilityIds = assignedAvailabilities.map(({ id }) => id);
+      if (assignedAvailabilityIds.length === 0) {
+        return { appointments: [], range: { from: query.from, to: query.to } };
+      }
+    }
 
     const appointments = await this.appointmentModel.findAll({
       attributes: [
         'availabilityId',
+        'cancelledAt',
+        'cancellationReason',
         'endsAt',
         'id',
         'modalityOptionItemId',
@@ -536,6 +617,9 @@ export class AppointmentsService {
         ['id', 'ASC'],
       ],
       where: {
+        ...(assignedAvailabilityIds
+          ? { availabilityId: { [Op.in]: assignedAvailabilityIds } }
+          : {}),
         endsAt: { [Op.gt]: rangeStart },
         startsAt: { [Op.lt]: rangeEnd },
         ...(query.status ? { status: query.status } : {}),
@@ -588,6 +672,8 @@ export class AppointmentsService {
 
       return [
         {
+          cancelledAt: appointment.cancelledAt?.toISOString() ?? null,
+          cancellationReason: appointment.cancellationReason,
           endsAt: appointment.endsAt.toISOString(),
           id: appointment.id,
           modality,
@@ -602,6 +688,94 @@ export class AppointmentsService {
     });
 
     return { appointments: items, range: { from: query.from, to: query.to } };
+  }
+
+  private async cancel(
+    appointmentId: number,
+    reason: string,
+    actorId: number,
+    scope: CancellationScope,
+  ): Promise<CancelAppointmentResponseDto> {
+    const preparedReason = reason.trim();
+    if (!preparedReason) throw new BadRequestException('Informe o motivo do cancelamento.');
+
+    const reference = await this.appointmentModel.findByPk(appointmentId, {
+      attributes: ['availabilityId'],
+    });
+    if (!reference) throw new NotFoundException('Agendamento não encontrado.');
+
+    return this.sequelize.transaction(async (transaction) => {
+      const availability = await this.availabilityModel
+        .unscoped()
+        .findByPk(reference.availabilityId, {
+          attributes: ['id', 'professorId'],
+          lock: transaction.LOCK.UPDATE,
+          paranoid: false,
+          transaction,
+        });
+      const appointment = await this.appointmentModel.findByPk(appointmentId, {
+        attributes: [
+          'availabilityId',
+          'cancelledAt',
+          'cancellationReason',
+          'id',
+          'startsAt',
+          'status',
+          'studentId',
+        ],
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+      });
+
+      if (!availability || !appointment || appointment.availabilityId !== availability.id) {
+        throw new NotFoundException('Agendamento não encontrado.');
+      }
+      if (
+        (scope === 'student' && appointment.studentId !== actorId) ||
+        (scope === 'professor' && availability.professorId !== actorId)
+      ) {
+        throw new NotFoundException('Agendamento não encontrado.');
+      }
+      if (appointment.status !== AppointmentStatus.CONFIRMED) {
+        throw new ConflictException('Somente agendamentos confirmados podem ser cancelados.');
+      }
+
+      const now = new Date();
+      const timeUntilStart = appointment.startsAt.getTime() - now.getTime();
+      if (timeUntilStart <= 0) {
+        throw new ConflictException('Não é possível cancelar um atendimento que já começou.');
+      }
+      if (scope !== 'admin' && timeUntilStart < CANCELLATION_CUTOFF_MS) {
+        throw new ConflictException(
+          'O cancelamento deve ser realizado com pelo menos 2 horas de antecedência.',
+        );
+      }
+
+      await appointment.update(
+        {
+          cancelledAt: now,
+          cancelledBy: actorId,
+          cancellationReason: preparedReason,
+          status: AppointmentStatus.CANCELLED,
+          updatedBy: actorId,
+        },
+        {
+          fields: ['cancelledAt', 'cancelledBy', 'cancellationReason', 'status', 'updatedBy'],
+          transaction,
+        },
+      );
+
+      return {
+        appointment: {
+          cancelledAt: now.toISOString(),
+          cancelledBy: actorId,
+          cancellationReason: preparedReason,
+          id: appointment.id,
+          status: AppointmentStatus.CANCELLED,
+        },
+        message: 'Agendamento cancelado com sucesso.',
+      };
+    });
   }
 
   private subtractOccupiedIntervals(
