@@ -418,6 +418,28 @@ globais expõem somente os dados operacionais mínimos. Novos poderes
 administrativos não poderão ser obtidos apenas acrescentando o perfil a uma
 permissão `own` existente.
 
+## ADR-026 — Registro transacional de atendimento e ausência
+
+**Estado:** aceita.
+
+Professor responsável ou administrador registra o resultado somente depois do
+início previsto do agendamento, sem confirmação adicional do aluno. A ocorrência
+é `realizado` ou `ausencia`; apenas a primeira recebe a classificação
+`resolvido`, `nao_resolvido` ou `em_tratativa`.
+
+O backend cria `attendances`, inclui a primeira entrada em
+`attendance_status_history` e muda o agendamento para `concluido` ou `ausencia`
+na mesma transação. Há no máximo um atendimento por agendamento. Resolvido exige
+solução ou encaminhamento, não resolvido exige justificativa e em tratativa exige
+responsável textual, próximo passo e prazo. Observações são internas e não entram
+em contratos do aluno.
+
+Motivo: separar a ocorrência operacional do resultado da demanda, preservar
+auditoria e impedir estados parcialmente persistidos.
+
+Consequência: categoria, transições posteriores, reabertura e múltiplas etapas
+de continuidade continuam pendentes e não são inferidas neste incremento.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

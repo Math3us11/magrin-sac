@@ -167,6 +167,8 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
 - Um aluno não mantém agendamentos conflitantes (`RN03`).
 - Todo agendamento possui protocolo e disponibilidade (`RN04`, `RN05`).
 - Todo atendimento realizado se relaciona a um agendamento (`RN06`).
+- Professor responsável ou administrador registra realização ou ausência somente
+  após o início previsto; o aluno não precisa confirmar (`RN11`).
 - Resolvido exige solução ou encaminhamento (`RN07`).
 - Em tratativa exige informação de continuidade (`RN08`).
 - Não resolvido exige justificativa (`RN09`).
@@ -177,8 +179,6 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
   (`RN12`).
 - Histórico e exceções administrativas são auditáveis (`RN13`, `RN14`).
 - Modalidade escolhida deve ser permitida no horário (`RN15`).
-
-`RN11`, a definição exata de atendimento realizado, permanece pendente.
 
 ## Critérios de aceite do primeiro fluxo vertical
 

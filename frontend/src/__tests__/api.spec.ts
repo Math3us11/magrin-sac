@@ -21,6 +21,7 @@ const credentialEncryptionMocks = vi.hoisted(() => ({
 vi.mock('@/services/credential-encryption', () => credentialEncryptionMocks)
 
 import { ApiError } from '@/services/api'
+import { registerAdminAttendance, registerAssignedAttendance } from '@/services/attendance'
 import {
   createAppointment,
   listAdminAppointments,
@@ -223,6 +224,40 @@ describe('serviço de agendamentos', () => {
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/appointments/mine?scope=history&status=concluido&modality=online&page=2&pageSize=8',
       expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+})
+
+describe('serviço de atendimentos', () => {
+  it('usa endpoints separados para escopo atribuído e administrativo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          attendance: { appointmentId: 30, id: 40, occurrence: 'realizado' },
+          message: 'Atendimento registrado com sucesso.',
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const payload = {
+      occurrence: 'realizado' as const,
+      resolutionStatus: 'resolvido' as const,
+      solution: 'Orientação concluída.',
+    }
+
+    await registerAssignedAttendance(30, payload)
+    await registerAdminAttendance(31, { occurrence: 'ausencia' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/professor/appointments/30/attendance',
+      expect.objectContaining({ body: JSON.stringify(payload), method: 'PUT' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/appointments/31/attendance',
+      expect.objectContaining({ body: JSON.stringify({ occurrence: 'ausencia' }), method: 'PUT' }),
     )
   })
 })

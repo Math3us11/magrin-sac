@@ -79,27 +79,24 @@ janelas em disponibilidades concretas sem persistir recorrência. Ainda é
 necessário definir antecedência mínima, janela máxima de agendamento e
 comportamento de horários já reservados quando a agenda muda.
 
-## Bloqueadores do módulo de atendimento e indicadores
+## Decisões do módulo de atendimento e bloqueadores dos indicadores
 
 ### 7. Atendimento realizado
 
-Definir o evento que torna um atendimento realizado.
-
-**Recomendação do levantamento:** somente atendimento efetivamente ocorrido;
-ausência fica em categoria separada.
+**Decisão aprovada:** professor responsável ou administrador registra o resultado
+após o início previsto. Atendimento realizado e ausência são ocorrências
+distintas; não há confirmação adicional do aluno.
 
 ### 8. Não resolvido versus em tratativa
 
-Validar se:
-
-- não resolvido significa demanda encerrada sem solução;
-- em tratativa significa demanda ainda aberta.
-
-Também definir transições permitidas e possibilidade de reabertura.
+**Decisão aprovada:** não resolvido significa demanda encerrada sem solução e
+exige justificativa; em tratativa permanece aberta. As transições posteriores e
+a possibilidade de reabertura ainda precisam ser definidas.
 
 ### 9. Continuidade da tratativa
 
-Definir responsável, prazo obrigatório, múltiplas etapas e notificações ao aluno.
+**Decisão aprovada para o primeiro registro:** responsável, próximo passo e prazo
+são obrigatórios. Múltiplas etapas e notificações ao aluno continuam pendentes.
 
 ### 10. Categorias de atendimento
 

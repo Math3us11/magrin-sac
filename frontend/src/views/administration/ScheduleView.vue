@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 import AppButton from '@/components/basic/AppButton.vue'
 import AppCalendar from '@/components/basic/AppCalendar.vue'
 import AppSelect from '@/components/basic/AppSelect.vue'
+import AttendanceRegistrationModal from '@/components/appointments/AttendanceRegistrationModal.vue'
 import AppointmentCancellationModal from '@/components/appointments/AppointmentCancellationModal.vue'
 import {
   getInstitutionDateTime,
@@ -20,11 +21,13 @@ import {
   usersIcon,
 } from '@/icons'
 import { ApiError } from '@/services/api'
+import { registerAdminAttendance } from '@/services/attendance'
 import { cancelAdminAppointment, listAdminAppointments } from '@/services/appointments'
 import { listAdminAvailabilities } from '@/services/availability'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
 import type { AdminAppointmentItem, AppointmentStatus } from '@/types/appointment'
+import type { RegisterAttendancePayload } from '@/types/attendance'
 import type {
   AdminAvailabilityItem,
   AvailabilityModality,
@@ -49,6 +52,10 @@ const appointmentToCancel = ref<AdminAppointmentItem | null>(null)
 const cancellationOpen = ref(false)
 const cancelling = ref(false)
 const cancellationError = ref('')
+const appointmentToRegister = ref<AdminAppointmentItem | null>(null)
+const attendanceOpen = ref(false)
+const registeringAttendance = ref(false)
+const attendanceError = ref('')
 let requestSequence = 0
 
 const availabilityStateLabels: Record<AvailabilityState, string> = {
@@ -86,6 +93,11 @@ const cancellationAppointmentLabel = computed(() => {
   const appointment = appointmentToCancel.value
   if (!appointment) return undefined
   return `${appointment.protocol} · ${formatAppointmentDate(appointment.startsAt)}, ${formatTime(appointment.startsAt)}–${formatTime(appointment.endsAt)}`
+})
+const attendanceAppointmentLabel = computed(() => {
+  const appointment = appointmentToRegister.value
+  if (!appointment) return undefined
+  return `${appointment.protocol} · ${appointment.student.name} · ${formatAppointmentDate(appointment.startsAt)}, ${formatTime(appointment.startsAt)}–${formatTime(appointment.endsAt)}`
 })
 
 function monthRange(month: string): { from: string; to: string } {
@@ -217,6 +229,31 @@ function requestCancellation(appointment: AdminAppointmentItem) {
   cancellationOpen.value = true
 }
 
+function requestAttendanceRegistration(appointment: AdminAppointmentItem) {
+  appointmentToRegister.value = appointment
+  attendanceError.value = ''
+  attendanceOpen.value = true
+}
+
+async function confirmAttendance(payload: RegisterAttendancePayload) {
+  if (!appointmentToRegister.value || registeringAttendance.value) return
+  registeringAttendance.value = true
+  attendanceError.value = ''
+  try {
+    await registerAdminAttendance(appointmentToRegister.value.id, payload)
+    attendanceOpen.value = false
+    appointmentToRegister.value = null
+    await loadSchedule()
+  } catch (error) {
+    attendanceError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível registrar o atendimento. Tente novamente.'
+  } finally {
+    registeringAttendance.value = false
+  }
+}
+
 async function confirmCancellation({ password, reason }: { password?: string; reason: string }) {
   if (!appointmentToCancel.value || !password || cancelling.value) return
 
@@ -257,7 +294,7 @@ onMounted(() => void loadSchedule())
             <span
               class="rounded-full border border-outline bg-surface px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-content-muted"
             >
-              Consulta e cancelamento
+              Consulta, registro e cancelamento
             </span>
           </div>
           <h1 class="mt-3 text-3xl font-bold tracking-tight text-content sm:text-4xl">
@@ -421,6 +458,16 @@ onMounted(() => void loadSchedule())
             >
               Cancelar agendamento
             </AppButton>
+            <AppButton
+              v-if="
+                appointment.status === 'confirmado' &&
+                new Date(appointment.startsAt).getTime() <= Date.now()
+              "
+              class="mt-3 sm:ml-3"
+              @click="requestAttendanceRegistration(appointment)"
+            >
+              Registrar atendimento
+            </AppButton>
           </li>
         </ul>
       </section>
@@ -433,6 +480,14 @@ onMounted(() => void loadSchedule())
       :loading="cancelling"
       requires-password
       @confirm="confirmCancellation"
+    />
+
+    <AttendanceRegistrationModal
+      v-model:open="attendanceOpen"
+      :appointment-label="attendanceAppointmentLabel"
+      :error="attendanceError"
+      :loading="registeringAttendance"
+      @confirm="confirmAttendance"
     />
   </section>
 </template>
