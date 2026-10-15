@@ -8,11 +8,15 @@ const appointmentMocks = vi.hoisted(() => ({
   cancelAdminAppointment: vi.fn(),
   listAdminAppointments: vi.fn(),
 }))
+const attendanceMocks = vi.hoisted(() => ({
+  registerAdminAttendance: vi.fn(),
+}))
 const availabilityMocks = vi.hoisted(() => ({
   listAdminAvailabilities: vi.fn(),
 }))
 
 vi.mock('@/services/appointments', () => appointmentMocks)
+vi.mock('@/services/attendance', () => attendanceMocks)
 vi.mock('@/services/availability', () => availabilityMocks)
 
 describe('Agenda geral administrativa', () => {
@@ -51,6 +55,16 @@ describe('Agenda geral administrativa', () => {
       ],
       range: { from: `${date.slice(0, 7)}-01`, to: date },
     })
+    attendanceMocks.registerAdminAttendance.mockReset().mockResolvedValue({
+      attendance: {
+        appointmentId: 30,
+        id: 40,
+        occurrence: 'ausencia',
+        recordedAt: new Date().toISOString(),
+        resolutionStatus: null,
+      },
+      message: 'Ausência registrada com sucesso.',
+    })
   })
 
   it('apresenta disponibilidades e agendamentos globais com cancelamento auditável', async () => {
@@ -58,7 +72,7 @@ describe('Agenda geral administrativa', () => {
 
     await expect.poll(() => wrapper.text()).toContain('AG-2026-0001')
     expect(wrapper.get('h1').text()).toBe('Agenda geral')
-    expect(wrapper.text()).toContain('Consulta e cancelamento')
+    expect(wrapper.text()).toContain('Consulta, registro e cancelamento')
     expect(wrapper.text()).toContain('Aluno Teste')
     expect(wrapper.text()).toContain('Professor Teste')
     expect(availabilityMocks.listAdminAvailabilities).toHaveBeenCalledOnce()
@@ -87,5 +101,45 @@ describe('Agenda geral administrativa', () => {
     expect(appointmentMocks.listAdminAppointments.mock.calls[1]?.[0]).toMatchObject({
       status: 'confirmado',
     })
+  })
+
+  it('registra o resultado de um agendamento cujo horário já iniciou', async () => {
+    appointmentMocks.listAdminAppointments.mockResolvedValue({
+      appointments: [
+        {
+          cancelledAt: null,
+          cancellationReason: null,
+          endsAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          id: 30,
+          modality: 'online',
+          professor: { id: 8, name: 'Professor Teste' },
+          protocol: 'AG-2026-0001',
+          startsAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+          status: 'confirmado',
+          student: { id: 4, name: 'Aluno Teste' },
+          subject: 'Orientação acadêmica',
+        },
+      ],
+      range: { from: '2026-10-01', to: '2026-10-31' },
+    })
+    const wrapper = mount(ScheduleView, { global: { stubs: { teleport: true } } })
+    await expect.poll(() => wrapper.text()).toContain('Registrar atendimento')
+
+    const registerButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Registrar atendimento')
+    await registerButton?.trigger('click')
+    await wrapper.get('input[value="ausencia"]').setValue(true)
+    const confirmButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Registrar resultado')
+    await confirmButton?.trigger('click')
+
+    await expect
+      .poll(() => attendanceMocks.registerAdminAttendance)
+      .toHaveBeenCalledWith(30, {
+        internalNotes: undefined,
+        occurrence: 'ausencia',
+      })
   })
 })

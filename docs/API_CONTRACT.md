@@ -508,12 +508,53 @@ A resposta comum é:
 ### Registro de atendimento
 
 ```text
-PUT   /api/admin/appointments/:appointmentId/attendance
-PATCH /api/admin/attendances/:attendanceId/status
-GET   /api/admin/attendances/:attendanceId/history
+PUT /api/professor/appointments/:appointmentId/attendance
+PUT /api/admin/appointments/:appointmentId/attendance
+GET /api/professor/attendances/:attendanceId/history
+GET /api/admin/attendances/:attendanceId/history
 ```
 
-O backend deve validar os campos condicionais de cada resultado.
+Os endpoints estão implementados. Professor atua somente sobre agendamento
+vinculado à própria disponibilidade; administrador possui a capacidade global
+explícita. O registro exige agendamento confirmado cujo horário inicial já tenha
+chegado. A criação do atendimento, a entrada inicial do histórico e a mudança do
+agendamento para `concluido` ou `ausencia` ocorrem na mesma transação.
+
+Exemplo de atendimento resolvido:
+
+```json
+{
+  "occurrence": "realizado",
+  "resolutionStatus": "resolvido",
+  "solution": "Orientação concluída.",
+  "referral": "Opcional",
+  "internalNotes": "Visível somente à equipe."
+}
+```
+
+`resolvido` exige solução ou encaminhamento; `nao_resolvido` exige
+`unresolvedReason`; `em_tratativa` exige `continuityResponsible`, `nextStep` e
+`dueDate`. Para ausência, envie apenas `occurrence: "ausencia"` e, opcionalmente,
+`internalNotes`. Campos internos não são retornados nos contratos do aluno.
+
+Resposta de criação:
+
+```json
+{
+  "attendance": {
+    "appointmentId": 30,
+    "id": 12,
+    "occurrence": "realizado",
+    "recordedAt": "2026-10-15T14:00:00.000Z",
+    "resolutionStatus": "resolvido"
+  },
+  "message": "Atendimento registrado com sucesso."
+}
+```
+
+O histórico retorna ocorrência, classificação, motivo da mudança, ator e data.
+Alterações posteriores de classificação ainda não possuem endpoint enquanto as
+transições e a reabertura permanecerem pendentes.
 
 ### Dashboard
 
@@ -787,6 +828,6 @@ Twilio não estiver configurado, ela fica registrada como `falhou` com
 
 ## Próximo passo
 
-Iniciar o contrato de realização e ausência do atendimento após fechar as regras
-institucionais de resultado e continuidade. A tentativa de notificação de
-cancelamento foi adiada para a Fase 7 e não faz parte do próximo incremento.
+Definir e implementar as transições posteriores do atendimento em tratativa e a
+reabertura, além da consulta operacional dos dados internos autorizados. A
+tentativa de notificação de cancelamento permanece adiada para a Fase 7.

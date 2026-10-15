@@ -169,11 +169,12 @@ Objetivo: registrar o resultado operacional.
 
 Entregas:
 
-- realização e ausência;
-- observações internas;
-- resolvido, não resolvido e em tratativa;
-- solução, justificativa, encaminhamento e continuidade;
-- histórico de transições;
+- [x] registro inicial de realização e ausência;
+- [x] observações internas sem exposição ao aluno;
+- [x] resolvido, não resolvido e em tratativa;
+- [x] solução, justificativa, encaminhamento e continuidade mínima;
+- [x] histórico inicial com ator e data;
+- transições posteriores e reabertura;
 - filtros administrativos essenciais.
 
 Critério de saída: cada estado respeita seus campos obrigatórios e permissões.
@@ -235,7 +236,8 @@ Entregas:
 
 ## Próxima ação recomendada
 
-Iniciar a Fase 5 pelo registro de realização e ausência. Antes da migration,
-fechar o evento que caracteriza atendimento realizado, a diferença entre não
-resolvido e em tratativa e os campos mínimos de continuidade. A notificação de
-cancelamento permanece adiada para a Fase 7.
+Validar o registro inicial de atendimento na interface e então definir as
+transições posteriores de `em_tratativa`, incluindo reabertura, antes de criar o
+endpoint de alteração. O catálogo oficial de categorias e a fórmula do indicador
+de resolução também permanecem pendentes. A notificação de cancelamento continua
+adiada para a Fase 7.

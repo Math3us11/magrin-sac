@@ -8,6 +8,7 @@ import AppCalendar from '@/components/basic/AppCalendar.vue'
 import AppForm from '@/components/basic/AppForm.vue'
 import AppInput from '@/components/basic/AppInput.vue'
 import AppModal from '@/components/basic/AppModal.vue'
+import AttendanceRegistrationModal from '@/components/appointments/AttendanceRegistrationModal.vue'
 import AppointmentCancellationModal from '@/components/appointments/AppointmentCancellationModal.vue'
 import {
   getInstitutionDateTime,
@@ -25,12 +26,14 @@ import {
   triangleAlertIcon,
 } from '@/icons'
 import { ApiError } from '@/services/api'
+import { registerAssignedAttendance } from '@/services/attendance'
 import { cancelAssignedAppointment, listAssignedAppointments } from '@/services/appointments'
 import { createAvailabilities, listOwnAvailabilities } from '@/services/availability'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
 import type { AppCalendarEvent } from '@/types/calendar'
 import type { AdminAppointmentItem, AppointmentStatus } from '@/types/appointment'
+import type { RegisterAttendancePayload } from '@/types/attendance'
 import type {
   AvailabilityDraft,
   AvailabilityItem,
@@ -63,6 +66,10 @@ const appointmentToCancel = ref<AdminAppointmentItem | null>(null)
 const cancellationOpen = ref(false)
 const cancelling = ref(false)
 const cancellationError = ref('')
+const appointmentToRegister = ref<AdminAppointmentItem | null>(null)
+const attendanceOpen = ref(false)
+const registeringAttendance = ref(false)
+const attendanceError = ref('')
 let nextDraftId = 1
 
 const currentInstitutionDate = getInstitutionDateTime().date
@@ -104,6 +111,11 @@ const cancellationAppointmentLabel = computed(() => {
   const appointment = appointmentToCancel.value
   if (!appointment) return undefined
   return `${appointment.protocol} · ${formatAppointmentDate(appointment.startsAt)}, ${formatAppointmentTime(appointment.startsAt)}–${formatAppointmentTime(appointment.endsAt)}`
+})
+const attendanceAppointmentLabel = computed(() => {
+  const appointment = appointmentToRegister.value
+  if (!appointment) return undefined
+  return `${appointment.protocol} · ${appointment.student.name} · ${formatAppointmentDate(appointment.startsAt)}, ${formatAppointmentTime(appointment.startsAt)}–${formatAppointmentTime(appointment.endsAt)}`
 })
 
 function addUtcDays(value: string, amount: number): string {
@@ -404,8 +416,8 @@ async function loadAssignedAppointments() {
   appointmentLoadError.value = ''
   try {
     const response = await listAssignedAppointments({
-      from: currentInstitutionDate,
-      to: addUtcDays(currentInstitutionDate, 61),
+      from: addUtcDays(currentInstitutionDate, -30),
+      to: addUtcDays(currentInstitutionDate, 31),
     })
     assignedAppointments.value = response.appointments
   } catch (error) {
@@ -422,6 +434,31 @@ function requestCancellation(appointment: AdminAppointmentItem) {
   appointmentToCancel.value = appointment
   cancellationError.value = ''
   cancellationOpen.value = true
+}
+
+function requestAttendanceRegistration(appointment: AdminAppointmentItem) {
+  appointmentToRegister.value = appointment
+  attendanceError.value = ''
+  attendanceOpen.value = true
+}
+
+async function confirmAttendance(payload: RegisterAttendancePayload) {
+  if (!appointmentToRegister.value || registeringAttendance.value) return
+  registeringAttendance.value = true
+  attendanceError.value = ''
+  try {
+    await registerAssignedAttendance(appointmentToRegister.value.id, payload)
+    attendanceOpen.value = false
+    appointmentToRegister.value = null
+    await Promise.all([loadAssignedAppointments(), loadAvailabilities()])
+  } catch (error) {
+    attendanceError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível registrar o atendimento. Tente novamente.'
+  } finally {
+    registeringAttendance.value = false
+  }
 }
 
 async function confirmCancellation({ reason }: { reason: string }) {
@@ -599,9 +636,10 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
 
       <section class="mt-8 rounded-3xl border border-outline bg-surface p-6 sm:p-8">
         <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">Atendimentos</p>
-        <h2 class="mt-1 text-xl font-bold text-content">Próximos 62 dias</h2>
+        <h2 class="mt-1 text-xl font-bold text-content">Período de 62 dias</h2>
         <p class="mt-2 text-sm text-content-muted">
-          Consulte os alunos agendados e cancele com pelo menos 2 horas de antecedência.
+          Consulte os últimos 30 dias e os próximos 31 para registrar resultados ou cancelar com
+          antecedência.
         </p>
 
         <p
@@ -664,6 +702,16 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
             >
               Cancelar agendamento
             </AppButton>
+            <AppButton
+              v-if="
+                appointment.status === 'confirmado' &&
+                new Date(appointment.startsAt).getTime() <= Date.now()
+              "
+              class="mt-3 sm:ml-3"
+              @click="requestAttendanceRegistration(appointment)"
+            >
+              Registrar atendimento
+            </AppButton>
           </li>
         </ul>
       </section>
@@ -675,6 +723,14 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
       :error="cancellationError"
       :loading="cancelling"
       @confirm="confirmCancellation"
+    />
+
+    <AttendanceRegistrationModal
+      v-model:open="attendanceOpen"
+      :appointment-label="attendanceAppointmentLabel"
+      :error="attendanceError"
+      :loading="registeringAttendance"
+      @confirm="confirmAttendance"
     />
 
     <AppModal

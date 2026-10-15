@@ -2,9 +2,10 @@
 
 ## Estado
 
-Primeiro recorte físico aprovado e versionado para identidade, sessões e
-configuração. O modelo de agendamento e atendimento continua como proposta até
-as pendências institucionais correspondentes serem resolvidas.
+Primeiro recorte físico aprovado e versionado para identidade, sessões,
+configuração, disponibilidade, agendamento e registro inicial de atendimento.
+Categorias e transições posteriores da demanda continuam como proposta até as
+pendências institucionais correspondentes serem resolvidas.
 
 ## Agregados e entidades
 
@@ -170,6 +171,18 @@ libera o trecho sem alterar ou excluir a disponibilidade original.
 Registro do que ocorreu em um agendamento: realização ou ausência, observações
 internas, solução, encaminhamento, classificação da demanda e continuidade.
 
+O modelo físico `attendances` mantém relação única com `appointments`. O registro
+só é permitido depois do início previsto e transforma o agendamento confirmado
+em `concluido` quando houve atendimento ou `ausencia` quando o aluno não
+compareceu. Uma ausência não possui classificação de resolução. Um atendimento
+realizado é classificado como `resolvido`, `nao_resolvido` ou `em_tratativa`.
+Observações internas nunca fazem parte dos contratos do aluno.
+
+Em tratativa guarda responsável textual, próximo passo e prazo porque o
+responsável pode ser uma pessoa ou setor que ainda não possui usuário no sistema.
+O catálogo de categorias permanece pendente e não foi incorporado à primeira
+migration.
+
 ### Categoria de atendimento
 
 Vocabulário administrado pela coordenação para classificar assuntos e permitir
@@ -178,6 +191,10 @@ indicadores comparáveis.
 ### Histórico de atendimento
 
 Registra transições da demanda, justificativa, responsável e data.
+
+O modelo físico `attendance_status_history` registra a ocorrência e a
+classificação inicial com ator e instante na mesma transação do atendimento. As
+regras de transições posteriores e reabertura permanecem pendentes.
 
 ### Notificação
 
@@ -256,8 +273,8 @@ ausência não deve receber automaticamente um resultado de resolução.
 - enviada;
 - falhou.
 
-Os nomes finais dos enums e transições permitidas devem ser definidos no
-workshop de domínio.
+As transições posteriores e a possibilidade de reabertura ainda devem ser
+definidas no workshop de domínio.
 
 ## Invariantes
 
