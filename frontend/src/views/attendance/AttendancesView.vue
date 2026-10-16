@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import AppButton from '@/components/basic/AppButton.vue'
 import AppSelect from '@/components/basic/AppSelect.vue'
@@ -22,6 +22,7 @@ import type { AppTableColumn, AppTableRecord } from '@/types/table'
 type AttendanceScope = 'admin' | 'professor'
 
 const props = defineProps<{ scope: AttendanceScope }>()
+const route = useRoute()
 const router = useRouter()
 const loadingStore = useLoadingStore()
 
@@ -32,10 +33,17 @@ useDocumentTitle(
 )
 
 const today = getInstitutionDateTime().date
-const from = ref(`${today.slice(0, 8)}01`)
-const to = ref(today)
-const occurrence = ref('')
-const resolutionStatus = ref('')
+const defaultFrom = `${today.slice(0, 8)}01`
+const validDateQuery = (value: unknown, fallback: string) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : fallback
+const validOptionQuery = (value: unknown, options: string[]) =>
+  typeof value === 'string' && options.includes(value) ? value : ''
+const from = ref(validDateQuery(route.query.from, defaultFrom))
+const to = ref(validDateQuery(route.query.to, today))
+const occurrence = ref(validOptionQuery(route.query.occurrence, ['realizado', 'ausencia']))
+const resolutionStatus = ref(
+  validOptionQuery(route.query.resolutionStatus, ['em_tratativa', 'resolvido', 'nao_resolvido']),
+)
 const attendances = ref<AttendanceListItem[]>([])
 const listLoading = ref(true)
 const listError = ref('')

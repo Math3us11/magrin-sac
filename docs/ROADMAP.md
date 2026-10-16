@@ -188,10 +188,10 @@ Objetivo: fornecer os quatro indicadores confiáveis.
 
 Entregas:
 
-- totais realizado, resolvido, não resolvido e em tratativa;
-- filtro por período;
-- rastreabilidade dos registros que compõem cada total;
-- testes de cálculo, cancelamento e ausência.
+- [x] totais realizado, resolvido, não resolvido e em tratativa;
+- [x] filtro por período;
+- [x] rastreabilidade dos registros que compõem cada total;
+- [x] testes de cálculo, cancelamento e ausência.
 
 Critério de saída: mudanças nos atendimentos atualizam os indicadores sem
 contadores divergentes.
@@ -239,7 +239,8 @@ Entregas:
 
 ## Próxima ação recomendada
 
-Iniciar a Fase 6 com os quatro totais derivados dos registros de atendimento e
-o filtro por período, mantendo a fórmula percentual fora do contrato até a
-definição institucional. O catálogo oficial de categorias permanece pendente e
-a notificação de cancelamento continua adiada para a Fase 7.
+Iniciar a Fase 7 pela configuração do provider Twilio no Sandbox e pelos
+eventos de confirmação e cancelamento, preservando a regra de que falhas de
+notificação nunca revertem operações válidas. A fórmula percentual do dashboard
+continua fora do contrato até a definição institucional, e o catálogo oficial
+de categorias permanece pendente.
