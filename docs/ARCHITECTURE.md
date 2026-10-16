@@ -443,6 +443,15 @@ uma rota filha de visualização (`professor-attendances-view` e
 tabela, enquanto a página de detalhes carrega o registro interno e seu histórico
 somente após a ação explícita de exibição.
 
+O dashboard usa endpoints separados para professor e administrador, protegidos
+por `reports.dashboard.view` em conjunto com a capacidade de atendimento do
+respectivo escopo. Os quatro totais são calculados sob demanda a partir de
+`appointments`, `availabilities` e `attendances`; não existe tabela nem cache de
+contadores. O filtro considera o período do agendamento no timezone
+institucional, exclui cancelamentos e faz o professor atravessar apenas as
+próprias disponibilidades. Cada indicador aponta para a listagem operacional com
+os mesmos filtros, preservando a rastreabilidade dos registros contabilizados.
+
 `availabilities` armazena o proprietário, os instantes em UTC e o estado
 operacional. `availability_modalities` relaciona cada intervalo a um ou dois
 itens ativos da opção `APPOINTMENT_MODALITY`; a combinação presencial + online

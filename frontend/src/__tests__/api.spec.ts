@@ -40,6 +40,7 @@ import {
   listStudentAvailabilities,
 } from '@/services/availability'
 import { completeFirstAccessPassword, createSession } from '@/services/auth'
+import { getDashboardSummary } from '@/services/dashboard'
 import {
   createUser,
   deleteUser,
@@ -298,6 +299,38 @@ describe('serviço de atendimentos', () => {
         }),
         method: 'PATCH',
       }),
+    )
+  })
+})
+
+describe('serviço de dashboard', () => {
+  it('consulta indicadores em endpoints separados por escopo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          filters: { from: '2026-10-01', to: '2026-10-31' },
+          inProgress: 0,
+          performed: 0,
+          resolved: 0,
+          unresolved: 0,
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await getDashboardSummary('professor', { from: '2026-10-01', to: '2026-10-31' })
+    await getDashboardSummary('admin', { from: '2026-10-01', to: '2026-10-31' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/professor/dashboard?from=2026-10-01&to=2026-10-31',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/dashboard?from=2026-10-01&to=2026-10-31',
+      expect.objectContaining({ credentials: 'include' }),
     )
   })
 })

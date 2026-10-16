@@ -16,13 +16,7 @@ const router = createRouter({
     {
       path: '/relatorios/dashboard',
       name: 'reports-dashboard',
-      component: () => import('@/views/FeaturePlaceholderView.vue'),
-      props: {
-        description:
-          'Os indicadores de atendimento serão apresentados aqui conforme o fluxo de relatórios evoluir.',
-        eyebrow: 'Relatórios',
-        title: 'Dashboard',
-      },
+      component: () => import('@/views/DashboardView.vue'),
       meta: {
         requiredPermission: 'reports.dashboard.view',
         requiresAuth: true,

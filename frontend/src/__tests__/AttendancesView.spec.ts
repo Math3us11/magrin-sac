@@ -99,7 +99,9 @@ describe('AttendancesView', () => {
 
   it('lista os atendimentos em tabela e navega para a exibição específica', async () => {
     const router = createAttendanceRouter()
-    await router.push('/administracao/atendimentos')
+    await router.push(
+      '/administracao/atendimentos?from=2099-10-01&to=2099-10-31&occurrence=realizado&resolutionStatus=em_tratativa',
+    )
     await router.isReady()
 
     const wrapper = mount(AttendancesView, {
@@ -110,7 +112,12 @@ describe('AttendancesView', () => {
 
     expect(attendanceMocks.listAttendances).toHaveBeenCalledWith(
       'admin',
-      expect.objectContaining({ from: expect.any(String), to: expect.any(String) }),
+      expect.objectContaining({
+        from: '2099-10-01',
+        occurrence: 'realizado',
+        resolutionStatus: 'em_tratativa',
+        to: '2099-10-31',
+      }),
     )
     expect(attendanceMocks.getAttendance).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('Resultados registrados')

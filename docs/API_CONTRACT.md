@@ -586,10 +586,15 @@ finais respondem conflito e não podem ser reabertos no MVP.
 ### Dashboard
 
 ```text
+GET /api/professor/dashboard?from=...&to=...
 GET /api/admin/dashboard?from=...&to=...
 ```
 
-Resposta mínima conceitual:
+O endpoint do professor considera somente atendimentos vinculados às próprias
+disponibilidades; o administrativo usa o escopo global. Ambos exigem
+`reports.dashboard.view` em conjunto com a capacidade operacional do escopo.
+
+Resposta:
 
 ```json
 {
@@ -604,8 +609,11 @@ Resposta mínima conceitual:
 }
 ```
 
-Os nomes finais devem seguir uma convenção única. O endpoint precisa usar as
-mesmas regras de contabilização documentadas em `REQUIREMENTS.md`.
+`performed` conta somente ocorrências `realizado`; ausências e agendamentos
+cancelados não entram nesse total. `resolved`, `unresolved` e `inProgress`
+detalham as classificações atuais desses atendimentos e, portanto, não devem ser
+somados novamente a `performed`. O período segue o horário institucional, é
+inclusivo nas datas informadas e aceita no máximo 366 dias.
 
 ### Usuários e permissões
 
