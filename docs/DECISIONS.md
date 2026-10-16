@@ -437,8 +437,32 @@ em contratos do aluno.
 Motivo: separar a ocorrência operacional do resultado da demanda, preservar
 auditoria e impedir estados parcialmente persistidos.
 
-Consequência: categoria, transições posteriores, reabertura e múltiplas etapas
-de continuidade continuam pendentes e não são inferidas neste incremento.
+Consequência: categoria e múltiplas etapas estruturadas de continuidade
+continuam pendentes. As transições posteriores são definidas pela ADR-027.
+
+## ADR-027 — Evolução auditável da demanda sem reabertura
+
+**Estado:** aceita.
+
+Somente um atendimento realizado classificado como `em_tratativa` pode receber
+uma nova transição no MVP. Ele pode permanecer em tratativa com responsável,
+próximo passo e prazo atualizados, mudar para `resolvido` ou mudar para
+`nao_resolvido`. Resolvido e não resolvido são estados finais e não podem ser
+reabertos; ausência não possui classificação nem transição de resolução.
+
+Cada mudança exige motivo textual e registra classificação, ator e instante em
+`attendance_status_history` na mesma transação que atualiza `attendances`.
+Professor atua somente nos atendimentos vinculados às próprias disponibilidades;
+administrador possui capacidade global explícita. Os dados internos e a trilha
+de evolução não fazem parte dos contratos do aluno.
+
+Motivo: concluir o acompanhamento operacional com uma regra simples,
+rastreável e segura, sem introduzir uma reabertura cujo tratamento institucional
+ainda não é necessário para o MVP.
+
+Consequência: uma correção de estado final exigirá uma decisão futura e um fluxo
+administrativo auditado próprio. O dashboard pode derivar os quatro totais do
+estado atual sem manter contadores independentes.
 
 ## Como adicionar uma decisão
 

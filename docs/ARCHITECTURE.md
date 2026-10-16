@@ -296,6 +296,11 @@ da sessão no filtro e não aceita identidade de aluno enviada pelo cliente.
 ### `modules/attendance`
 
 Realização, ausência, observações, solução, encaminhamento e evolução da demanda.
+Professor responsável consulta e atualiza somente atendimentos ligados às
+próprias disponibilidades; administrador usa uma capacidade global explícita.
+Listagem, detalhe interno e histórico permanecem fora dos contratos do aluno.
+Transições de `em_tratativa` são persistidas junto da trilha de status em uma
+única transação, e estados finais não são reabertos no MVP.
 
 ### `modules/dashboard`
 
@@ -427,6 +432,16 @@ o item `agenda.availability` e a rota frontend `professor-availability`. Esta
 capacidade representa somente a agenda do usuário autenticado. A administração
 global usa as permissões distintas descritas acima e nunca amplia implicitamente
 o escopo de `own`.
+
+As capacidades `attendance.manage.assigned` e `attendance.manage.any` liberam,
+respectivamente, as rotas `professor-attendances` e
+`administration-attendances`. A primeira recalcula o vínculo do atendimento com
+a disponibilidade do professor autenticado em cada operação; a segunda mantém
+o escopo global do administrador explicitamente separado. Cada escopo possui
+uma rota filha de visualização (`professor-attendances-view` e
+`administration-attendances-view`): a listagem concentra filtros, indicadores e
+tabela, enquanto a página de detalhes carrega o registro interno e seu histórico
+somente após a ação explícita de exibição.
 
 `availabilities` armazena o proprietário, os instantes em UTC e o estado
 operacional. `availability_modalities` relaciona cada intervalo a um ou dois

@@ -90,8 +90,11 @@ distintas; não há confirmação adicional do aluno.
 ### 8. Não resolvido versus em tratativa
 
 **Decisão aprovada:** não resolvido significa demanda encerrada sem solução e
-exige justificativa; em tratativa permanece aberta. As transições posteriores e
-a possibilidade de reabertura ainda precisam ser definidas.
+exige justificativa; em tratativa permanece aberta. Uma demanda em tratativa
+pode continuar em tratativa com dados de continuidade atualizados, passar para
+resolvido ou passar para não resolvido. Toda mudança exige motivo, ator e data.
+Resolvido e não resolvido são estados finais no MVP e não podem ser reabertos.
+Consulte a ADR-027.
 
 ### 9. Continuidade da tratativa
 

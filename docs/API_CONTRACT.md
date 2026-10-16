@@ -510,8 +510,14 @@ A resposta comum é:
 ```text
 PUT /api/professor/appointments/:appointmentId/attendance
 PUT /api/admin/appointments/:appointmentId/attendance
+GET /api/professor/attendances?from=AAAA-MM-DD&to=AAAA-MM-DD&occurrence=...&resolutionStatus=...
+GET /api/admin/attendances?from=AAAA-MM-DD&to=AAAA-MM-DD&occurrence=...&resolutionStatus=...
+GET /api/professor/attendances/:attendanceId
+GET /api/admin/attendances/:attendanceId
 GET /api/professor/attendances/:attendanceId/history
 GET /api/admin/attendances/:attendanceId/history
+PATCH /api/professor/attendances/:attendanceId/status
+PATCH /api/admin/attendances/:attendanceId/status
 ```
 
 Os endpoints estão implementados. Professor atua somente sobre agendamento
@@ -553,8 +559,29 @@ Resposta de criação:
 ```
 
 O histórico retorna ocorrência, classificação, motivo da mudança, ator e data.
-Alterações posteriores de classificação ainda não possuem endpoint enquanto as
-transições e a reabertura permanecerem pendentes.
+As listagens aceitam um período máximo de 366 dias e filtros opcionais de
+ocorrência e classificação. O escopo do professor é sempre derivado da sessão;
+o administrador usa a capacidade global explícita. O detalhe retorna dados do
+agendamento, campos internos do atendimento, autoria da última atualização e o
+histórico. Nenhum desses endpoints é concedido ao aluno.
+
+Uma atualização aceita somente um atendimento realizado atualmente
+`em_tratativa`. O destino pode ser `em_tratativa`, `resolvido` ou
+`nao_resolvido`; os mesmos campos condicionais do registro inicial continuam
+obrigatórios e `changeReason` é sempre exigido:
+
+```json
+{
+  "resolutionStatus": "resolvido",
+  "solution": "Pendência regularizada após retorno do setor.",
+  "changeReason": "Documentação recebida e validada.",
+  "internalNotes": "Visível somente à equipe."
+}
+```
+
+A atualização de `attendances` e a nova entrada em
+`attendance_status_history` ocorrem na mesma transação. Ausências e estados
+finais respondem conflito e não podem ser reabertos no MVP.
 
 ### Dashboard
 
@@ -828,6 +855,6 @@ Twilio não estiver configurado, ela fica registrada como `falhou` com
 
 ## Próximo passo
 
-Definir e implementar as transições posteriores do atendimento em tratativa e a
-reabertura, além da consulta operacional dos dados internos autorizados. A
-tentativa de notificação de cancelamento permanece adiada para a Fase 7.
+Implementar os quatro totais do dashboard derivados dos atendimentos e o filtro
+por período. A fórmula percentual continua pendente de definição institucional,
+e a tentativa de notificação de cancelamento permanece adiada para a Fase 7.
