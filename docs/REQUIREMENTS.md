@@ -76,6 +76,10 @@ documento de requisitos original.
 - Registrar responsável e prazo quando a regra de tratativa exigir (`RF39`).
 - Preservar histórico de status e permitir filtros essenciais (`RF40`–`RF42`).
 - Não expor observações internas ao aluno (`RF43`).
+- Permitir que professor responsável e administrador mantenham uma demanda em
+  tratativa ou a finalizem como resolvida ou não resolvida, sempre com motivo,
+  ator e data.
+- Tratar resolvido e não resolvido como estados finais no MVP, sem reabertura.
 
 ### Indicadores
 
@@ -179,6 +183,10 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
   (`RN12`).
 - Histórico e exceções administrativas são auditáveis (`RN13`, `RN14`).
 - Modalidade escolhida deve ser permitida no horário (`RN15`).
+- Somente uma demanda em tratativa pode receber nova transição; ausência,
+  resolvido e não resolvido não são reabertos no MVP.
+- Toda transição de atendimento exige motivo e é persistida com ator e data na
+  mesma transação da atualização.
 
 ## Critérios de aceite do primeiro fluxo vertical
 

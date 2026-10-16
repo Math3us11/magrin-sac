@@ -60,6 +60,28 @@ const router = createRouter({
       },
     },
     {
+      path: '/professor/atendimentos',
+      name: 'professor-attendances',
+      component: () => import('@/views/attendance/AttendancesView.vue'),
+      props: { scope: 'professor' },
+      meta: {
+        requiredPermission: 'attendance.manage.assigned',
+        requiresAuth: true,
+        title: 'Atendimentos',
+      },
+    },
+    {
+      path: '/professor/atendimentos/:attendanceId',
+      name: 'professor-attendances-view',
+      component: () => import('@/views/attendance/AttendanceDetailsView.vue'),
+      props: { scope: 'professor' },
+      meta: {
+        requiredPermission: 'attendance.manage.assigned',
+        requiresAuth: true,
+        title: 'Visualizar atendimento',
+      },
+    },
+    {
       path: '/administracao/agenda',
       name: 'administration-schedule',
       component: () => import('@/views/administration/ScheduleView.vue'),
@@ -67,6 +89,28 @@ const router = createRouter({
         requiredPermission: 'availability.read.any',
         requiresAuth: true,
         title: 'Agenda geral',
+      },
+    },
+    {
+      path: '/administracao/atendimentos',
+      name: 'administration-attendances',
+      component: () => import('@/views/attendance/AttendancesView.vue'),
+      props: { scope: 'admin' },
+      meta: {
+        requiredPermission: 'attendance.manage.any',
+        requiresAuth: true,
+        title: 'Atendimentos',
+      },
+    },
+    {
+      path: '/administracao/atendimentos/:attendanceId',
+      name: 'administration-attendances-view',
+      component: () => import('@/views/attendance/AttendanceDetailsView.vue'),
+      props: { scope: 'admin' },
+      meta: {
+        requiredPermission: 'attendance.manage.any',
+        requiresAuth: true,
+        title: 'Visualizar atendimento',
       },
     },
     {

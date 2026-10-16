@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../../decorators/current-user.decorator.js';
 import { RequirePermissions } from '../../decorators/require-permissions.decorator.js';
 import { PermissionGuard } from '../../guards/permission.guard.js';
@@ -6,15 +16,33 @@ import { RequestOriginGuard } from '../../guards/request-origin.guard.js';
 import { SessionAuthGuard } from '../../guards/session-auth.guard.js';
 import type { AuthenticatedUser } from '../../types/authenticated-user.type.js';
 import { AttendanceService } from './attendance.service.js';
+import type { AttendanceDetailResponseDto } from './dto/attendance-detail-response.dto.js';
 import type { ListAttendanceHistoryResponseDto } from './dto/list-attendance-history-response.dto.js';
+import { ListAttendancesQueryDto } from './dto/list-attendances.dto.js';
+import type { ListAttendancesResponseDto } from './dto/list-attendances-response.dto.js';
 import { RegisterAttendanceDto } from './dto/register-attendance.dto.js';
 import type { RegisterAttendanceResponseDto } from './dto/register-attendance-response.dto.js';
+import { UpdateAttendanceStatusDto } from './dto/update-attendance-status.dto.js';
+import type { UpdateAttendanceStatusResponseDto } from './dto/update-attendance-status-response.dto.js';
 
 @Controller('admin')
 @UseGuards(SessionAuthGuard, PermissionGuard, RequestOriginGuard)
 @RequirePermissions('attendance.manage.any')
 export class AdminAttendanceController {
   constructor(private readonly attendanceService: AttendanceService) {}
+
+  @Get('attendances')
+  list(@Query() query: ListAttendancesQueryDto): Promise<ListAttendancesResponseDto> {
+    return this.attendanceService.listAny(query);
+  }
+
+  @Get('attendances/:attendanceId')
+  detail(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('attendanceId', ParseIntPipe) attendanceId: number,
+  ): Promise<AttendanceDetailResponseDto> {
+    return this.attendanceService.getAny(attendanceId, user.id);
+  }
 
   @Put('appointments/:appointmentId/attendance')
   register(
@@ -31,5 +59,14 @@ export class AdminAttendanceController {
     @Param('attendanceId', ParseIntPipe) attendanceId: number,
   ): Promise<ListAttendanceHistoryResponseDto> {
     return this.attendanceService.listAnyHistory(attendanceId, user.id);
+  }
+
+  @Patch('attendances/:attendanceId/status')
+  updateStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('attendanceId', ParseIntPipe) attendanceId: number,
+    @Body() input: UpdateAttendanceStatusDto,
+  ): Promise<UpdateAttendanceStatusResponseDto> {
+    return this.attendanceService.updateAnyStatus(attendanceId, input, user.id);
   }
 }

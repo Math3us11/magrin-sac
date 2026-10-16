@@ -4,8 +4,8 @@
 
 Primeiro recorte físico aprovado e versionado para identidade, sessões,
 configuração, disponibilidade, agendamento e registro inicial de atendimento.
-Categorias e transições posteriores da demanda continuam como proposta até as
-pendências institucionais correspondentes serem resolvidas.
+As transições básicas da demanda estão aprovadas e implementadas. Categorias e
+múltiplas etapas estruturadas de continuidade continuam pendentes.
 
 ## Agregados e entidades
 
@@ -78,7 +78,9 @@ acesso por si só. O primeiro conjunto contém `home`, o grupo `reports` com
 `reports.dashboard` e o grupo `appointments` com `appointments.new` e
 `appointments.mine`. O grupo administrativo acrescenta `administration.users`,
 visível somente para quem possui `users.manage`. O professor recebe o grupo
-`agenda` com o item `agenda.availability`.
+`agenda` com os itens `agenda.availability` e `agenda.attendances`. O agrupador
+administrativo também possui `administration.attendances` para a consulta e
+evolução global autorizada.
 
 ### Aluno
 
@@ -193,8 +195,12 @@ indicadores comparáveis.
 Registra transições da demanda, justificativa, responsável e data.
 
 O modelo físico `attendance_status_history` registra a ocorrência e a
-classificação inicial com ator e instante na mesma transação do atendimento. As
-regras de transições posteriores e reabertura permanecem pendentes.
+classificação inicial com ator e instante na mesma transação do atendimento.
+Uma demanda `em_tratativa` pode permanecer nesse estado com continuidade
+atualizada ou terminar como `resolvido` ou `nao_resolvido`. Cada mudança exige
+motivo e cria uma nova entrada de histórico na mesma transação da atualização.
+Os estados finais não podem ser reabertos no MVP, e ausências não possuem
+transição de resolução.
 
 ### Notificação
 
@@ -273,8 +279,9 @@ ausência não deve receber automaticamente um resultado de resolução.
 - enviada;
 - falhou.
 
-As transições posteriores e a possibilidade de reabertura ainda devem ser
-definidas no workshop de domínio.
+No MVP, somente `em_tratativa` possui transições posteriores. Ela pode permanecer
+em tratativa, mudar para resolvido ou mudar para não resolvido. Resolvido e não
+resolvido são finais e não possuem reabertura.
 
 ## Invariantes
 
@@ -317,6 +324,10 @@ definidas no workshop de domínio.
 30. Disponibilidades não canceladas do mesmo professor não se sobrepõem.
 31. Início e término do agendamento pertencem integralmente à mesma janela de
     disponibilidade.
+32. Ausência não recebe classificação nem transição de resolução.
+33. Somente `em_tratativa` pode mudar de classificação no MVP.
+34. Toda transição de atendimento registra motivo, ator e data na mesma
+    transação da atualização.
 
 ## Convenção de auditoria
 

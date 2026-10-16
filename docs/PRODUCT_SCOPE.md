@@ -40,7 +40,7 @@ indicadores confiáveis.
 
 - consulta os atendimentos vinculados às próprias disponibilidades;
 - cancela atendimento atribuído dentro da regra institucional;
-
+- registra realização ou ausência e acompanha as próprias demandas em tratativa;
 - acessa a própria agenda;
 - publica e mantém as próprias disponibilidades conforme as regras aprovadas;
 - não administra a agenda de outros professores sem uma permissão adicional.
@@ -53,10 +53,11 @@ ainda serão detalhadas.
 ### Administrador do sistema
 
 Gerencia usuários, perfis, parâmetros e permissões técnicas e administrativas.
-Possui uma visão global, somente de consulta no primeiro recorte, das
-disponibilidades e dos agendamentos. Ações em nome de aluno ou professor exigem
-permissão específica e autoria auditável; o perfil não ignora automaticamente
-as regras de domínio.
+Possui visão global das disponibilidades, dos agendamentos e dos atendimentos.
+O registro e a evolução administrativa do atendimento exigem permissão
+específica e autoria auditável. Demais ações em nome de aluno ou professor
+continuam exigindo capacidades próprias; o perfil não ignora automaticamente as
+regras de domínio.
 
 ## Fluxo principal do MVP
 
@@ -124,7 +125,10 @@ perfil privilegiado durante um cadastro público.
 - observações internas;
 - solução ou encaminhamento;
 - classificação como resolvido, não resolvido ou em tratativa;
-- histórico de alterações.
+- evolução de uma tratativa para continuidade, resolução ou encerramento sem
+  solução;
+- histórico de alterações com motivo, ator e data;
+- estados finais sem reabertura no MVP.
 
 ### Dashboard
 

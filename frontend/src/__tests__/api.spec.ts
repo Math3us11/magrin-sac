@@ -21,7 +21,13 @@ const credentialEncryptionMocks = vi.hoisted(() => ({
 vi.mock('@/services/credential-encryption', () => credentialEncryptionMocks)
 
 import { ApiError } from '@/services/api'
-import { registerAdminAttendance, registerAssignedAttendance } from '@/services/attendance'
+import {
+  getAttendance,
+  listAttendances,
+  registerAdminAttendance,
+  registerAssignedAttendance,
+  updateAttendanceStatus,
+} from '@/services/attendance'
 import {
   createAppointment,
   listAdminAppointments,
@@ -248,6 +254,18 @@ describe('serviço de atendimentos', () => {
 
     await registerAssignedAttendance(30, payload)
     await registerAdminAttendance(31, { occurrence: 'ausencia' })
+    await listAttendances('professor', {
+      from: '2026-10-01',
+      occurrence: 'realizado',
+      resolutionStatus: 'em_tratativa',
+      to: '2026-10-31',
+    })
+    await getAttendance('admin', 40)
+    await updateAttendanceStatus('professor', 40, {
+      changeReason: 'Retorno recebido.',
+      resolutionStatus: 'resolvido',
+      solution: 'Concluído.',
+    })
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -258,6 +276,28 @@ describe('serviço de atendimentos', () => {
       2,
       '/api/admin/appointments/31/attendance',
       expect.objectContaining({ body: JSON.stringify({ occurrence: 'ausencia' }), method: 'PUT' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/professor/attendances?from=2026-10-01&to=2026-10-31&occurrence=realizado&resolutionStatus=em_tratativa',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/admin/attendances/40',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/professor/attendances/40/status',
+      expect.objectContaining({
+        body: JSON.stringify({
+          changeReason: 'Retorno recebido.',
+          resolutionStatus: 'resolvido',
+          solution: 'Concluído.',
+        }),
+        method: 'PATCH',
+      }),
     )
   })
 })

@@ -174,8 +174,11 @@ Entregas:
 - [x] resolvido, não resolvido e em tratativa;
 - [x] solução, justificativa, encaminhamento e continuidade mínima;
 - [x] histórico inicial com ator e data;
-- transições posteriores e reabertura;
-- filtros administrativos essenciais.
+- [x] transições posteriores de `em_tratativa`, com estados finais sem
+      reabertura no MVP;
+- [x] filtros essenciais por período, ocorrência e classificação para professor
+      responsável e administrador;
+- [x] consulta operacional com detalhe interno e histórico autorizados.
 
 Critério de saída: cada estado respeita seus campos obrigatórios e permissões.
 
@@ -236,8 +239,7 @@ Entregas:
 
 ## Próxima ação recomendada
 
-Validar o registro inicial de atendimento na interface e então definir as
-transições posteriores de `em_tratativa`, incluindo reabertura, antes de criar o
-endpoint de alteração. O catálogo oficial de categorias e a fórmula do indicador
-de resolução também permanecem pendentes. A notificação de cancelamento continua
-adiada para a Fase 7.
+Iniciar a Fase 6 com os quatro totais derivados dos registros de atendimento e
+o filtro por período, mantendo a fórmula percentual fora do contrato até a
+definição institucional. O catálogo oficial de categorias permanece pendente e
+a notificação de cancelamento continua adiada para a Fase 7.
