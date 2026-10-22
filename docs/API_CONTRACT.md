@@ -58,7 +58,8 @@ ele não é retornado no JSON nem persistido pelo JavaScript. Não há refresh t
 no MVP. O backend já controla revogação, duração absoluta e estado do usuário
 consultando a sessão no MariaDB, além de registrar a última atividade. A
 expiração por inatividade permanece pendente dos valores em
-`OPEN_QUESTIONS.md`.
+`OPEN_QUESTIONS.md`. Respostas de login, identidade atual e chave pública usam
+`Cache-Control: no-store`.
 
 Antes do login, o cliente consulta `GET /api/auth/credential-key`. A resposta
 não contém segredo e não deve ser armazenada em cache:
@@ -115,6 +116,14 @@ Credenciais inválidas respondem `401` com mensagem genérica, sem revelar se o
 e-mail existe. `GET /api/me` retorna o mesmo objeto de usuário, sem o envelope
 `user`. `POST /api/auth/logout` é idempotente, revoga a sessão reconhecida,
 remove o cookie e responde `204` sem corpo.
+
+O backend limita falhas consecutivas por identidade normalizada, sem armazenar
+ou registrar o e-mail em texto legível nesse controle. Ao alcançar
+`AUTH_LOGIN_MAX_FAILURES` dentro da janela configurada por
+`AUTH_LOGIN_WINDOW_SECONDS`, o login responde `429` até o término da janela. O
+contador é limpo após um login concluído. Este controle local é limitado à
+instância atual; uma publicação com múltiplas instâncias deverá substituí-lo por
+um armazenamento compartilhado ou por proteção equivalente na borda.
 
 Quando `mustChangePassword` for `true`, a sessão fica restrita à consulta de
 `GET /api/me`, ao logout e à definição da senha inicial. Qualquer outro endpoint

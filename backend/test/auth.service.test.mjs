@@ -21,6 +21,9 @@ const activeUser = {
 function createAuthService(overrides = {}) {
   const state = {
     createdSession: null,
+    clearedLoginAttempt: null,
+    checkedLoginAttempt: null,
+    failedLoginAttempt: null,
     sessionUpdate: null,
     updatedUser: null,
     updatedSessions: null,
@@ -72,6 +75,17 @@ function createAuthService(overrides = {}) {
         ? (overrides.newPasswordMatches ?? false)
         : (overrides.passwordMatches ?? true),
   };
+  const loginAttemptService = {
+    assertAllowed: (email) => {
+      state.checkedLoginAttempt = email;
+    },
+    clear: (email) => {
+      state.clearedLoginAttempt = email;
+    },
+    recordFailure: (email) => {
+      state.failedLoginAttempt = email;
+    },
+  };
   const configService = new ConfigService({
     auth: { jwt: { ttlSeconds: 3600 } },
   });
@@ -83,6 +97,7 @@ function createAuthService(overrides = {}) {
       sequelize,
       jwtSessionService,
       passwordHashService,
+      loginAttemptService,
       configService,
     ),
     state,
@@ -105,6 +120,8 @@ test('login válido cria sessão e retorna somente dados públicos do usuário',
   assert.equal(state.createdSession.userId, activeUser.id);
   assert.equal(state.createdSession.createdBy, activeUser.id);
   assert.equal(state.createdSession.tokenId, '9a2575e1-7707-4381-aa11-15a78455d5d6');
+  assert.equal(state.checkedLoginAttempt, activeUser.email);
+  assert.equal(state.clearedLoginAttempt, activeUser.email);
 });
 
 test('login rejeita credenciais inválidas com mensagem genérica', async () => {
@@ -116,6 +133,7 @@ test('login rejeita credenciais inválidas com mensagem genérica', async () => 
       error instanceof UnauthorizedException && error.message === 'E-mail ou senha inválidos.',
   );
   assert.equal(state.createdSession, null);
+  assert.equal(state.failedLoginAttempt, activeUser.email);
 });
 
 test('autenticação consulta sessão e usuário atuais e registra atividade', async () => {

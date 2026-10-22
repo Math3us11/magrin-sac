@@ -220,6 +220,7 @@ describe('navegação autenticada', () => {
     await router.isReady()
 
     const wrapper = mount(AppShell, {
+      attachTo: document.body,
       global: { plugins: [pinia, router] },
       slots: { default: '<section data-testid="page-content">Conteúdo</section>' },
     })
@@ -230,11 +231,33 @@ describe('navegação autenticada', () => {
     expect(wrapper.get('aside').classes()).toContain('lg:self-start')
     expect(wrapper.get('aside').classes()).toContain('row-start-2')
     expect(wrapper.get('main').classes()).toContain('lg:col-start-2')
+    expect(wrapper.get('main').attributes('tabindex')).toBe('-1')
+    expect(wrapper.find('header h1').exists()).toBe(false)
     expect(wrapper.find('footer').exists()).toBe(false)
     expect(wrapper.get('[data-testid="page-content"]').text()).toBe('Conteúdo')
 
     const headerLogo = wrapper.get('header img')
     expect(headerLogo.attributes('src')).toBe('/logo_vermelha.png')
+
+    const navigationTrigger = wrapper.get<HTMLButtonElement>(
+      '[data-testid="mobile-navigation-trigger"]',
+    )
+    navigationTrigger.element.focus()
+    await navigationTrigger.trigger('click')
+    await nextTick()
+
+    expect(navigationTrigger.attributes('aria-expanded')).toBe('true')
+    expect(navigationTrigger.attributes('aria-label')).toBe('Fechar menu de navegação')
+    expect(wrapper.get('aside').attributes('role')).toBe('dialog')
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="sidebar-mobile-close"]').element)
+    expect(document.body.style.overflow).toBe('hidden')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+    await nextTick()
+    expect(navigationTrigger.attributes('aria-expanded')).toBe('false')
+    expect(navigationTrigger.attributes('aria-label')).toBe('Abrir menu de navegação')
+    expect(document.activeElement).toBe(navigationTrigger.element)
+    expect(document.body.style.overflow).toBe('')
 
     await wrapper.get('header button[aria-label="Usar tema escuro"]').trigger('click')
     expect(headerLogo.attributes('src')).toBe('/logo_branca.png')

@@ -180,6 +180,54 @@ describe('componentes básicos', () => {
     expect(wrapper.text()).toContain('novembro de 2026')
   })
 
+  it('AppCalendar oferece navegação por teclado com uma única parada na grade', async () => {
+    const wrapper = mount(AppCalendar, {
+      attachTo: document.body,
+      props: {
+        events: [],
+        initialDate: '2026-10-05',
+        showSelectedAgenda: false,
+        today: '2026-10-07',
+      },
+    })
+
+    const initialDay = wrapper.get<HTMLButtonElement>('[data-testid="calendar-day-2026-10-05"]')
+    const followingDay = wrapper.get<HTMLButtonElement>('[data-testid="calendar-day-2026-10-06"]')
+
+    expect(initialDay.attributes('tabindex')).toBe('0')
+    expect(followingDay.attributes('tabindex')).toBe('-1')
+    expect(wrapper.get('[data-testid="calendar-day-2026-10-07"]').attributes('aria-current')).toBe(
+      'date',
+    )
+
+    initialDay.element.focus()
+    await initialDay.trigger('keydown', { key: 'ArrowRight' })
+    await nextTick()
+
+    const selectedDay = wrapper.get<HTMLButtonElement>('[data-testid="calendar-day-2026-10-06"]')
+    expect(document.activeElement).toBe(selectedDay.element)
+    expect(selectedDay.attributes('tabindex')).toBe('0')
+    expect(initialDay.attributes('tabindex')).toBe('-1')
+    expect(wrapper.emitted('selectDate')?.slice(-1)[0]).toEqual(['2026-10-06'])
+
+    await selectedDay.trigger('keydown', { key: 'Home' })
+    await nextTick()
+    expect(document.activeElement).toBe(
+      wrapper.get('[data-testid="calendar-day-2026-10-05"]').element,
+    )
+
+    await wrapper
+      .get<HTMLButtonElement>('[data-testid="calendar-day-2026-10-05"]')
+      .trigger('keydown', { key: 'PageDown' })
+    await nextTick()
+    expect(wrapper.get('[data-testid="calendar-month-label"]').text()).toBe('novembro de 2026')
+    expect(document.activeElement).toBe(
+      wrapper.get('[data-testid="calendar-day-2026-11-05"]').element,
+    )
+
+    wrapper.unmount()
+  })
+
   it('AppLoading controla o overlay e usa a apresentação padrão', async () => {
     const wrapper = mount(AppLoading, {
       attachTo: document.body,
@@ -361,6 +409,54 @@ describe('componentes básicos', () => {
 
     expect(document.body.querySelector('[role="listbox"]')).toBeNull()
     expect(document.activeElement).toBe(trigger.element)
+
+    wrapper.unmount()
+  })
+
+  it('AppMultiSelect move o foco pelas opções e continua no próximo campo com Tab', async () => {
+    const wrapper = mount(
+      {
+        components: { AppMultiSelect },
+        template: `
+          <div>
+            <button data-testid="before" type="button">Anterior</button>
+            <AppMultiSelect
+              label="Cursos"
+              name="courses-keyboard"
+              :options="[
+                { label: 'Ciência da Computação', value: 'computacao' },
+                { label: 'Medicina', value: 'medicina' },
+              ]"
+            />
+            <button data-testid="after" type="button">Próximo</button>
+          </div>
+        `,
+      },
+      { attachTo: document.body },
+    )
+
+    const trigger = wrapper.get<HTMLButtonElement>('[aria-haspopup="listbox"]')
+    trigger.element.focus()
+    await trigger.trigger('keydown', { key: 'ArrowDown' })
+    await nextTick()
+
+    const options = Array.from(
+      document.body.querySelectorAll<HTMLInputElement>('[role="listbox"] input'),
+    )
+    expect(document.activeElement).toBe(options[0])
+
+    options[0]?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowDown' }))
+    await nextTick()
+    expect(document.activeElement).toBe(options[1])
+
+    options[1]?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Home' }))
+    await nextTick()
+    expect(document.activeElement).toBe(options[0])
+
+    options[0]?.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Tab' }))
+    await nextTick()
+    expect(document.body.querySelector('[role="listbox"]')).toBeNull()
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="after"]').element)
 
     wrapper.unmount()
   })

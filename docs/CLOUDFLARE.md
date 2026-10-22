@@ -156,7 +156,9 @@ proteção Access fazem parte da configuração planejada.
 
 - não há disponibilidade quando o computador local, o MariaDB ou a internet
   estiverem indisponíveis;
-- o banco continua local e depende da política futura de backup e restauração;
+- o banco continua local; o procedimento manual está em `BACKUP_RESTORE.md`,
+  enquanto frequência, retenção, criptografia e responsabilidade permanecem
+  pendentes de decisão institucional;
 - logs e monitoramento ainda são os do processo local;
 - esta configuração não resolve a decisão institucional de hospedagem em
   produção registrada em `OPEN_QUESTIONS.md`.

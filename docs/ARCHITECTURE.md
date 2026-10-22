@@ -394,6 +394,13 @@ de anexar a identidade à requisição. `last_activity_at` já é atualizado, ma
 expiração por inatividade só será ativada depois da aprovação dos tempos de
 sessão em `OPEN_QUESTIONS.md`.
 
+Falhas consecutivas de login são controladas em memória por identidade
+normalizada e transformada em hash, com limite e janela definidos por ambiente.
+O contador é limitado em tamanho, não grava dados pessoais em logs e é removido
+após autenticação bem-sucedida. A implementação atende ao monólito de instância
+única do MVP; escala horizontal exigirá armazenamento compartilhado ou proteção
+equivalente no proxy de borda.
+
 ### Navegação e permissões
 
 A navegação dinâmica usa `menu_items`, com hierarquia por `parent_id`, ordem,
