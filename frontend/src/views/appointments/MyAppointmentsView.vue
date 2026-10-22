@@ -6,6 +6,7 @@ import AppButton from '@/components/basic/AppButton.vue'
 import AppCalendar from '@/components/basic/AppCalendar.vue'
 import AppModal from '@/components/basic/AppModal.vue'
 import AppSelect from '@/components/basic/AppSelect.vue'
+import AppointmentCancellationModal from '@/components/appointments/AppointmentCancellationModal.vue'
 import {
   getInstitutionDateTime,
   INSTITUTION_TIME_ZONE,
@@ -21,7 +22,7 @@ import {
   userPlusIcon,
 } from '@/icons'
 import { ApiError } from '@/services/api'
-import { listOwnAppointments } from '@/services/appointments'
+import { cancelOwnAppointment, listOwnAppointments } from '@/services/appointments'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
 import type {
@@ -45,6 +46,9 @@ const appointments = ref<OwnAppointmentItem[]>([])
 const nextAppointment = ref<OwnAppointmentItem | null>(null)
 const selectedAppointment = ref<OwnAppointmentItem | null>(null)
 const detailsOpen = ref(false)
+const cancellationOpen = ref(false)
+const cancelling = ref(false)
+const cancellationError = ref('')
 const loading = ref(true)
 const loadError = ref('')
 const page = ref(1)
@@ -89,6 +93,15 @@ const modalityOptions = [
 ] as const
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const canCancelSelectedAppointment = computed(
+  () =>
+    selectedAppointment.value?.status === 'confirmado' &&
+    new Date(selectedAppointment.value.startsAt).getTime() - Date.now() >= 2 * 60 * 60 * 1000,
+)
+const cancellationAppointmentLabel = computed(() => {
+  if (!selectedAppointment.value) return undefined
+  return `${selectedAppointment.value.protocol} · ${formatDate(selectedAppointment.value.startsAt)}, ${formatTime(selectedAppointment.value.startsAt)}–${formatTime(selectedAppointment.value.endsAt)}`
+})
 
 const selectedDateLabel = computed(() =>
   new Intl.DateTimeFormat('pt-BR', {
@@ -157,6 +170,32 @@ function modalityLabel(modality: AvailabilityModality): string {
 function openDetails(appointment: OwnAppointmentItem) {
   selectedAppointment.value = appointment
   detailsOpen.value = true
+}
+
+function requestCancellation() {
+  if (!canCancelSelectedAppointment.value) return
+  cancellationError.value = ''
+  cancellationOpen.value = true
+}
+
+async function confirmCancellation({ reason }: { reason: string }) {
+  if (!selectedAppointment.value || cancelling.value) return
+
+  cancelling.value = true
+  cancellationError.value = ''
+  try {
+    await cancelOwnAppointment(selectedAppointment.value.id, reason)
+    cancellationOpen.value = false
+    detailsOpen.value = false
+    await loadAppointments()
+  } catch (error) {
+    cancellationError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível cancelar o agendamento. Tente novamente.'
+  } finally {
+    cancelling.value = false
+  }
 }
 
 function handleCalendarEvent(event: AppCalendarEvent) {
@@ -620,8 +659,29 @@ onMounted(() => void loadAppointments())
         </div>
       </dl>
       <template #footer>
+        <AppButton
+          v-if="selectedAppointment?.status === 'confirmado'"
+          variant="danger"
+          :disabled="!canCancelSelectedAppointment"
+          :title="
+            canCancelSelectedAppointment
+              ? 'Cancelar este agendamento'
+              : 'O prazo de cancelamento encerra 2 horas antes do atendimento.'
+          "
+          @click="requestCancellation"
+        >
+          Cancelar agendamento
+        </AppButton>
         <AppButton variant="secondary" @click="detailsOpen = false">Fechar</AppButton>
       </template>
     </AppModal>
+
+    <AppointmentCancellationModal
+      v-model:open="cancellationOpen"
+      :appointment-label="cancellationAppointmentLabel"
+      :error="cancellationError"
+      :loading="cancelling"
+      @confirm="confirmCancellation"
+    />
   </section>
 </template>

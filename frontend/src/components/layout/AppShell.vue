@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import AppHeader from '@/components/layout/AppHeader.vue'
@@ -12,6 +12,8 @@ const route = useRoute()
 const navigation = useNavigationStore()
 const isMobileNavigationOpen = ref(false)
 const isDesktopSidebarCollapsed = ref(readCollapsedPreference())
+let mobileNavigationTrigger: HTMLElement | null = null
+let previousBodyOverflow = ''
 
 function readCollapsedPreference(): boolean {
   if (typeof window === 'undefined') return false
@@ -33,12 +35,91 @@ function persistCollapsedPreference(value: boolean) {
   }
 }
 
-function closeMobileNavigation() {
+async function openMobileNavigation() {
+  mobileNavigationTrigger =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null
+  previousBodyOverflow = document.body.style.overflow
+  document.body.style.overflow = 'hidden'
+  isMobileNavigationOpen.value = true
+
+  await nextTick()
+  document.querySelector<HTMLElement>('[data-testid="sidebar-mobile-close"]')?.focus()
+}
+
+function closeMobileNavigation(restoreFocus = true) {
+  if (!isMobileNavigationOpen.value) return
+
+  const triggerToRestore = mobileNavigationTrigger
   isMobileNavigationOpen.value = false
+  document.body.style.overflow = previousBodyOverflow
+
+  if (restoreFocus) {
+    void nextTick(() => triggerToRestore?.focus())
+  }
+
+  mobileNavigationTrigger = null
+}
+
+function toggleMobileNavigation() {
+  if (isMobileNavigationOpen.value) closeMobileNavigation()
+  else void openMobileNavigation()
 }
 
 function handleEscape(event: KeyboardEvent) {
-  if (event.key === 'Escape') closeMobileNavigation()
+  if (event.key !== 'Escape' || !isMobileNavigationOpen.value) return
+
+  event.preventDefault()
+  closeMobileNavigation()
+}
+
+function handleFocusTrap(event: KeyboardEvent) {
+  if (event.key !== 'Tab' || !isMobileNavigationOpen.value) return
+
+  const sidebar = document.getElementById('app-sidebar')
+  if (!sidebar) return
+
+  const focusableElements = Array.from(
+    sidebar.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((element) => {
+    let current: HTMLElement | null = element
+
+    while (current && current !== sidebar) {
+      if (
+        current.hidden ||
+        current.style.display === 'none' ||
+        current.classList.contains('hidden')
+      ) {
+        return false
+      }
+      current = current.parentElement
+    }
+
+    return true
+  })
+  const firstElement = focusableElements[0]
+  const lastElement = focusableElements[focusableElements.length - 1]
+
+  if (!firstElement || !lastElement) {
+    event.preventDefault()
+    sidebar.focus()
+    return
+  }
+
+  if (!sidebar.contains(document.activeElement)) {
+    event.preventDefault()
+    ;(event.shiftKey ? lastElement : firstElement).focus()
+    return
+  }
+
+  if (event.shiftKey && document.activeElement === firstElement) {
+    event.preventDefault()
+    lastElement.focus()
+  } else if (!event.shiftKey && document.activeElement === lastElement) {
+    event.preventDefault()
+    firstElement.focus()
+  }
 }
 
 async function reloadNavigation() {
@@ -50,10 +131,14 @@ async function reloadNavigation() {
 }
 
 watch(isDesktopSidebarCollapsed, persistCollapsedPreference)
-watch(() => route.fullPath, closeMobileNavigation)
+watch(
+  () => route.fullPath,
+  () => closeMobileNavigation(false),
+)
 
 onMounted(() => {
   window.addEventListener('keydown', handleEscape)
+  window.addEventListener('keydown', handleFocusTrap)
 
   if (!navigation.initialized && !navigation.isLoading) {
     void reloadNavigation()
@@ -62,6 +147,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleEscape)
+  window.removeEventListener('keydown', handleFocusTrap)
+
+  if (isMobileNavigationOpen.value) document.body.style.overflow = previousBodyOverflow
 })
 </script>
 
@@ -77,7 +165,7 @@ onUnmounted(() => {
     <AppHeader
       class="col-start-1 row-start-1 lg:col-span-2"
       :mobile-navigation-open="isMobileNavigationOpen"
-      @toggle-navigation="isMobileNavigationOpen = !isMobileNavigationOpen"
+      @toggle-navigation="toggleMobileNavigation"
     />
 
     <button
@@ -85,7 +173,7 @@ onUnmounted(() => {
       class="fixed inset-0 z-40 bg-black/45 backdrop-blur-[2px] lg:hidden"
       type="button"
       aria-label="Fechar menu de navegação"
-      @click="closeMobileNavigation"
+      @click="closeMobileNavigation()"
     ></button>
 
     <AppSidebar
@@ -95,13 +183,17 @@ onUnmounted(() => {
       :is-loading="navigation.isLoading"
       :items="navigation.items"
       :mobile-open="isMobileNavigationOpen"
-      @close-mobile="closeMobileNavigation"
+      @close-mobile="closeMobileNavigation()"
       @expand-desktop="isDesktopSidebarCollapsed = false"
       @retry="reloadNavigation"
       @toggle-desktop="isDesktopSidebarCollapsed = !isDesktopSidebarCollapsed"
     />
 
-    <main id="conteudo-principal" class="col-start-1 row-start-2 min-w-0 lg:col-start-2">
+    <main
+      id="conteudo-principal"
+      class="col-start-1 row-start-2 min-w-0 lg:col-start-2"
+      tabindex="-1"
+    >
       <slot />
     </main>
   </div>

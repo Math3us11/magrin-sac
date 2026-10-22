@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 
 import { calendarCheckIcon, chevronLeftIcon, chevronRightIcon } from '@/icons'
 import type { AppCalendarEvent, AppCalendarEventTone } from '@/types/calendar'
@@ -27,6 +27,7 @@ const weekdayLabels = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 const initialReference = props.initialDate ?? props.today
 const visibleMonth = ref(initialReference.slice(0, 7))
 const selectedDate = ref(initialReference)
+const calendarRoot = ref<HTMLElement | null>(null)
 
 function addUtcDays(value: string, amount: number): string {
   const date = new Date(`${value}T12:00:00.000Z`)
@@ -38,6 +39,19 @@ function shiftUtcMonth(value: string, amount: number): string {
   const date = new Date(`${value}-01T12:00:00.000Z`)
   date.setUTCMonth(date.getUTCMonth() + amount)
   return date.toISOString().slice(0, 7)
+}
+
+function shiftDateMonth(value: string, amount: -1 | 1): string {
+  const targetMonth = shiftUtcMonth(value.slice(0, 7), amount)
+  const targetFirstDay = new Date(`${targetMonth}-01T12:00:00.000Z`)
+  const followingMonth = new Date(targetFirstDay)
+  followingMonth.setUTCMonth(followingMonth.getUTCMonth() + 1)
+  const targetMonthDays = Math.round(
+    (followingMonth.getTime() - targetFirstDay.getTime()) / 86_400_000,
+  )
+  const targetDay = Math.min(Number(value.slice(-2)), targetMonthDays)
+
+  return `${targetMonth}-${String(targetDay).padStart(2, '0')}`
 }
 
 function eventsForDate(date: string): AppCalendarEvent[] {
@@ -74,6 +88,49 @@ function selectDate(date: string) {
     emit('visibleMonthChange', visibleMonth.value)
   }
   emit('selectDate', date)
+}
+
+async function selectAndFocusDate(date: string) {
+  selectDate(date)
+  await nextTick()
+  calendarRoot.value?.querySelector<HTMLButtonElement>(`[data-calendar-date="${date}"]`)?.focus()
+}
+
+function handleDayKeydown(event: KeyboardEvent, date: string, index: number) {
+  let targetDate: string | undefined
+
+  switch (event.key) {
+    case 'ArrowLeft':
+      targetDate = addUtcDays(date, -1)
+      break
+    case 'ArrowRight':
+      targetDate = addUtcDays(date, 1)
+      break
+    case 'ArrowUp':
+      targetDate = addUtcDays(date, -7)
+      break
+    case 'ArrowDown':
+      targetDate = addUtcDays(date, 7)
+      break
+    case 'Home':
+      targetDate = calendarDays.value[index - (index % 7)]?.date
+      break
+    case 'End':
+      targetDate = calendarDays.value[index + (6 - (index % 7))]?.date
+      break
+    case 'PageUp':
+      targetDate = shiftDateMonth(date, -1)
+      break
+    case 'PageDown':
+      targetDate = shiftDateMonth(date, 1)
+      break
+    default:
+      return
+  }
+
+  if (!targetDate) return
+  event.preventDefault()
+  void selectAndFocusDate(targetDate)
 }
 
 function formatMonth(value: string): string {
@@ -161,7 +218,11 @@ watch(
 </script>
 
 <template>
-  <section class="app-calendar overflow-hidden" aria-label="Calendário da agenda">
+  <section
+    ref="calendarRoot"
+    class="app-calendar overflow-hidden"
+    aria-label="Calendário da agenda"
+  >
     <header
       class="calendar-toolbar flex flex-col gap-3 border-b border-outline px-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
     >
@@ -215,9 +276,12 @@ watch(
           </div>
         </div>
 
-        <div class="grid grid-cols-7" :aria-label="formatMonth(visibleMonth)">
+        <div
+          class="grid grid-cols-7"
+          :aria-label="`${formatMonth(visibleMonth)}. Use as setas para navegar entre os dias, Home e End para os limites da semana, Page Up e Page Down para trocar de mês.`"
+        >
           <button
-            v-for="day in calendarDays"
+            v-for="(day, index) in calendarDays"
             :key="day.date"
             class="calendar-day group min-w-0 border-b border-r border-outline p-1 text-left align-top transition-colors hover:bg-surface-subtle focus-visible:relative focus-visible:z-10 sm:p-1.5 lg:p-2"
             :class="
@@ -228,10 +292,14 @@ watch(
                   : 'bg-surface-subtle/50 text-content-muted'
             "
             type="button"
+            :aria-current="day.isToday ? 'date' : undefined"
             :aria-label="dayAriaLabel(day.date, day.events.length)"
             :aria-pressed="day.isSelected"
+            :data-calendar-date="day.date"
             :data-testid="`calendar-day-${day.date}`"
+            :tabindex="day.isSelected ? 0 : -1"
             @click="selectDate(day.date)"
+            @keydown="handleDayKeydown($event, day.date, index)"
           >
             <span class="flex items-center justify-between gap-2">
               <span class="flex min-w-0 items-center gap-1 sm:gap-1.5">

@@ -45,3 +45,17 @@ test('mantém compatibilidade usando APP_ENV quando não há override do cookie'
     () => assert.equal(authConfig().cookie.secure, true),
   );
 });
+
+test('configura a proteção de tentativas de login com valores explícitos', () => {
+  withEnvironment(
+    {
+      AUTH_LOGIN_MAX_FAILURES: '4',
+      AUTH_LOGIN_WINDOW_SECONDS: '120',
+    },
+    () =>
+      assert.deepEqual(authConfig().loginAttempts, {
+        maxFailures: 4,
+        windowSeconds: 120,
+      }),
+  );
+});

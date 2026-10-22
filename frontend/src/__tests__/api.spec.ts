@@ -22,6 +22,13 @@ vi.mock('@/services/credential-encryption', () => credentialEncryptionMocks)
 
 import { ApiError } from '@/services/api'
 import {
+  getAttendance,
+  listAttendances,
+  registerAdminAttendance,
+  registerAssignedAttendance,
+  updateAttendanceStatus,
+} from '@/services/attendance'
+import {
   createAppointment,
   listAdminAppointments,
   listOwnAppointments,
@@ -33,6 +40,7 @@ import {
   listStudentAvailabilities,
 } from '@/services/availability'
 import { completeFirstAccessPassword, createSession } from '@/services/auth'
+import { getDashboardSummary } from '@/services/dashboard'
 import {
   createUser,
   deleteUser,
@@ -222,6 +230,106 @@ describe('serviço de agendamentos', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/appointments/mine?scope=history&status=concluido&modality=online&page=2&pageSize=8',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+  })
+})
+
+describe('serviço de atendimentos', () => {
+  it('usa endpoints separados para escopo atribuído e administrativo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          attendance: { appointmentId: 30, id: 40, occurrence: 'realizado' },
+          message: 'Atendimento registrado com sucesso.',
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const payload = {
+      occurrence: 'realizado' as const,
+      resolutionStatus: 'resolvido' as const,
+      solution: 'Orientação concluída.',
+    }
+
+    await registerAssignedAttendance(30, payload)
+    await registerAdminAttendance(31, { occurrence: 'ausencia' })
+    await listAttendances('professor', {
+      from: '2026-10-01',
+      occurrence: 'realizado',
+      resolutionStatus: 'em_tratativa',
+      to: '2026-10-31',
+    })
+    await getAttendance('admin', 40)
+    await updateAttendanceStatus('professor', 40, {
+      changeReason: 'Retorno recebido.',
+      resolutionStatus: 'resolvido',
+      solution: 'Concluído.',
+    })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/professor/appointments/30/attendance',
+      expect.objectContaining({ body: JSON.stringify(payload), method: 'PUT' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/appointments/31/attendance',
+      expect.objectContaining({ body: JSON.stringify({ occurrence: 'ausencia' }), method: 'PUT' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      '/api/professor/attendances?from=2026-10-01&to=2026-10-31&occurrence=realizado&resolutionStatus=em_tratativa',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      '/api/admin/attendances/40',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      5,
+      '/api/professor/attendances/40/status',
+      expect.objectContaining({
+        body: JSON.stringify({
+          changeReason: 'Retorno recebido.',
+          resolutionStatus: 'resolvido',
+          solution: 'Concluído.',
+        }),
+        method: 'PATCH',
+      }),
+    )
+  })
+})
+
+describe('serviço de dashboard', () => {
+  it('consulta indicadores em endpoints separados por escopo', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          filters: { from: '2026-10-01', to: '2026-10-31' },
+          inProgress: 0,
+          performed: 0,
+          resolved: 0,
+          unresolved: 0,
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await getDashboardSummary('professor', { from: '2026-10-01', to: '2026-10-31' })
+    await getDashboardSummary('admin', { from: '2026-10-01', to: '2026-10-31' })
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/professor/dashboard?from=2026-10-01&to=2026-10-31',
+      expect.objectContaining({ credentials: 'include' }),
+    )
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/admin/dashboard?from=2026-10-01&to=2026-10-31',
       expect.objectContaining({ credentials: 'include' }),
     )
   })

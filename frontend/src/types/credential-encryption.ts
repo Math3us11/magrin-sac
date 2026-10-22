@@ -1,7 +1,11 @@
 export const CREDENTIAL_ENCRYPTION_ALGORITHM = 'RSA-OAEP-256+A256GCM' as const
 
 export type CredentialPurpose =
-  'first-access-password' | 'login' | 'user-deletion-confirmation' | 'user-registration'
+  | 'appointment-admin-cancellation'
+  | 'first-access-password'
+  | 'login'
+  | 'user-deletion-confirmation'
+  | 'user-registration'
 
 export type EncryptedCredential = {
   algorithm: typeof CREDENTIAL_ENCRYPTION_ALGORITHM

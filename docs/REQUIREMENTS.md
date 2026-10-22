@@ -57,8 +57,12 @@ documento de requisitos original.
 - Consultar próximos agendamentos e histórico (`RF25`, `RF26`).
 - Permitir ao administrador consultar os agendamentos globais por período e
   estado, sem expor essa capacidade a aluno ou professor.
-- Cancelar conforme regras configuradas e auditar a operação (`RF27`, `RF28`,
-  `RF30`).
+- Permitir que aluno cancele o próprio agendamento e professor cancele o
+  atendimento atribuído com motivo obrigatório e antecedência mínima de duas
+  horas (`RF27`, `RF28`).
+- Permitir cancelamento administrativo até o início, inclusive dentro das duas
+  horas, somente com motivo e confirmação da senha do próprio administrador;
+  registrar instante, ator e autoria da atualização (`RF30`).
 - Alteração administrativa de data/horário (`RF29`) entra após o fluxo básico de
   cancelamento e nova reserva, salvo prioridade confirmada.
 
@@ -72,6 +76,10 @@ documento de requisitos original.
 - Registrar responsável e prazo quando a regra de tratativa exigir (`RF39`).
 - Preservar histórico de status e permitir filtros essenciais (`RF40`–`RF42`).
 - Não expor observações internas ao aluno (`RF43`).
+- Permitir que professor responsável e administrador mantenham uma demanda em
+  tratativa ou a finalizem como resolvida ou não resolvida, sempre com motivo,
+  ator e data.
+- Tratar resolvido e não resolvido como estados finais no MVP, sem reabertura.
 
 ### Indicadores
 
@@ -163,16 +171,22 @@ de ambiente e volume de referência antes de virarem teste de aceite automatizad
 - Um aluno não mantém agendamentos conflitantes (`RN03`).
 - Todo agendamento possui protocolo e disponibilidade (`RN04`, `RN05`).
 - Todo atendimento realizado se relaciona a um agendamento (`RN06`).
+- Professor responsável ou administrador registra realização ou ausência somente
+  após o início previsto; o aluno não precisa confirmar (`RN11`).
 - Resolvido exige solução ou encaminhamento (`RN07`).
 - Em tratativa exige informação de continuidade (`RN08`).
 - Não resolvido exige justificativa (`RN09`).
 - Cancelado não conta como realizado (`RN10`).
+- Somente agendamentos confirmados ocupam a disponibilidade; o cancelamento
+  preserva o histórico e libera imediatamente o intervalo.
 - Ausência é categoria separada e não recebe classificação automática
   (`RN12`).
 - Histórico e exceções administrativas são auditáveis (`RN13`, `RN14`).
 - Modalidade escolhida deve ser permitida no horário (`RN15`).
-
-`RN11`, a definição exata de atendimento realizado, permanece pendente.
+- Somente uma demanda em tratativa pode receber nova transição; ausência,
+  resolvido e não resolvido não são reabertos no MVP.
+- Toda transição de atendimento exige motivo e é persistida com ator e data na
+  mesma transação da atualização.
 
 ## Critérios de aceite do primeiro fluxo vertical
 

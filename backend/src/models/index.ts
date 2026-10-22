@@ -1,6 +1,8 @@
 import type { ModelCtor } from 'sequelize-typescript';
 import { AuthSession } from './auth-session.model.js';
 import { Appointment } from './appointment.model.js';
+import { AttendanceStatusHistory } from './attendance-status-history.model.js';
+import { Attendance } from './attendance.model.js';
 import { AvailabilityModality } from './availability-modality.model.js';
 import { Availability } from './availability.model.js';
 import { Course } from './course.model.js';
@@ -21,6 +23,8 @@ export const sequelizeModels = [
   User,
   AuthSession,
   Appointment,
+  Attendance,
+  AttendanceStatusHistory,
   Availability,
   AvailabilityModality,
   Notification,

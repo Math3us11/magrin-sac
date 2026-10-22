@@ -14,6 +14,7 @@ import { AuthSession } from '../../models/auth-session.model.js';
 import { User } from '../../models/user.model.js';
 import type { AuthenticatedSession } from '../../types/authenticated-session.type.js';
 import type { CurrentUserDto } from './dto/current-user.dto.js';
+import { LoginAttemptService } from './login-attempt.service.js';
 
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 const INVALID_SESSION_MESSAGE = 'Sessão inválida ou expirada.';
@@ -47,12 +48,14 @@ export class AuthService {
     @InjectConnection() private readonly sequelize: Sequelize,
     private readonly jwtSessionService: JwtSessionService,
     private readonly passwordHashService: PasswordHashService,
+    private readonly loginAttemptService: LoginAttemptService,
     configService: ConfigService,
   ) {
     this.authConfig = configService.getOrThrow<AuthConfig>('auth');
   }
 
   async login(input: LoginInput): Promise<LoginResult> {
+    this.loginAttemptService.assertAllowed(input.email);
     const user = await this.userModel.unscoped().findOne({
       attributes: [...SAFE_USER_ATTRIBUTES, 'passwordHash'],
       where: { email: input.email },
@@ -63,6 +66,7 @@ export class AuthService {
     );
 
     if (!user || !user.isActive || !passwordMatches) {
+      this.loginAttemptService.recordFailure(input.email);
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
@@ -71,7 +75,7 @@ export class AuthService {
     const absoluteExpiresAt = new Date(now.getTime() + this.authConfig.jwt.ttlSeconds * 1000);
     const tokenId = this.jwtSessionService.createTokenId();
 
-    return this.sequelize.transaction(async (transaction) => {
+    const result = await this.sequelize.transaction(async (transaction) => {
       const session = await this.authSessionModel.create(
         {
           absoluteExpiresAt,
@@ -92,6 +96,9 @@ export class AuthService {
 
       return { token, user: userDto };
     });
+
+    this.loginAttemptService.clear(input.email);
+    return result;
   }
 
   async authenticate(token: string): Promise<AuthenticatedSession> {

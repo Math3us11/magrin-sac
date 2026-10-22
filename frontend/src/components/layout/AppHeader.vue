@@ -71,12 +71,15 @@ async function leaveSystem() {
     <div class="flex h-18 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
       <div class="flex min-w-0 items-center gap-3">
         <button
+          data-testid="mobile-navigation-trigger"
           class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-outline bg-surface-subtle text-content hover:border-brand-primary hover:text-brand-primary lg:hidden"
           type="button"
           aria-controls="app-sidebar"
           :aria-expanded="mobileNavigationOpen"
-          aria-label="Abrir menu de navegação"
-          title="Abrir menu de navegação"
+          :aria-label="
+            mobileNavigationOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'
+          "
+          :title="mobileNavigationOpen ? 'Fechar menu de navegação' : 'Abrir menu de navegação'"
           @click="emit('toggleNavigation')"
         >
           <Icon class="h-5 w-5" :icon="menuIcon" aria-hidden="true" />
@@ -94,9 +97,9 @@ async function leaveSystem() {
           >
             Sistema de Agendamento
           </p>
-          <h1 class="mt-0.5 truncate text-base font-semibold text-content sm:text-lg">
+          <p class="mt-0.5 truncate text-base font-semibold text-content sm:text-lg">
             {{ pageTitle }}
-          </h1>
+          </p>
         </div>
       </div>
 

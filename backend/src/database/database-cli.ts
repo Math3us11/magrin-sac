@@ -70,7 +70,7 @@ async function run(): Promise<void> {
         }
 
         const result = await provisionAdministrator(sequelize, readBootstrapAdministratorInput());
-        console.log(`Administrator ${result.action}: ${result.email}`);
+        console.log(`Administrator ${result.action}.`);
         break;
       }
       case 'check':

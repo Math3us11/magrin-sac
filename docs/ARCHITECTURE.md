@@ -296,6 +296,11 @@ da sessão no filtro e não aceita identidade de aluno enviada pelo cliente.
 ### `modules/attendance`
 
 Realização, ausência, observações, solução, encaminhamento e evolução da demanda.
+Professor responsável consulta e atualiza somente atendimentos ligados às
+próprias disponibilidades; administrador usa uma capacidade global explícita.
+Listagem, detalhe interno e histórico permanecem fora dos contratos do aluno.
+Transições de `em_tratativa` são persistidas junto da trilha de status em uma
+única transação, e estados finais não são reabertos no MVP.
 
 ### `modules/dashboard`
 
@@ -389,6 +394,13 @@ de anexar a identidade à requisição. `last_activity_at` já é atualizado, ma
 expiração por inatividade só será ativada depois da aprovação dos tempos de
 sessão em `OPEN_QUESTIONS.md`.
 
+Falhas consecutivas de login são controladas em memória por identidade
+normalizada e transformada em hash, com limite e janela definidos por ambiente.
+O contador é limitado em tamanho, não grava dados pessoais em logs e é removido
+após autenticação bem-sucedida. A implementação atende ao monólito de instância
+única do MVP; escala horizontal exigirá armazenamento compartilhado ou proteção
+equivalente no proxy de borda.
+
 ### Navegação e permissões
 
 A navegação dinâmica usa `menu_items`, com hierarquia por `parent_id`, ordem,
@@ -427,6 +439,25 @@ o item `agenda.availability` e a rota frontend `professor-availability`. Esta
 capacidade representa somente a agenda do usuário autenticado. A administração
 global usa as permissões distintas descritas acima e nunca amplia implicitamente
 o escopo de `own`.
+
+As capacidades `attendance.manage.assigned` e `attendance.manage.any` liberam,
+respectivamente, as rotas `professor-attendances` e
+`administration-attendances`. A primeira recalcula o vínculo do atendimento com
+a disponibilidade do professor autenticado em cada operação; a segunda mantém
+o escopo global do administrador explicitamente separado. Cada escopo possui
+uma rota filha de visualização (`professor-attendances-view` e
+`administration-attendances-view`): a listagem concentra filtros, indicadores e
+tabela, enquanto a página de detalhes carrega o registro interno e seu histórico
+somente após a ação explícita de exibição.
+
+O dashboard usa endpoints separados para professor e administrador, protegidos
+por `reports.dashboard.view` em conjunto com a capacidade de atendimento do
+respectivo escopo. Os quatro totais são calculados sob demanda a partir de
+`appointments`, `availabilities` e `attendances`; não existe tabela nem cache de
+contadores. O filtro considera o período do agendamento no timezone
+institucional, exclui cancelamentos e faz o professor atravessar apenas as
+próprias disponibilidades. Cada indicador aponta para a listagem operacional com
+os mesmos filtros, preservando a rastreabilidade dos registros contabilizados.
 
 `availabilities` armazena o proprietário, os instantes em UTC e o estado
 operacional. `availability_modalities` relaciona cada intervalo a um ou dois

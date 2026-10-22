@@ -16,6 +16,8 @@ export const environmentValidationSchema = Joi.object({
   AUTH_SESSION_JWT_ISSUER: Joi.string().trim().min(1).default('magrin-sac-api'),
   AUTH_SESSION_JWT_SECRET: Joi.string().min(32).required(),
   AUTH_SESSION_JWT_TTL_SECONDS: Joi.number().integer().min(60).required(),
+  AUTH_LOGIN_MAX_FAILURES: Joi.number().integer().min(1).max(100).default(5),
+  AUTH_LOGIN_WINDOW_SECONDS: Joi.number().integer().min(1).max(86_400).default(300),
   PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64: Joi.string().allow('').base64().optional(),
   DB_DIALECT: Joi.string().valid('mariadb').required(),
   DB_HOST: Joi.string().hostname().required(),

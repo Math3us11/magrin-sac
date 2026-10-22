@@ -2,8 +2,9 @@
 
 ## Estado
 
-Sequência recomendada. A Fase 1 está em andamento: os scaffolds de frontend e
-backend foram criados; o modelo físico de domínio permanece pendente.
+Sequência recomendada. As Fases 1 a 6 foram concluídas, a integração com a
+Twilio permanece adiada e a Fase 8 está em andamento para preparar o MVP para
+demonstração.
 
 ## Fase 0 — Alinhamento essencial
 
@@ -13,7 +14,8 @@ Entregas:
 
 - decidir autenticação e matriz mínima de permissões;
 - [x] decidir o timezone institucional como `America/Porto_Velho`;
-- definir regras de disponibilidade, cancelamento e limite por aluno;
+- [x] definir as regras de cancelamento;
+- definir regras restantes de disponibilidade e limite por aluno;
 - validar conceito de realizado, ausência e estados da demanda;
 - aprovar modelo de domínio inicial;
 - aprovar os contratos do primeiro fluxo vertical.
@@ -153,11 +155,11 @@ Objetivo: completar o ciclo da reserva sem perder rastreabilidade.
 
 Entregas:
 
-- cancelamento conforme regra aprovada;
-- liberação controlada da disponibilidade;
-- motivo e ator;
-- trilha de auditoria;
-- histórico do aluno e da coordenação.
+- [x] cancelamento conforme regra aprovada para aluno, professor e administrador;
+- [x] liberação controlada da disponibilidade;
+- [x] motivo e ator;
+- [x] trilha de auditoria nas colunas do agendamento;
+- [x] histórico do aluno, professor e coordenação;
 
 Critério de saída: cancelamento altera a disponibilidade corretamente e preserva
 o histórico.
@@ -168,12 +170,16 @@ Objetivo: registrar o resultado operacional.
 
 Entregas:
 
-- realização e ausência;
-- observações internas;
-- resolvido, não resolvido e em tratativa;
-- solução, justificativa, encaminhamento e continuidade;
-- histórico de transições;
-- filtros administrativos essenciais.
+- [x] registro inicial de realização e ausência;
+- [x] observações internas sem exposição ao aluno;
+- [x] resolvido, não resolvido e em tratativa;
+- [x] solução, justificativa, encaminhamento e continuidade mínima;
+- [x] histórico inicial com ator e data;
+- [x] transições posteriores de `em_tratativa`, com estados finais sem
+      reabertura no MVP;
+- [x] filtros essenciais por período, ocorrência e classificação para professor
+      responsável e administrador;
+- [x] consulta operacional com detalhe interno e histórico autorizados.
 
 Critério de saída: cada estado respeita seus campos obrigatórios e permissões.
 
@@ -183,10 +189,10 @@ Objetivo: fornecer os quatro indicadores confiáveis.
 
 Entregas:
 
-- totais realizado, resolvido, não resolvido e em tratativa;
-- filtro por período;
-- rastreabilidade dos registros que compõem cada total;
-- testes de cálculo, cancelamento e ausência.
+- [x] totais realizado, resolvido, não resolvido e em tratativa;
+- [x] filtro por período;
+- [x] rastreabilidade dos registros que compõem cada total;
+- [x] testes de cálculo, cancelamento e ausência.
 
 Critério de saída: mudanças nos atendimentos atualizam os indicadores sem
 contadores divergentes.
@@ -194,6 +200,9 @@ contadores divergentes.
 ## Fase 7 — WhatsApp
 
 Objetivo: notificar sem comprometer o domínio.
+
+**Planejamento:** integração e novos eventos de notificação adiados até a
+conclusão dos fluxos de atendimento, demanda e indicadores.
 
 Entregas:
 
@@ -221,17 +230,22 @@ Entregas:
       externo sem sessão;
 - [x] isolar a `main` em worktree e separar os bancos da versão estável e do
       desenvolvimento;
-- revisão de segurança e LGPD;
-- acessibilidade dos fluxos principais;
-- testes responsivos e nos navegadores-alvo;
-- backup e restauração documentados;
+- [x] revisar o transporte de credenciais, cookies, origem, validação de entrada
+      e exposição de dados pessoais, incluindo limitação de falhas de login;
+- [x] revisar a acessibilidade dos componentes e fluxos principais;
+- [x] executar testes responsivos nas larguras de 320, 375, 768 e 1024 pixels;
+- [x] documentar o procedimento manual de backup, validação e restauração do
+      MariaDB sem definir silenciosamente a política institucional pendente;
+- executar e registrar o primeiro teste integral de restauração quando o cliente
+  `mariadb` estiver disponível no ambiente local;
 - observabilidade mínima;
 - seed ou roteiro de demonstração sem dados pessoais reais;
 - revisão final da documentação.
 
 ## Próxima ação recomendada
 
-Realizar uma reunião curta de domínio usando os seis primeiros bloqueadores de
-`OPEN_QUESTIONS.md`. Depois, criar a migration inicial e implementar a Fase 3
-como fluxo vertical, evitando construir todos os cadastros antes de provar a
-reserva concorrente.
+Disponibilizar o cliente MariaDB no ambiente local e executar o primeiro teste
+integral descrito em `BACKUP_RESTORE.md`, sem tocar nos bancos ativos. Depois,
+implementar a observabilidade mínima do monólito. A integração com a Twilio
+permanece adiada, e a fórmula percentual do dashboard continua fora do contrato
+até a definição institucional.

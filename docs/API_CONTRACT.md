@@ -58,7 +58,8 @@ ele não é retornado no JSON nem persistido pelo JavaScript. Não há refresh t
 no MVP. O backend já controla revogação, duração absoluta e estado do usuário
 consultando a sessão no MariaDB, além de registrar a última atividade. A
 expiração por inatividade permanece pendente dos valores em
-`OPEN_QUESTIONS.md`.
+`OPEN_QUESTIONS.md`. Respostas de login, identidade atual e chave pública usam
+`Cache-Control: no-store`.
 
 Antes do login, o cliente consulta `GET /api/auth/credential-key`. A resposta
 não contém segredo e não deve ser armazenada em cache:
@@ -115,6 +116,14 @@ Credenciais inválidas respondem `401` com mensagem genérica, sem revelar se o
 e-mail existe. `GET /api/me` retorna o mesmo objeto de usuário, sem o envelope
 `user`. `POST /api/auth/logout` é idempotente, revoga a sessão reconhecida,
 remove o cookie e responde `204` sem corpo.
+
+O backend limita falhas consecutivas por identidade normalizada, sem armazenar
+ou registrar o e-mail em texto legível nesse controle. Ao alcançar
+`AUTH_LOGIN_MAX_FAILURES` dentro da janela configurada por
+`AUTH_LOGIN_WINDOW_SECONDS`, o login responde `429` até o término da janela. O
+contador é limpo após um login concluído. Este controle local é limitado à
+instância atual; uma publicação com múltiplas instâncias deverá substituí-lo por
+um armazenamento compartilhado ou por proteção equivalente na borda.
 
 Quando `mustChangePassword` for `true`, a sessão fica restrita à consulta de
 `GET /api/me`, ao logout e à definição da senha inicial. Qualquer outro endpoint
@@ -328,7 +337,6 @@ disponibilidade dentro de transação.
 ```text
 POST /api/appointments
 GET  /api/appointments/mine
-GET  /api/appointments/:appointmentId
 POST /api/appointments/:appointmentId/cancel
 ```
 
@@ -417,6 +425,27 @@ internas de atendimento não fazem parte do contrato.
 }
 ```
 
+O `POST /api/appointments/:appointmentId/cancel` exige
+`appointments.cancel.own`, motivo obrigatório de até 500 caracteres e que o
+agendamento confirmado pertença ao aluno autenticado. O início deve estar a no
+mínimo duas horas do instante da requisição:
+
+```json
+{ "reason": "Imprevisto acadêmico." }
+```
+
+### Atendimentos atribuídos ao professor
+
+```text
+GET  /api/professor/appointments?from=AAAA-MM-DD&to=AAAA-MM-DD&status=...
+POST /api/professor/appointments/:appointmentId/cancel
+```
+
+O `GET` exige `appointments.read.assigned`, aceita período de até 62 dias e
+retorna somente agendamentos ligados às disponibilidades do professor da sessão.
+O cancelamento exige `appointments.cancel.assigned`, motivo obrigatório e a
+mesma antecedência mínima de duas horas aplicada ao aluno.
+
 ### Administração de disponibilidade
 
 ```text
@@ -437,33 +466,144 @@ registrarão o ator e não excluirão fisicamente uma disponibilidade usada.
 
 ```text
 GET /api/admin/appointments?from=AAAA-MM-DD&to=AAAA-MM-DD&status=...
+POST /api/admin/appointments/:appointmentId/cancel
 ```
 
 O `GET` está implementado e exige `appointments.read.any`. A resposta contém
 protocolo, intervalo, estado, assunto, modalidade e identificação mínima de
-aluno e professor. Credenciais, contato, detalhes internos e observações de
-atendimento não fazem parte dessa listagem.
+aluno e professor, além do motivo e instante quando cancelado. Credenciais,
+contato, detalhes internos e observações de atendimento não fazem parte dessa
+listagem.
 
-Consulta detalhada, cancelamento e alteração direta de horário permanecem
-condicionados às regras institucionais e ao desenho de histórico.
+O cancelamento administrativo exige `appointments.cancel.any`, motivo
+obrigatório e confirmação da senha do administrador autenticado com a finalidade
+criptográfica `appointment-admin-cancellation`. É permitido até o início do
+atendimento, inclusive dentro das duas horas reservadas aos demais perfis. A
+senha não é persistida. Alteração direta de horário permanece fora deste recorte.
+
+```json
+{
+  "reason": "Correção operacional autorizada.",
+  "credential": {
+    "algorithm": "RSA-OAEP-256+A256GCM",
+    "ciphertext": "senha-cifrada-em-base64url",
+    "encryptedKey": "chave-aes-protegida-em-base64url",
+    "iv": "vetor-de-inicializacao",
+    "issuedAt": 1791043200000,
+    "keyId": "identificador-sha256-da-chave",
+    "purpose": "appointment-admin-cancellation"
+  }
+}
+```
+
+As três operações de cancelamento bloqueiam a disponibilidade e o agendamento
+na mesma transação, revalidam estado e autoria, mudam o estado para `cancelado`
+e preenchem `cancelled_at`, `cancelled_by`, `cancellation_reason` e `updated_by`.
+A resposta comum é:
+
+```json
+{
+  "appointment": {
+    "id": 30,
+    "status": "cancelado",
+    "cancelledAt": "2026-10-09T14:00:00.000Z",
+    "cancelledBy": 3,
+    "cancellationReason": "Imprevisto acadêmico."
+  },
+  "message": "Agendamento cancelado com sucesso."
+}
+```
 
 ### Registro de atendimento
 
 ```text
-PUT   /api/admin/appointments/:appointmentId/attendance
+PUT /api/professor/appointments/:appointmentId/attendance
+PUT /api/admin/appointments/:appointmentId/attendance
+GET /api/professor/attendances?from=AAAA-MM-DD&to=AAAA-MM-DD&occurrence=...&resolutionStatus=...
+GET /api/admin/attendances?from=AAAA-MM-DD&to=AAAA-MM-DD&occurrence=...&resolutionStatus=...
+GET /api/professor/attendances/:attendanceId
+GET /api/admin/attendances/:attendanceId
+GET /api/professor/attendances/:attendanceId/history
+GET /api/admin/attendances/:attendanceId/history
+PATCH /api/professor/attendances/:attendanceId/status
 PATCH /api/admin/attendances/:attendanceId/status
-GET   /api/admin/attendances/:attendanceId/history
 ```
 
-O backend deve validar os campos condicionais de cada resultado.
+Os endpoints estão implementados. Professor atua somente sobre agendamento
+vinculado à própria disponibilidade; administrador possui a capacidade global
+explícita. O registro exige agendamento confirmado cujo horário inicial já tenha
+chegado. A criação do atendimento, a entrada inicial do histórico e a mudança do
+agendamento para `concluido` ou `ausencia` ocorrem na mesma transação.
+
+Exemplo de atendimento resolvido:
+
+```json
+{
+  "occurrence": "realizado",
+  "resolutionStatus": "resolvido",
+  "solution": "Orientação concluída.",
+  "referral": "Opcional",
+  "internalNotes": "Visível somente à equipe."
+}
+```
+
+`resolvido` exige solução ou encaminhamento; `nao_resolvido` exige
+`unresolvedReason`; `em_tratativa` exige `continuityResponsible`, `nextStep` e
+`dueDate`. Para ausência, envie apenas `occurrence: "ausencia"` e, opcionalmente,
+`internalNotes`. Campos internos não são retornados nos contratos do aluno.
+
+Resposta de criação:
+
+```json
+{
+  "attendance": {
+    "appointmentId": 30,
+    "id": 12,
+    "occurrence": "realizado",
+    "recordedAt": "2026-10-15T14:00:00.000Z",
+    "resolutionStatus": "resolvido"
+  },
+  "message": "Atendimento registrado com sucesso."
+}
+```
+
+O histórico retorna ocorrência, classificação, motivo da mudança, ator e data.
+As listagens aceitam um período máximo de 366 dias e filtros opcionais de
+ocorrência e classificação. O escopo do professor é sempre derivado da sessão;
+o administrador usa a capacidade global explícita. O detalhe retorna dados do
+agendamento, campos internos do atendimento, autoria da última atualização e o
+histórico. Nenhum desses endpoints é concedido ao aluno.
+
+Uma atualização aceita somente um atendimento realizado atualmente
+`em_tratativa`. O destino pode ser `em_tratativa`, `resolvido` ou
+`nao_resolvido`; os mesmos campos condicionais do registro inicial continuam
+obrigatórios e `changeReason` é sempre exigido:
+
+```json
+{
+  "resolutionStatus": "resolvido",
+  "solution": "Pendência regularizada após retorno do setor.",
+  "changeReason": "Documentação recebida e validada.",
+  "internalNotes": "Visível somente à equipe."
+}
+```
+
+A atualização de `attendances` e a nova entrada em
+`attendance_status_history` ocorrem na mesma transação. Ausências e estados
+finais respondem conflito e não podem ser reabertos no MVP.
 
 ### Dashboard
 
 ```text
+GET /api/professor/dashboard?from=...&to=...
 GET /api/admin/dashboard?from=...&to=...
 ```
 
-Resposta mínima conceitual:
+O endpoint do professor considera somente atendimentos vinculados às próprias
+disponibilidades; o administrativo usa o escopo global. Ambos exigem
+`reports.dashboard.view` em conjunto com a capacidade operacional do escopo.
+
+Resposta:
 
 ```json
 {
@@ -478,8 +618,11 @@ Resposta mínima conceitual:
 }
 ```
 
-Os nomes finais devem seguir uma convenção única. O endpoint precisa usar as
-mesmas regras de contabilização documentadas em `REQUIREMENTS.md`.
+`performed` conta somente ocorrências `realizado`; ausências e agendamentos
+cancelados não entram nesse total. `resolved`, `unresolved` e `inProgress`
+detalham as classificações atuais desses atendimentos e, portanto, não devem ser
+somados novamente a `performed`. O período segue o horário institucional, é
+inclusivo nas datas informadas e aceita no máximo 366 dias.
 
 ### Usuários e permissões
 
@@ -729,6 +872,6 @@ Twilio não estiver configurado, ela fica registrada como `falhou` com
 
 ## Próximo passo
 
-Definir as regras institucionais de cancelamento antes de implementar
-`POST /api/appointments/:appointmentId/cancel`, incluindo prazo, ator, motivo e
-efeito sobre a disponibilidade, sem apagar o histórico.
+Implementar os quatro totais do dashboard derivados dos atendimentos e o filtro
+por período. A fórmula percentual continua pendente de definição institucional,
+e a tentativa de notificação de cancelamento permanece adiada para a Fase 7.

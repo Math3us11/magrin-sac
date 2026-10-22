@@ -8,6 +8,8 @@ import AppCalendar from '@/components/basic/AppCalendar.vue'
 import AppForm from '@/components/basic/AppForm.vue'
 import AppInput from '@/components/basic/AppInput.vue'
 import AppModal from '@/components/basic/AppModal.vue'
+import AttendanceRegistrationModal from '@/components/appointments/AttendanceRegistrationModal.vue'
+import AppointmentCancellationModal from '@/components/appointments/AppointmentCancellationModal.vue'
 import {
   getInstitutionDateTime,
   INSTITUTION_TIME_ZONE,
@@ -24,10 +26,14 @@ import {
   triangleAlertIcon,
 } from '@/icons'
 import { ApiError } from '@/services/api'
+import { registerAssignedAttendance } from '@/services/attendance'
+import { cancelAssignedAppointment, listAssignedAppointments } from '@/services/appointments'
 import { createAvailabilities, listOwnAvailabilities } from '@/services/availability'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
 import type { AppCalendarEvent } from '@/types/calendar'
+import type { AdminAppointmentItem, AppointmentStatus } from '@/types/appointment'
+import type { RegisterAttendancePayload } from '@/types/attendance'
 import type {
   AvailabilityDraft,
   AvailabilityItem,
@@ -53,6 +59,17 @@ const summary = ref<AvailabilitySummary>({ available: 0, blocked: 0, reserved: 0
 const loadingAvailabilities = ref(true)
 const publishing = ref(false)
 const loadError = ref('')
+const assignedAppointments = ref<AdminAppointmentItem[]>([])
+const loadingAppointments = ref(true)
+const appointmentLoadError = ref('')
+const appointmentToCancel = ref<AdminAppointmentItem | null>(null)
+const cancellationOpen = ref(false)
+const cancelling = ref(false)
+const cancellationError = ref('')
+const appointmentToRegister = ref<AdminAppointmentItem | null>(null)
+const attendanceOpen = ref(false)
+const registeringAttendance = ref(false)
+const attendanceError = ref('')
 let nextDraftId = 1
 
 const currentInstitutionDate = getInstitutionDateTime().date
@@ -84,6 +101,22 @@ const weekdayOptions = [
 ]
 const MAX_BATCH_SIZE = 500
 const weekStart = ref(getInitialWeekStart())
+const appointmentStatusLabels: Record<AppointmentStatus, string> = {
+  ausencia: 'Ausência',
+  cancelado: 'Cancelado',
+  concluido: 'Concluído',
+  confirmado: 'Confirmado',
+}
+const cancellationAppointmentLabel = computed(() => {
+  const appointment = appointmentToCancel.value
+  if (!appointment) return undefined
+  return `${appointment.protocol} · ${formatAppointmentDate(appointment.startsAt)}, ${formatAppointmentTime(appointment.startsAt)}–${formatAppointmentTime(appointment.endsAt)}`
+})
+const attendanceAppointmentLabel = computed(() => {
+  const appointment = appointmentToRegister.value
+  if (!appointment) return undefined
+  return `${appointment.protocol} · ${appointment.student.name} · ${formatAppointmentDate(appointment.startsAt)}, ${formatAppointmentTime(appointment.startsAt)}–${formatAppointmentTime(appointment.endsAt)}`
+})
 
 function addUtcDays(value: string, amount: number): string {
   const date = new Date(`${value}T00:00:00.000Z`)
@@ -367,6 +400,86 @@ async function loadAvailabilities() {
   }
 }
 
+function formatAppointmentDate(value: string): string {
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'long',
+    timeZone: INSTITUTION_TIME_ZONE,
+  }).format(new Date(value))
+}
+
+function formatAppointmentTime(value: string): string {
+  return getInstitutionDateTime(new Date(value)).time
+}
+
+async function loadAssignedAppointments() {
+  loadingAppointments.value = true
+  appointmentLoadError.value = ''
+  try {
+    const response = await listAssignedAppointments({
+      from: addUtcDays(currentInstitutionDate, -30),
+      to: addUtcDays(currentInstitutionDate, 31),
+    })
+    assignedAppointments.value = response.appointments
+  } catch (error) {
+    appointmentLoadError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível carregar os atendimentos agendados.'
+  } finally {
+    loadingAppointments.value = false
+  }
+}
+
+function requestCancellation(appointment: AdminAppointmentItem) {
+  appointmentToCancel.value = appointment
+  cancellationError.value = ''
+  cancellationOpen.value = true
+}
+
+function requestAttendanceRegistration(appointment: AdminAppointmentItem) {
+  appointmentToRegister.value = appointment
+  attendanceError.value = ''
+  attendanceOpen.value = true
+}
+
+async function confirmAttendance(payload: RegisterAttendancePayload) {
+  if (!appointmentToRegister.value || registeringAttendance.value) return
+  registeringAttendance.value = true
+  attendanceError.value = ''
+  try {
+    await registerAssignedAttendance(appointmentToRegister.value.id, payload)
+    attendanceOpen.value = false
+    appointmentToRegister.value = null
+    await Promise.all([loadAssignedAppointments(), loadAvailabilities()])
+  } catch (error) {
+    attendanceError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível registrar o atendimento. Tente novamente.'
+  } finally {
+    registeringAttendance.value = false
+  }
+}
+
+async function confirmCancellation({ reason }: { reason: string }) {
+  if (!appointmentToCancel.value || cancelling.value) return
+  cancelling.value = true
+  cancellationError.value = ''
+  try {
+    await cancelAssignedAppointment(appointmentToCancel.value.id, reason)
+    cancellationOpen.value = false
+    appointmentToCancel.value = null
+    await Promise.all([loadAssignedAppointments(), loadAvailabilities()])
+  } catch (error) {
+    cancellationError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível cancelar o agendamento. Tente novamente.'
+  } finally {
+    cancelling.value = false
+  }
+}
+
 async function publishDrafts() {
   if (drafts.value.length === 0 || publishing.value) return
 
@@ -397,7 +510,7 @@ async function publishDrafts() {
   }
 }
 
-onMounted(() => void loadAvailabilities())
+onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments()]))
 </script>
 
 <template>
@@ -520,7 +633,105 @@ onMounted(() => void loadAvailabilities())
           :today="currentInstitutionDate"
         />
       </section>
+
+      <section class="mt-8 rounded-3xl border border-outline bg-surface p-6 sm:p-8">
+        <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">Atendimentos</p>
+        <h2 class="mt-1 text-xl font-bold text-content">Período de 62 dias</h2>
+        <p class="mt-2 text-sm text-content-muted">
+          Consulte os últimos 30 dias e os próximos 31 para registrar resultados ou cancelar com
+          antecedência.
+        </p>
+
+        <p
+          v-if="appointmentLoadError"
+          class="mt-6 rounded-2xl bg-status-danger-soft p-5 text-sm text-status-danger"
+          role="alert"
+        >
+          {{ appointmentLoadError }}
+        </p>
+        <p
+          v-else-if="!loadingAppointments && !assignedAppointments.length"
+          class="mt-6 rounded-2xl border border-dashed border-outline p-6 text-center text-sm text-content-muted"
+        >
+          Nenhum atendimento encontrado neste período.
+        </p>
+        <ul v-else class="mt-6 grid gap-4 lg:grid-cols-2">
+          <li
+            v-for="appointment in assignedAppointments"
+            :key="appointment.id"
+            class="rounded-2xl border border-outline p-5"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.1em] text-content-muted">
+                  {{ appointment.protocol }}
+                </p>
+                <h3 class="mt-1 font-bold text-content">{{ appointment.subject }}</h3>
+              </div>
+              <span
+                class="rounded-full bg-brand-primary-soft px-3 py-1 text-xs font-bold text-brand-primary"
+              >
+                {{ appointmentStatusLabels[appointment.status] }}
+              </span>
+            </div>
+            <div class="mt-4 space-y-2 text-sm text-content-muted">
+              <p><strong class="text-content">Aluno:</strong> {{ appointment.student.name }}</p>
+              <p>
+                {{ formatAppointmentDate(appointment.startsAt) }},
+                {{ formatAppointmentTime(appointment.startsAt) }}–{{
+                  formatAppointmentTime(appointment.endsAt)
+                }}
+              </p>
+              <p>
+                <strong class="text-content">Modalidade:</strong>
+                {{ appointment.modality === 'online' ? 'Online' : 'Presencial' }}
+              </p>
+            </div>
+            <p
+              v-if="appointment.cancellationReason"
+              class="mt-4 rounded-xl bg-surface-subtle px-4 py-3 text-sm text-content-muted"
+            >
+              <strong class="text-content">Motivo:</strong> {{ appointment.cancellationReason }}
+            </p>
+            <AppButton
+              v-if="appointment.status === 'confirmado'"
+              class="mt-5"
+              variant="danger"
+              :disabled="new Date(appointment.startsAt).getTime() - Date.now() < 2 * 60 * 60 * 1000"
+              @click="requestCancellation(appointment)"
+            >
+              Cancelar agendamento
+            </AppButton>
+            <AppButton
+              v-if="
+                appointment.status === 'confirmado' &&
+                new Date(appointment.startsAt).getTime() <= Date.now()
+              "
+              class="mt-3 sm:ml-3"
+              @click="requestAttendanceRegistration(appointment)"
+            >
+              Registrar atendimento
+            </AppButton>
+          </li>
+        </ul>
+      </section>
     </div>
+
+    <AppointmentCancellationModal
+      v-model:open="cancellationOpen"
+      :appointment-label="cancellationAppointmentLabel"
+      :error="cancellationError"
+      :loading="cancelling"
+      @confirm="confirmCancellation"
+    />
+
+    <AttendanceRegistrationModal
+      v-model:open="attendanceOpen"
+      :appointment-label="attendanceAppointmentLabel"
+      :error="attendanceError"
+      :loading="registeringAttendance"
+      @confirm="confirmAttendance"
+    />
 
     <AppModal
       v-model:open="isModalOpen"

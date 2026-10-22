@@ -26,6 +26,7 @@ Os documentos distinguem:
 10. `CODEX_VSCODE.md` — preparação e verificação do Codex no VS Code.
 11. `GIT_WORKFLOW.md` — branches, Pull Requests e promoção da versão estável.
 12. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
+13. `BACKUP_RESTORE.md` — backup, validação e restauração segura do MariaDB.
 
 ## Fontes consolidadas
 

@@ -13,6 +13,10 @@ export type AuthConfig = {
     secret: string;
     ttlSeconds: number;
   };
+  loginAttempts: {
+    maxFailures: number;
+    windowSeconds: number;
+  };
 };
 
 export default registerAs('auth', (): AuthConfig => ({
@@ -30,5 +34,9 @@ export default registerAs('auth', (): AuthConfig => ({
     issuer: process.env.AUTH_SESSION_JWT_ISSUER as string,
     secret: process.env.AUTH_SESSION_JWT_SECRET as string,
     ttlSeconds: Number.parseInt(process.env.AUTH_SESSION_JWT_TTL_SECONDS as string, 10),
+  },
+  loginAttempts: {
+    maxFailures: Number.parseInt(process.env.AUTH_LOGIN_MAX_FAILURES ?? '5', 10),
+    windowSeconds: Number.parseInt(process.env.AUTH_LOGIN_WINDOW_SECONDS ?? '300', 10),
   },
 }));
