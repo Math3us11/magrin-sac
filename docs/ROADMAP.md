@@ -2,8 +2,9 @@
 
 ## Estado
 
-Sequência recomendada. As Fases 1 a 3 foram concluídas e a Fase 4 está em
-andamento com o cancelamento auditável implementado para os três perfis.
+Sequência recomendada. As Fases 1 a 6 foram concluídas, a integração com a
+Twilio permanece adiada e a Fase 8 está em andamento para preparar o MVP para
+demonstração.
 
 ## Fase 0 — Alinhamento essencial
 
@@ -229,18 +230,22 @@ Entregas:
       externo sem sessão;
 - [x] isolar a `main` em worktree e separar os bancos da versão estável e do
       desenvolvimento;
-- revisão de segurança e LGPD;
-- acessibilidade dos fluxos principais;
-- testes responsivos e nos navegadores-alvo;
-- backup e restauração documentados;
+- [x] revisar o transporte de credenciais, cookies, origem, validação de entrada
+      e exposição de dados pessoais, incluindo limitação de falhas de login;
+- [x] revisar a acessibilidade dos componentes e fluxos principais;
+- [x] executar testes responsivos nas larguras de 320, 375, 768 e 1024 pixels;
+- [x] documentar o procedimento manual de backup, validação e restauração do
+      MariaDB sem definir silenciosamente a política institucional pendente;
+- executar e registrar o primeiro teste integral de restauração quando o cliente
+  `mariadb` estiver disponível no ambiente local;
 - observabilidade mínima;
 - seed ou roteiro de demonstração sem dados pessoais reais;
 - revisão final da documentação.
 
 ## Próxima ação recomendada
 
-Iniciar a Fase 7 pela configuração do provider Twilio no Sandbox e pelos
-eventos de confirmação e cancelamento, preservando a regra de que falhas de
-notificação nunca revertem operações válidas. A fórmula percentual do dashboard
-continua fora do contrato até a definição institucional, e o catálogo oficial
-de categorias permanece pendente.
+Disponibilizar o cliente MariaDB no ambiente local e executar o primeiro teste
+integral descrito em `BACKUP_RESTORE.md`, sem tocar nos bancos ativos. Depois,
+implementar a observabilidade mínima do monólito. A integração com a Twilio
+permanece adiada, e a fórmula percentual do dashboard continua fora do contrato
+até a definição institucional.

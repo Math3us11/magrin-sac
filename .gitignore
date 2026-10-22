@@ -28,5 +28,8 @@ Thumbs.db
 *.log
 npm-debug.log*
 
+# Backups locais com dados pessoais
+.backups/
+
 # Worktree local da versão estável
 .worktrees/

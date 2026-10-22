@@ -109,13 +109,13 @@
 
 @layer base {
   html {
-    min-width: 320px;
+    min-width: 0;
     min-height: 100%;
     background: var(--theme-color-canvas);
   }
 
   body {
-    min-width: 320px;
+    min-width: 0;
     min-height: 100vh;
     margin: 0;
     background: var(--theme-color-canvas);
@@ -511,7 +511,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-spin {
-    animation: none;
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

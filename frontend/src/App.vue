@@ -32,7 +32,7 @@ const showShell = computed(() => !route.meta.hideShell)
       <RouterView />
     </AppShell>
 
-    <main v-else id="conteudo-principal" class="min-h-screen">
+    <main v-else id="conteudo-principal" class="min-h-screen" tabindex="-1">
       <RouterView />
     </main>
 

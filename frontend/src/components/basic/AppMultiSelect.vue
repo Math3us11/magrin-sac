@@ -53,6 +53,7 @@ const menuId = computed(() => `app-multi-select-${generatedId}-menu`)
 const labelId = computed(() => `app-multi-select-${generatedId}-label`)
 const errorId = computed(() => `app-multi-select-${generatedId}-error`)
 const helpId = computed(() => `app-multi-select-${generatedId}-help`)
+const instructionsId = computed(() => `app-multi-select-${generatedId}-instructions`)
 const { errorMessage, handleChange, value } = useField<string[]>(() => props.name)
 const isOpen = ref(false)
 const triggerElement = ref<HTMLButtonElement | null>(null)
@@ -123,9 +124,40 @@ function closeMenu(restoreFocus = false) {
   }
 }
 
-function toggleMenu() {
+function enabledOptionElements(): HTMLInputElement[] {
+  if (!menuElement.value) return []
+
+  return Array.from(
+    menuElement.value.querySelectorAll<HTMLInputElement>('input[type="checkbox"]:not(:disabled)'),
+  )
+}
+
+async function openMenu(preferredPosition: 'first' | 'last' | 'selected' = 'selected') {
   if (props.disabled) return
-  isOpen.value = !isOpen.value
+  isOpen.value = true
+  await nextTick()
+  updateMenuPosition()
+
+  const optionElements = enabledOptionElements()
+  const selected = selectedValues(value.value)
+  const selectedElement = optionElements.find((option) => selected.includes(option.value))
+  const target =
+    preferredPosition === 'first'
+      ? optionElements[0]
+      : preferredPosition === 'last'
+        ? optionElements[optionElements.length - 1]
+        : (selectedElement ?? optionElements[0])
+
+  ;(target ?? menuElement.value)?.focus()
+}
+
+function toggleMenu() {
+  if (isOpen.value) {
+    closeMenu()
+    return
+  }
+
+  void openMenu()
 }
 
 function handleOutsidePointerDown(event: PointerEvent) {
@@ -146,6 +178,61 @@ function handleDocumentKeydown(event: KeyboardEvent) {
 
 function handleViewportChange() {
   updateMenuPosition()
+}
+
+async function focusOutsideMenu(backwards: boolean) {
+  const trigger = triggerElement.value
+  const menu = menuElement.value
+
+  if (!trigger) return
+
+  const focusableElements = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter((element) => !menu?.contains(element))
+  const triggerIndex = focusableElements.indexOf(trigger)
+  const target = focusableElements[triggerIndex + (backwards ? -1 : 1)]
+
+  closeMenu()
+  await nextTick()
+  target?.focus()
+}
+
+function handleOptionKeydown(event: KeyboardEvent) {
+  if (event.key === 'Tab') {
+    event.preventDefault()
+    void focusOutsideMenu(event.shiftKey)
+    return
+  }
+
+  const optionElements = enabledOptionElements()
+  const currentIndex = optionElements.findIndex((option) => option === event.currentTarget)
+  if (currentIndex < 0) return
+
+  let targetIndex: number | undefined
+
+  switch (event.key) {
+    case 'ArrowDown':
+    case 'ArrowRight':
+      targetIndex = (currentIndex + 1) % optionElements.length
+      break
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      targetIndex = (currentIndex - 1 + optionElements.length) % optionElements.length
+      break
+    case 'Home':
+      targetIndex = 0
+      break
+    case 'End':
+      targetIndex = optionElements.length - 1
+      break
+    default:
+      return
+  }
+
+  event.preventDefault()
+  optionElements[targetIndex]?.focus()
 }
 
 async function toggleOption(currentValue: unknown, optionValue: string, event: Event) {
@@ -230,7 +317,7 @@ watch(
         type="button"
         :aria-controls="isOpen ? menuId : undefined"
         :aria-describedby="
-          [helpText ? helpId : undefined, errorMessage ? errorId : undefined]
+          [instructionsId, helpText ? helpId : undefined, errorMessage ? errorId : undefined]
             .filter(Boolean)
             .join(' ') || undefined
         "
@@ -241,6 +328,8 @@ watch(
         :aria-required="required"
         :disabled="disabled"
         @click="toggleMenu"
+        @keydown.down.prevent="openMenu('first')"
+        @keydown.up.prevent="openMenu('last')"
       >
         <span
           class="truncate"
@@ -266,6 +355,7 @@ watch(
           role="listbox"
           :aria-labelledby="labelId"
           :aria-multiselectable="selectionLimit !== 1"
+          tabindex="-1"
         >
           <p v-if="options.length === 0" class="px-3 py-2.5 text-sm text-content-muted">
             {{ emptyText }}
@@ -285,12 +375,18 @@ watch(
               :name="name"
               :value="option.value"
               @change="toggleOption(value, option.value, $event)"
+              @keydown="handleOptionKeydown"
             />
             {{ option.label }}
           </label>
         </div>
       </Teleport>
     </div>
+
+    <p :id="instructionsId" class="sr-only">
+      Abra a lista e use as setas para navegar entre as opções. Pressione Espaço para selecionar e
+      Tab para continuar.
+    </p>
 
     <p v-if="helpText" :id="helpId" class="mt-2 text-xs leading-5 text-content-muted">
       {{ helpText }}

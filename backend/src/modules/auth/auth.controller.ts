@@ -40,6 +40,7 @@ export class AuthController {
   }
 
   @Post('auth/login')
+  @Header('Cache-Control', 'no-store')
   @HttpCode(HttpStatus.OK)
   @UseGuards(RequestOriginGuard)
   async login(
@@ -90,6 +91,7 @@ export class AuthController {
 
   @Get('me')
   @AllowPasswordChangePending()
+  @Header('Cache-Control', 'no-store')
   @UseGuards(SessionAuthGuard)
   me(@CurrentUser() user: AuthenticatedUser): CurrentUserDto {
     return user;

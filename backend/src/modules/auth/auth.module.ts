@@ -10,6 +10,7 @@ import { UserTypePermission } from '../../models/user-type-permission.model.js';
 import { User } from '../../models/user.model.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
+import { LoginAttemptService } from './login-attempt.service.js';
 import { PermissionService } from './permission.service.js';
 
 @Module({
@@ -28,6 +29,7 @@ import { PermissionService } from './permission.service.js';
   ],
   providers: [
     AuthService,
+    LoginAttemptService,
     PermissionGuard,
     PermissionService,
     RequestOriginGuard,

@@ -101,8 +101,13 @@ watch(
       mobileOpen ? 'visible translate-x-0' : 'invisible -translate-x-full lg:visible',
       collapsed ? 'lg:w-24' : 'lg:w-72',
     ]"
+    :aria-label="mobileOpen ? 'Menu de navegação' : undefined"
+    :aria-modal="mobileOpen ? 'true' : undefined"
+    :role="mobileOpen ? 'dialog' : undefined"
+    :tabindex="mobileOpen ? -1 : undefined"
   >
     <button
+      data-testid="sidebar-mobile-close"
       class="absolute right-3 top-3 inline-flex h-10 w-10 items-center justify-center rounded-xl text-content-muted hover:bg-surface-subtle hover:text-brand-primary lg:hidden"
       type="button"
       aria-label="Fechar menu de navegação"
