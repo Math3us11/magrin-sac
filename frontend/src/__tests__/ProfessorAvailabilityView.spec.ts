@@ -1,5 +1,5 @@
 import { mount } from '@vue/test-utils'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import AvailabilityView from '@/views/professor/AvailabilityView.vue'
 
@@ -20,6 +20,10 @@ describe('AvailabilityView do professor', () => {
       availabilities: [],
       summary: { available: 0, blocked: 0, reserved: 0 },
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('apresenta a agenda própria em estado inicial sem simular dados publicados', async () => {
@@ -109,6 +113,10 @@ describe('AvailabilityView do professor', () => {
   })
 
   it('expande dias da semana e múltiplas faixas em disponibilidades concretas', async () => {
+    // Segunda-feira 07:00 em Porto Velho: todas as janelas da semana ainda estão no futuro.
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2099-10-05T07:00:00.000-04:00'))
+
     const wrapper = mount(AvailabilityView, {
       global: { stubs: { Teleport: true } },
     })
