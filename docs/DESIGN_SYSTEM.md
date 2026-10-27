@@ -194,15 +194,22 @@ reaproveitar silenciosamente a sessão temporária.
 
 ## Página inicial autenticada
 
-A primeira versão da index é um protótipo visual para validar hierarquia e
-densidade. Ela reúne saudação conforme o perfil, campanha institucional,
-atalhos permitidos, próximos atendimentos e avisos. Os atalhos já respeitam as
-permissões carregadas pelo servidor.
+A index autenticada funciona como resumo operacional do perfil. Ela reúne
+saudação, data no timezone institucional, ação principal, atalhos autorizados e
+os próximos compromissos reais. O conteúdo muda conforme o tipo e as permissões
+do usuário:
 
-Campanhas, atendimentos e avisos exibidos nesta etapa são dados ilustrativos e
-devem permanecer identificados como tal. Eles não representam registros reais
-nem definem contratos de API. A integração será feita por blocos quando cada
-fonte de dados e regra de personalização estiver consolidada.
+- aluno consulta os próprios agendamentos e acessa as ações de nova solicitação
+  e histórico;
+- professor consulta os agendamentos atribuídos e acessa agenda, atendimentos e
+  indicadores próprios;
+- administrador consulta a agenda global e acessa agenda, atendimentos,
+  usuários e indicadores institucionais.
+
+O resumo reutiliza os endpoints existentes e apresenta carregamento, erro,
+ausência de permissão e agenda vazia sem depender apenas de cor. Campanhas e
+avisos institucionais permanecem fora da tela enquanto não houver fonte de
+dados e regras aprovadas para publicação.
 
 ## Administração de usuários
 
