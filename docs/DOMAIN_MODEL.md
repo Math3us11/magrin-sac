@@ -47,6 +47,12 @@ Valor operacional não secreto identificado por nome único. Não pode ser usado
 para credenciais, chaves de criptografia ou configuração necessária para abrir
 a conexão com o próprio banco.
 
+O `SystemParametersService` lê os parâmetros declarados em um catálogo tipado,
+com intervalo permitido e valor aprovado. O primeiro parâmetro é
+`APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`, inteiro de 0 a 10080, semeado com
+`120`. Valor ausente ou inválido não interrompe a operação: o serviço usa o valor
+aprovado e registra um aviso no log técnico (ADR-029).
+
 ### Endpoint de integração
 
 URL nomeada de um serviço externo. Quando houver autenticação, guarda apenas os
@@ -173,8 +179,9 @@ as consultas transacionais de conflito. A confirmação bloqueia primeiro o
 usuário solicitante e depois a disponibilidade, revalida estado, professor,
 modalidade, contenção e sobreposições antes da criação.
 
-O cancelamento não apaga o agendamento. Aluno e professor precisam agir com no
-mínimo duas horas de antecedência e somente sobre registros próprios ou
+O cancelamento não apaga o agendamento. Aluno e professor precisam respeitar a
+antecedência mínima do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`
+(120 minutos por padrão) e agir somente sobre registros próprios ou
 atribuídos; o administrador pode agir até o início mediante confirmação da
 própria senha. Motivo, instante, ator e autoria da atualização são obrigatórios.
 A transação bloqueia a disponibilidade e o agendamento antes da mudança de

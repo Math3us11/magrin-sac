@@ -28,6 +28,21 @@ describe('AppointmentCancellationModal', () => {
     ])
   })
 
+  it('informa o prazo calculado pelo backend no horário institucional', async () => {
+    const withDeadline = mount(AppointmentCancellationModal, {
+      global: { stubs: { teleport: true } },
+      props: { cancellableUntil: '2099-10-03T12:00:00.000Z', open: true },
+    })
+    expect(withDeadline.text()).toContain('Cancelamento permitido até 03/10/2099, 08:00.')
+    expect(withDeadline.text()).not.toContain('2 horas')
+
+    const withoutDeadline = mount(AppointmentCancellationModal, {
+      global: { stubs: { teleport: true } },
+      props: { cancellableUntil: null, open: true },
+    })
+    expect(withoutDeadline.text()).not.toContain('Cancelamento permitido até')
+  })
+
   it('não solicita senha no cancelamento do aluno ou professor', async () => {
     const wrapper = mount(AppointmentCancellationModal, {
       global: { stubs: { teleport: true } },

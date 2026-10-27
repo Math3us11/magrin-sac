@@ -150,7 +150,8 @@ documento de requisitos original.
 - Documentação de instalação e operação (`RNF36`).
 - Controle de versão e revisão de alterações relevantes (`RNF37`, `RNF38`).
 - Testes de regras críticas, concorrência e indicadores (`RNF39`–`RNF41`).
-- Configurações institucionais parametrizáveis (`RNF42`).
+- Configurações institucionais parametrizáveis (`RNF42`); a antecedência mínima
+  de cancelamento já é lida de `system_parameters`.
 - Logs úteis sem conteúdo sensível (`RNF43`).
 
 ### Experiência e acessibilidade

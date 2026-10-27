@@ -245,6 +245,8 @@ Entregas:
       MariaDB sem definir silenciosamente a política institucional pendente;
 - executar e registrar o primeiro teste integral de restauração quando o cliente
   `mariadb` estiver disponível no ambiente local;
+- [x] ler de `system_parameters` a antecedência mínima de cancelamento e
+      devolver o prazo calculado nas listagens, sem repetir a regra no frontend;
 - [x] registrar a trilha de auditoria de usuários, agendamentos e
       disponibilidades na mesma transação das operações, com consulta
       administrativa paginada e dados pessoais sensíveis protegidos;

@@ -11,6 +11,7 @@ import { Op, type Transaction, type WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
 import { PasswordHashService } from '../../helpers/password/password.service.js';
+import { SystemParametersService } from '../../helpers/system-parameters/system-parameters.service.js';
 import { Appointment, AppointmentStatus } from '../../models/appointment.model.js';
 import { AuditAction, AuditEntityType } from '../../models/audit-log.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
@@ -67,7 +68,23 @@ type CommittedAppointment = {
 
 type CancellationScope = 'admin' | 'professor' | 'student';
 
-const CANCELLATION_CUTOFF_MS = 2 * 60 * 60 * 1000;
+const CANCELLATION_NOTICE_PARAMETER = 'APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES';
+
+function formatNotice(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  const parts = [
+    ...(hours ? [`${hours} ${hours === 1 ? 'hora' : 'horas'}`] : []),
+    ...(remainder ? [`${remainder} ${remainder === 1 ? 'minuto' : 'minutos'}`] : []),
+  ];
+  return parts.join(' e ');
+}
+
+// Último instante em que o solicitante ainda pode cancelar; nulo quando já não é cancelável.
+function cancellableUntil(appointment: Appointment, noticeMs: number): string | null {
+  if (appointment.status !== AppointmentStatus.CONFIRMED) return null;
+  return new Date(appointment.startsAt.getTime() - noticeMs).toISOString();
+}
 
 function addDateDays(value: string, amount: number): string {
   const date = new Date(`${value}T12:00:00.000Z`);
@@ -90,7 +107,12 @@ export class AppointmentsService {
     private readonly notificationsService: NotificationsService,
     private readonly passwordHashService: PasswordHashService,
     private readonly auditService: AuditService,
+    private readonly systemParametersService: SystemParametersService,
   ) {}
+
+  private async cancellationNoticeMinutes(): Promise<number> {
+    return this.systemParametersService.getInteger(CANCELLATION_NOTICE_PARAMETER);
+  }
 
   cancelMine(
     appointmentId: number,
@@ -378,6 +400,7 @@ export class AppointmentsService {
     const modalityById = new Map(
       modalityItems.map(({ id, value }) => [id, value as AppointmentModality] as const),
     );
+    const noticeMs = (await this.cancellationNoticeMinutes()) * 60_000;
 
     return appointments.flatMap((appointment) => {
       const professorId = professorIdByAvailability.get(appointment.availabilityId);
@@ -387,6 +410,7 @@ export class AppointmentsService {
 
       return [
         {
+          cancellableUntil: cancellableUntil(appointment, noticeMs),
           cancelledAt: appointment.cancelledAt?.toISOString() ?? null,
           cancellationReason: appointment.cancellationReason,
           details: appointment.details,
@@ -687,6 +711,9 @@ export class AppointmentsService {
     const modalityById = new Map(
       modalityItems.map(({ id, value }) => [id, value as AppointmentModality] as const),
     );
+    // O professor respeita a antecedência mínima; o administrador pode cancelar até o início.
+    const noticeMs =
+      professorId === undefined ? 0 : (await this.cancellationNoticeMinutes()) * 60_000;
     const items = appointments.flatMap((appointment) => {
       const professorId = professorIdByAvailability.get(appointment.availabilityId);
       const professor = professorId ? usersById.get(professorId) : undefined;
@@ -696,6 +723,7 @@ export class AppointmentsService {
 
       return [
         {
+          cancellableUntil: cancellableUntil(appointment, noticeMs),
           cancelledAt: appointment.cancelledAt?.toISOString() ?? null,
           cancellationReason: appointment.cancellationReason,
           endsAt: appointment.endsAt.toISOString(),
@@ -727,6 +755,8 @@ export class AppointmentsService {
       attributes: ['availabilityId'],
     });
     if (!reference) throw new NotFoundException('Agendamento não encontrado.');
+
+    const noticeMinutes = scope === 'admin' ? 0 : await this.cancellationNoticeMinutes();
 
     return this.sequelize.transaction(async (transaction) => {
       const availability = await this.availabilityModel
@@ -769,9 +799,9 @@ export class AppointmentsService {
       if (timeUntilStart <= 0) {
         throw new ConflictException('Não é possível cancelar um atendimento que já começou.');
       }
-      if (scope !== 'admin' && timeUntilStart < CANCELLATION_CUTOFF_MS) {
+      if (timeUntilStart < noticeMinutes * 60_000) {
         throw new ConflictException(
-          'O cancelamento deve ser realizado com pelo menos 2 horas de antecedência.',
+          `O cancelamento deve ser realizado com pelo menos ${formatNotice(noticeMinutes)} de antecedência.`,
         );
       }
 

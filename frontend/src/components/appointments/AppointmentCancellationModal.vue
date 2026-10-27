@@ -1,22 +1,36 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import AppButton from '@/components/basic/AppButton.vue'
 import AppModal from '@/components/basic/AppModal.vue'
+import { INSTITUTION_TIME_ZONE } from '@/config/date-time'
 
 const props = withDefaults(
   defineProps<{
     appointmentLabel?: string
+    // Prazo calculado pelo backend a partir do parâmetro de antecedência mínima.
+    cancellableUntil?: string | null
     error?: string
     loading?: boolean
     requiresPassword?: boolean
   }>(),
   {
     appointmentLabel: undefined,
+    cancellableUntil: null,
     error: '',
     loading: false,
     requiresPassword: false,
   },
+)
+
+const deadlineLabel = computed(() =>
+  props.cancellableUntil
+    ? new Intl.DateTimeFormat('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+        timeZone: INSTITUTION_TIME_ZONE,
+      }).format(new Date(props.cancellableUntil))
+    : '',
 )
 
 const open = defineModel<boolean>('open', { required: true })
@@ -120,8 +134,8 @@ function confirm() {
     <p v-if="localError || error" class="mt-3 text-sm font-medium text-status-danger" role="alert">
       {{ localError || error }}
     </p>
-    <p class="mt-3 text-xs leading-5 text-content-muted">
-      Alunos e professores devem cancelar com pelo menos 2 horas de antecedência.
+    <p v-if="deadlineLabel" class="mt-3 text-xs leading-5 text-content-muted">
+      Cancelamento permitido até {{ deadlineLabel }}.
     </p>
 
     <template #footer>

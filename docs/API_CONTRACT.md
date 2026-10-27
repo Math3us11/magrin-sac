@@ -464,8 +464,9 @@ internas de atendimento não fazem parte do contrato.
 
 O `POST /api/appointments/:appointmentId/cancel` exige
 `appointments.cancel.own`, motivo obrigatório de até 500 caracteres e que o
-agendamento confirmado pertença ao aluno autenticado. O início deve estar a no
-mínimo duas horas do instante da requisição:
+agendamento confirmado pertença ao aluno autenticado. O início deve respeitar a
+antecedência mínima do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`,
+hoje 120 minutos:
 
 ```json
 { "reason": "Imprevisto acadêmico." }
@@ -481,7 +482,14 @@ POST /api/professor/appointments/:appointmentId/cancel
 O `GET` exige `appointments.read.assigned`, aceita período de até 62 dias e
 retorna somente agendamentos ligados às disponibilidades do professor da sessão.
 O cancelamento exige `appointments.cancel.assigned`, motivo obrigatório e a
-mesma antecedência mínima de duas horas aplicada ao aluno.
+mesma antecedência mínima configurada para o aluno.
+
+As listagens do aluno, do professor e da administração retornam
+`cancellableUntil` em cada agendamento: o último instante em que o perfil da
+consulta ainda pode cancelá-lo, ou `null` quando ele não está confirmado. Para
+aluno e professor, o valor é o início menos a antecedência configurada; para o
+administrador, é o próprio início. O frontend usa esse campo para habilitar a
+ação e não repete a regra.
 
 ### Administração de disponibilidade
 
@@ -515,7 +523,7 @@ listagem.
 O cancelamento administrativo exige `appointments.cancel.any`, motivo
 obrigatório e confirmação da senha do administrador autenticado com a finalidade
 criptográfica `appointment-admin-cancellation`. É permitido até o início do
-atendimento, inclusive dentro das duas horas reservadas aos demais perfis. A
+atendimento, inclusive dentro da antecedência exigida dos demais perfis. A
 senha não é persistida. Alteração direta de horário permanece fora deste recorte.
 
 ```json

@@ -53,6 +53,10 @@ motivo obrigatório e antecedência mínima de duas horas. O administrador pode
 cancelar qualquer agendamento confirmado até seu início, inclusive dentro das
 duas horas, mas deve informar motivo e confirmar a própria senha.
 
+A antecedência é lida do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`,
+semeado com 120 minutos, para que a coordenação possa ajustá-la sem alterar o
+código (`RNF42`, ADR-029).
+
 O cancelamento preserva o registro, grava `cancelled_at`, `cancelled_by`,
 `cancellation_reason` e `updated_by`, e libera imediatamente o intervalo porque
 somente agendamentos confirmados ocupam disponibilidade. A senha administrativa
