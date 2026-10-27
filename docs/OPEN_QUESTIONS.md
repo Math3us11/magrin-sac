@@ -198,6 +198,14 @@ conclusão. Essa decisão será necessária para impedir que um aluno selecione 
 novo vínculo uma matéria já concluída, sem tratar apenas a existência de um
 registro anterior como aprovação.
 
+### 25. Formato da matrícula
+
+**Decisão provisória:** a matrícula do aluno aceita somente números, com até 20
+dígitos, e é única. Confirmar com a secretaria acadêmica o formato oficial
+(quantidade fixa de dígitos, prefixo de ano ou dígito verificador) e quem
+fornecerá as matrículas dos alunos cadastrados antes dessa exigência, que hoje
+precisam ser completadas na próxima edição administrativa.
+
 ## Registro de respostas
 
 Ao resolver uma pendência:

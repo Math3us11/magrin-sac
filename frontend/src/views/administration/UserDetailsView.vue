@@ -40,6 +40,7 @@ interface UserDetailsFormValues {
   email: string
   name: string
   phone: string
+  registrationNumber?: string
   userType: UserDetails['userType']
 }
 
@@ -184,6 +185,7 @@ const initialValues = computed<UserDetailsFormValues | undefined>(() => {
     email: user.value.email,
     name: user.value.name,
     phone: user.value.phone ?? '',
+    registrationNumber: user.value.registrationNumber ?? '',
     userType: user.value.userType,
   }
 })
@@ -324,6 +326,8 @@ async function saveUser(values: GenericObject) {
     phone: form.phone.trim(),
     userType: form.userType,
   }
+
+  if (form.userType === 'aluno') payload.registrationNumber = (form.registrationNumber ?? '').trim()
 
   if (form.userType !== 'administrador') {
     payload.academic = {
@@ -595,6 +599,18 @@ onMounted(() => {
                   : 'Professor pode possuir vários cursos e matérias, sem período acadêmico.'
               }}
             </p>
+
+            <div v-if="selectedUserType === 'aluno'" class="mt-6 max-w-sm">
+              <AppInput
+                :disabled="!isEditing"
+                help-text="Somente números, com até 20 dígitos."
+                inputmode="numeric"
+                label="Matrícula"
+                :maxlength="20"
+                name="registrationNumber"
+                required
+              />
+            </div>
 
             <div
               class="mt-6 grid gap-5"

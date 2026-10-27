@@ -36,13 +36,26 @@ import type {
 } from './dto/user-details-response.dto.js';
 
 const ACADEMIC_PERIOD_OPTION = 'ACADEMIC_PERIOD';
-const AUDITED_USER_FIELDS = ['name', 'email', 'userType', 'isActive'] as const;
+const AUDITED_USER_FIELDS = [
+  'name',
+  'email',
+  'userType',
+  'registrationNumber',
+  'isActive',
+] as const;
+const DUPLICATED_IDENTITY_MESSAGE =
+  'Já existe um usuário com o e-mail, CPF ou matrícula informados.';
 const REDACTED_USER_FIELDS = ['cpf', 'phone', 'birthDate'] as const;
 
 type AcademicUserInput = Pick<CreateUserDto, 'academic' | 'userType'>;
 type CreateUserInput = Omit<CreateUserDto, 'temporaryPassword'> & {
   temporaryPassword: string;
 };
+
+// Matrícula pertence somente ao aluno; os demais perfis a mantêm nula.
+function registrationNumberFor(input: Pick<CreateUserDto, 'registrationNumber' | 'userType'>) {
+  return input.userType === UserType.STUDENT ? (input.registrationNumber ?? null) : null;
+}
 
 @Injectable()
 export class UsersService {
@@ -63,10 +76,14 @@ export class UsersService {
 
   async create(input: CreateUserInput, actorId: number): Promise<CreateUserResponseDto> {
     const passwordHash = await this.passwordHashService.hash(input.temporaryPassword);
+    const registrationNumber = registrationNumberFor(input);
 
     try {
       return await this.sequelize.transaction(async (transaction) => {
-        await this.assertUniqueIdentity(input.email, input.cpf, transaction);
+        await this.assertUniqueIdentity(
+          { cpf: input.cpf, email: input.email, registrationNumber },
+          transaction,
+        );
         const academicLinks = await this.validateAcademicLinks(input, transaction);
         const user = await this.userModel.unscoped().create(
           {
@@ -79,6 +96,7 @@ export class UsersService {
             name: input.name,
             passwordHash,
             phone: input.phone,
+            registrationNumber,
             updatedBy: actorId,
             userType: input.userType,
           },
@@ -105,7 +123,7 @@ export class UsersService {
             actorId,
             changes: diffAuditFields(
               null,
-              { ...input },
+              { ...input, registrationNumber },
               {
                 fields: AUDITED_USER_FIELDS,
                 redacted: REDACTED_USER_FIELDS,
@@ -121,7 +139,7 @@ export class UsersService {
       });
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
-        throw new ConflictException('Já existe um usuário com o e-mail ou CPF informado.');
+        throw new ConflictException(DUPLICATED_IDENTITY_MESSAGE);
       }
 
       throw error;
@@ -136,7 +154,11 @@ export class UsersService {
     if (query.search) {
       const search = this.escapeLikeValue(query.search);
       Object.assign(where, {
-        [Op.or]: [{ name: { [Op.like]: `%${search}%` } }, { email: { [Op.like]: `%${search}%` } }],
+        [Op.or]: [
+          { name: { [Op.like]: `%${search}%` } },
+          { email: { [Op.like]: `%${search}%` } },
+          { registrationNumber: { [Op.like]: `${search}%` } },
+        ],
       });
     }
 
@@ -151,6 +173,7 @@ export class UsersService {
         'isActive',
         'mustChangePassword',
         'name',
+        'registrationNumber',
         'userType',
       ],
       limit: pageSize,
@@ -166,15 +189,27 @@ export class UsersService {
       page,
       pageSize,
       total: count,
-      users: rows.map(({ createdAt, email, id, isActive, mustChangePassword, name, userType }) => ({
-        createdAt,
-        email,
-        id,
-        isActive,
-        mustChangePassword,
-        name,
-        userType,
-      })),
+      users: rows.map(
+        ({
+          createdAt,
+          email,
+          id,
+          isActive,
+          mustChangePassword,
+          name,
+          registrationNumber,
+          userType,
+        }) => ({
+          createdAt,
+          email,
+          id,
+          isActive,
+          mustChangePassword,
+          name,
+          registrationNumber,
+          userType,
+        }),
+      ),
     };
   }
 
@@ -190,6 +225,7 @@ export class UsersService {
         'mustChangePassword',
         'name',
         'phone',
+        'registrationNumber',
         'updatedAt',
         'userType',
       ],
@@ -211,6 +247,7 @@ export class UsersService {
       mustChangePassword: user.mustChangePassword,
       name: user.name,
       phone: user.phone,
+      registrationNumber: user.registrationNumber,
       updatedAt: user.updatedAt,
       userType: user.userType,
     };
@@ -227,7 +264,12 @@ export class UsersService {
 
         if (!user) throw new NotFoundException('Usuário não encontrado.');
 
-        await this.assertUniqueIdentity(input.email, input.cpf, transaction, userId);
+        const registrationNumber = registrationNumberFor(input);
+        await this.assertUniqueIdentity(
+          { cpf: input.cpf, email: input.email, registrationNumber },
+          transaction,
+          userId,
+        );
         const academicLinks = await this.validateAcademicLinks(input, transaction);
         const before = {
           birthDate: user.birthDate,
@@ -236,6 +278,7 @@ export class UsersService {
           isActive: user.isActive,
           name: user.name,
           phone: user.phone,
+          registrationNumber: user.registrationNumber,
           userType: user.userType,
         };
 
@@ -247,6 +290,7 @@ export class UsersService {
             isActive: input.isActive,
             name: input.name,
             phone: input.phone,
+            registrationNumber,
             updatedBy: actorId,
             userType: input.userType,
           },
@@ -259,7 +303,7 @@ export class UsersService {
             actorId,
             changes: diffAuditFields(
               before,
-              { ...input },
+              { ...input, registrationNumber },
               {
                 fields: AUDITED_USER_FIELDS,
                 redacted: REDACTED_USER_FIELDS,
@@ -275,7 +319,7 @@ export class UsersService {
       });
     } catch (error) {
       if (error instanceof UniqueConstraintError) {
-        throw new ConflictException('Já existe um usuário com o e-mail ou CPF informado.');
+        throw new ConflictException(DUPLICATED_IDENTITY_MESSAGE);
       }
 
       throw error;
@@ -571,24 +615,34 @@ export class UsersService {
   }
 
   private async assertUniqueIdentity(
-    email: string,
-    cpf: string,
+    identity: { cpf: string; email: string; registrationNumber: string | null },
     transaction: Transaction,
     excludedUserId?: number,
   ): Promise<void> {
-    const where: WhereOptions = { [Op.or]: [{ email }, { cpf }] };
+    const { cpf, email, registrationNumber } = identity;
+    const where: WhereOptions = {
+      [Op.or]: [{ email }, { cpf }, ...(registrationNumber ? [{ registrationNumber }] : [])],
+    };
     if (excludedUserId !== undefined) Object.assign(where, { id: { [Op.ne]: excludedUserId } });
 
     const existingUser = await this.userModel.unscoped().findOne({
-      attributes: ['id'],
+      attributes: ['cpf', 'email', 'id', 'registrationNumber'],
       paranoid: false,
       transaction,
       where,
     });
 
-    if (existingUser) {
-      throw new ConflictException('Já existe um usuário com o e-mail ou CPF informado.');
+    if (!existingUser) return;
+    if (
+      registrationNumber &&
+      existingUser.registrationNumber === registrationNumber &&
+      existingUser.email !== email &&
+      existingUser.cpf !== cpf
+    ) {
+      throw new ConflictException('Já existe um usuário com a matrícula informada.');
     }
+
+    throw new ConflictException('Já existe um usuário com o e-mail ou CPF informado.');
   }
 
   private async validateAcademicLinks(

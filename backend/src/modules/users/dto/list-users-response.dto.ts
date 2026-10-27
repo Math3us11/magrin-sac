@@ -7,6 +7,7 @@ export class UserListItemDto {
   declare isActive: boolean;
   declare mustChangePassword: boolean;
   declare name: string;
+  declare registrationNumber: string | null;
   declare userType: UserType;
 }
 

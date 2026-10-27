@@ -41,6 +41,7 @@ export type CreateUserPayload = {
   isActive: boolean
   name: string
   phone: string
+  registrationNumber?: string
   temporaryPassword: string
   userType: 'aluno' | 'professor' | 'administrador'
 }
