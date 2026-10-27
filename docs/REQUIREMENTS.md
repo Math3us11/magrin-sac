@@ -37,8 +37,8 @@ documento de requisitos original.
 - Cadastrar data, início e fim livres e pelo menos uma modalidade entre
   presencial e online (`RF08`–`RF11`), exigindo término posterior ao início e
   sem solicitar sala ou link no primeiro recorte.
-- Bloquear horários livres e impedir disponibilidades conflitantes
-  (`RF12`, `RF13`).
+- Bloquear e desbloquear horários próprios sem agendamento confirmado e impedir
+  disponibilidades conflitantes (`RF12`, `RF13`).
 - Interpretar e exibir a agenda no timezone institucional
   `America/Porto_Velho`, normalizando os instantes na persistência.
 - Consultar agenda por data ou período e mostrar ao aluno apenas opções aptas

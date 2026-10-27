@@ -79,6 +79,11 @@ janelas em disponibilidades concretas sem persistir recorrência. Ainda é
 necessário definir antecedência mínima, janela máxima de agendamento e
 comportamento de horários já reservados quando a agenda muda.
 
+O bloqueio implementado segue o texto do `RF12` e aceita somente janelas sem
+agendamento confirmado. Bloquear parcialmente uma janela, ou bloquear uma
+janela com reservas cancelando ou realocando os alunos, continua pendente desta
+definição.
+
 ## Decisões do módulo de atendimento e bloqueadores dos indicadores
 
 ### 7. Atendimento realizado

@@ -129,6 +129,10 @@ Entregas:
       frontend, mantendo cada ocorrência concreta no contrato existente;
 - [x] apresentar as disponibilidades publicadas em um calendário mensal
       reutilizável, com navegação e detalhamento do dia selecionado;
+- [x] bloquear e desbloquear disponibilidades próprias sem agendamento
+      confirmado, com confirmação na interface e lock transacional
+      compartilhado com a reserva, e separar os totais de disponíveis,
+      reservadas e bloqueadas;
 - [x] criar a estrutura física de agendamentos, vinculando aluno,
       disponibilidade e modalidade permitida sem exclusão do histórico;
 - [x] permitir que o aluno consulte por mês e modalidade apenas os trechos

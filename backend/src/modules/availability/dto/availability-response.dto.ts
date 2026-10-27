@@ -2,6 +2,7 @@ import type { AvailabilityState } from '../../../models/availability.model.js';
 import type { AppointmentModality } from '../../../types/appointment-modality.type.js';
 
 export class AvailabilityItemResponseDto {
+  declare confirmedAppointments: number;
   declare endsAt: string;
   declare id: number;
   declare modalities: AppointmentModality[];
@@ -11,6 +12,11 @@ export class AvailabilityItemResponseDto {
 
 export class CreateAvailabilityResponseDto {
   declare availabilities: AvailabilityItemResponseDto[];
+  declare message: string;
+}
+
+export class UpdateAvailabilityStateResponseDto {
+  declare availability: AvailabilityItemResponseDto;
   declare message: string;
 }
 

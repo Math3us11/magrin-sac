@@ -144,6 +144,12 @@ Cada disponibilidade se relaciona com um ou dois itens por meio de
 `availability_modalities`; “ambas” é a apresentação de dois vínculos e não um
 terceiro valor do catálogo.
 
+O professor proprietário pode bloquear uma janela ativa, ainda não encerrada e
+sem agendamento confirmado, e desbloqueá-la depois. Uma janela bloqueada não
+aparece na consulta do aluno, continua impedindo a publicação de janelas
+sobrepostas e não é excluída. A transição registra o ator em `updated_by`; a
+trilha completa de alterações depende do módulo de auditoria.
+
 ### Agendamento
 
 Reserva de um aluno dentro de uma janela de disponibilidade, com início, fim,

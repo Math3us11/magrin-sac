@@ -5,6 +5,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/basic/AppButton.vue'
 import AppCalendar from '@/components/basic/AppCalendar.vue'
+import AppConfirmDialog from '@/components/basic/AppConfirmDialog.vue'
 import AppForm from '@/components/basic/AppForm.vue'
 import AppInput from '@/components/basic/AppInput.vue'
 import AppModal from '@/components/basic/AppModal.vue'
@@ -28,7 +29,12 @@ import {
 import { ApiError } from '@/services/api'
 import { registerAssignedAttendance } from '@/services/attendance'
 import { cancelAssignedAppointment, listAssignedAppointments } from '@/services/appointments'
-import { createAvailabilities, listOwnAvailabilities } from '@/services/availability'
+import {
+  blockOwnAvailability,
+  createAvailabilities,
+  listOwnAvailabilities,
+  unblockOwnAvailability,
+} from '@/services/availability'
 import { pinia } from '@/stores'
 import { useLoadingStore } from '@/stores/loading'
 import type { AppCalendarEvent } from '@/types/calendar'
@@ -70,6 +76,9 @@ const appointmentToRegister = ref<AdminAppointmentItem | null>(null)
 const attendanceOpen = ref(false)
 const registeringAttendance = ref(false)
 const attendanceError = ref('')
+const availabilityToChange = ref<AvailabilityItem | null>(null)
+const changingAvailabilityState = ref(false)
+const availabilityStateError = ref('')
 let nextDraftId = 1
 
 const currentInstitutionDate = getInstitutionDateTime().date
@@ -168,22 +177,54 @@ const draftCountLabel = computed(() => {
   return `${count} ${count === 1 ? 'horário preparado' : 'horários preparados'}`
 })
 
-const calendarEvents = computed<AppCalendarEvent[]>(() =>
-  availabilities.value.map((availability) => {
-    const startsAt = getInstitutionDateTime(new Date(availability.startsAt))
-    const endsAt = getInstitutionDateTime(new Date(availability.endsAt))
-    const isBlocked = availability.state === 'bloqueada'
+function formatAvailabilityWindow(availability: AvailabilityItem): string {
+  const startsAt = getInstitutionDateTime(new Date(availability.startsAt))
+  const endsAt = getInstitutionDateTime(new Date(availability.endsAt))
+  return `${startsAt.time}–${endsAt.time}`
+}
 
-    return {
-      date: startsAt.date,
-      description: formatModalities(availability.modalities),
+function describeAvailability(availability: AvailabilityItem): string {
+  const modalities = formatModalities(availability.modalities)
+  const count = availability.confirmedAppointments
+  if (count === 0) return modalities
+  return `${modalities} · ${count} ${count === 1 ? 'agendamento confirmado' : 'agendamentos confirmados'}`
+}
+
+const calendarEvents = computed<AppCalendarEvent[]>(() =>
+  availabilities.value.map((availability): AppCalendarEvent => {
+    const date = getInstitutionDateTime(new Date(availability.startsAt)).date
+    const base = {
+      date,
+      description: describeAvailability(availability),
       id: availability.id,
-      statusLabel: isBlocked ? 'Bloqueada' : 'Disponível',
-      title: `${startsAt.time}–${endsAt.time}`,
-      tone: isBlocked ? 'warning' : 'success',
+      title: formatAvailabilityWindow(availability),
     }
+
+    if (availability.state === 'bloqueada') {
+      return {
+        ...base,
+        actionLabel: 'Desbloquear horário',
+        statusLabel: 'Bloqueada',
+        tone: 'warning',
+      }
+    }
+    if (availability.confirmedAppointments > 0) {
+      return { ...base, statusLabel: 'Reservada', tone: 'brand' }
+    }
+    return { ...base, actionLabel: 'Bloquear horário', statusLabel: 'Disponível', tone: 'success' }
   }),
 )
+
+const isBlockingAvailability = computed(() => availabilityToChange.value?.state === 'ativa')
+const availabilityStateDialogDescription = computed(() => {
+  const availability = availabilityToChange.value
+  if (!availability) return ''
+
+  const label = `${formatDate(getInstitutionDateTime(new Date(availability.startsAt)).date)}, ${formatAvailabilityWindow(availability)}`
+  return isBlockingAvailability.value
+    ? `O horário de ${label} deixará de aparecer para os alunos até ser desbloqueado.`
+    : `O horário de ${label} voltará a aparecer para os alunos agendarem.`
+})
 
 const calendarInitialDate = computed(
   () =>
@@ -480,6 +521,41 @@ async function confirmCancellation({ reason }: { reason: string }) {
   }
 }
 
+function requestAvailabilityStateChange(event: AppCalendarEvent) {
+  const availability = availabilities.value.find(({ id }) => id === event.id)
+  if (!availability) return
+
+  availabilityToChange.value = availability
+  availabilityStateError.value = ''
+}
+
+function closeAvailabilityStateDialog() {
+  if (changingAvailabilityState.value) return
+  availabilityToChange.value = null
+  availabilityStateError.value = ''
+}
+
+async function confirmAvailabilityStateChange() {
+  const availability = availabilityToChange.value
+  if (!availability || changingAvailabilityState.value) return
+
+  changingAvailabilityState.value = true
+  availabilityStateError.value = ''
+  try {
+    if (availability.state === 'ativa') await blockOwnAvailability(availability.id)
+    else await unblockOwnAvailability(availability.id)
+    availabilityToChange.value = null
+    await loadAvailabilities()
+  } catch (error) {
+    availabilityStateError.value =
+      error instanceof ApiError
+        ? error.message
+        : 'Não foi possível atualizar o horário. Tente novamente.'
+  } finally {
+    changingAvailabilityState.value = false
+  }
+}
+
 async function publishDrafts() {
   if (drafts.value.length === 0 || publishing.value) return
 
@@ -631,8 +707,32 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
           :events="calendarEvents"
           :initial-date="calendarInitialDate"
           :today="currentInstitutionDate"
+          @select-event="requestAvailabilityStateChange"
         />
       </section>
+
+      <AppConfirmDialog
+        :open="availabilityToChange !== null"
+        :title="isBlockingAvailability ? 'Bloquear horário?' : 'Desbloquear horário?'"
+        :description="availabilityStateDialogDescription"
+        cancel-label="Voltar"
+        :confirm-label="isBlockingAvailability ? 'Bloquear horário' : 'Desbloquear horário'"
+        :loading="changingAvailabilityState"
+        :loading-label="isBlockingAvailability ? 'Bloqueando...' : 'Desbloqueando...'"
+        :tone="isBlockingAvailability ? 'danger' : 'primary'"
+        @cancel="closeAvailabilityStateDialog"
+        @confirm="confirmAvailabilityStateChange"
+        @update:open="closeAvailabilityStateDialog"
+      >
+        <template v-if="availabilityStateError" #default>
+          <p
+            class="rounded-xl bg-status-danger-soft px-4 py-3 text-sm font-medium text-status-danger"
+            role="alert"
+          >
+            {{ availabilityStateError }}
+          </p>
+        </template>
+      </AppConfirmDialog>
 
       <section class="mt-8 rounded-3xl border border-outline bg-surface p-6 sm:p-8">
         <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">Atendimentos</p>
