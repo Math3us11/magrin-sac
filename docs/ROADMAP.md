@@ -69,8 +69,9 @@ Entregas:
       administrador;
 - [x] expor permissões e árvore de navegação do usuário autenticado;
 - [x] consumir a navegação no frontend e criar o shell responsivo autenticado;
-- [x] criar protótipo visual da index com atalhos por permissão e blocos
-      ilustrativos para agenda, campanhas e avisos;
+- [x] criar a index autenticada com ação principal, atalhos por perfil e
+      permissões, resumo de 30 dias e próximos compromissos reais para aluno,
+      professor e administrador;
 - [x] criar o menu administrativo e a view inicial de usuários, organizando
       views específicas por menu pai;
 - [x] esboçar a listagem e criar o wizard responsivo de quatro etapas do cadastro
