@@ -1,0 +1,7 @@
+# Normaliza finais de linha em LF, alinhado ao Prettier e ao .editorconfig.
+* text=auto eol=lf
+
+# Binários versionados.
+*.ico binary
+*.pdf binary
+*.png binary
