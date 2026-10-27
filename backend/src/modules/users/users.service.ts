@@ -10,6 +10,7 @@ import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { Op, UniqueConstraintError, type Transaction, type WhereOptions } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { PasswordHashService } from '../../helpers/password/password.service.js';
+import { AuditAction, AuditEntityType } from '../../models/audit-log.model.js';
 import { AuthSession } from '../../models/auth-session.model.js';
 import { Course } from '../../models/course.model.js';
 import { CourseSubject } from '../../models/course-subject.model.js';
@@ -18,6 +19,7 @@ import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { UserSubject } from '../../models/user-subject.model.js';
 import { User, UserType } from '../../models/user.model.js';
+import { AuditService, diffAuditFields } from '../audit/audit.service.js';
 import type { CreateUserDto } from './dto/create-user.dto.js';
 import type { CreateUserResponseDto } from './dto/create-user-response.dto.js';
 import type { ListUsersQueryDto } from './dto/list-users-query.dto.js';
@@ -34,6 +36,8 @@ import type {
 } from './dto/user-details-response.dto.js';
 
 const ACADEMIC_PERIOD_OPTION = 'ACADEMIC_PERIOD';
+const AUDITED_USER_FIELDS = ['name', 'email', 'userType', 'isActive'] as const;
+const REDACTED_USER_FIELDS = ['cpf', 'phone', 'birthDate'] as const;
 
 type AcademicUserInput = Pick<CreateUserDto, 'academic' | 'userType'>;
 type CreateUserInput = Omit<CreateUserDto, 'temporaryPassword'> & {
@@ -54,6 +58,7 @@ export class UsersService {
     @InjectModel(AuthSession) private readonly authSessionModel: typeof AuthSession,
     @InjectConnection() private readonly sequelize: Sequelize,
     private readonly passwordHashService: PasswordHashService,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(input: CreateUserInput, actorId: number): Promise<CreateUserResponseDto> {
@@ -93,6 +98,24 @@ export class UsersService {
             { transaction },
           );
         }
+
+        await this.auditService.record(
+          {
+            action: AuditAction.USER_CREATED,
+            actorId,
+            changes: diffAuditFields(
+              null,
+              { ...input },
+              {
+                fields: AUDITED_USER_FIELDS,
+                redacted: REDACTED_USER_FIELDS,
+              },
+            ),
+            entityId: user.id,
+            entityType: AuditEntityType.USER,
+          },
+          transaction,
+        );
 
         return { message: 'Usuário criado com sucesso.' };
       });
@@ -206,6 +229,15 @@ export class UsersService {
 
         await this.assertUniqueIdentity(input.email, input.cpf, transaction, userId);
         const academicLinks = await this.validateAcademicLinks(input, transaction);
+        const before = {
+          birthDate: user.birthDate,
+          cpf: user.cpf,
+          email: user.email,
+          isActive: user.isActive,
+          name: user.name,
+          phone: user.phone,
+          userType: user.userType,
+        };
 
         await user.update(
           {
@@ -221,6 +253,23 @@ export class UsersService {
           { transaction },
         );
         await this.syncAcademicLinks(userId, academicLinks, actorId, transaction);
+        await this.auditService.record(
+          {
+            action: AuditAction.USER_UPDATED,
+            actorId,
+            changes: diffAuditFields(
+              before,
+              { ...input },
+              {
+                fields: AUDITED_USER_FIELDS,
+                redacted: REDACTED_USER_FIELDS,
+              },
+            ),
+            entityId: userId,
+            entityType: AuditEntityType.USER,
+          },
+          transaction,
+        );
 
         return { message: 'Usuário atualizado com sucesso.' };
       });
@@ -259,6 +308,7 @@ export class UsersService {
       if (!user) throw new NotFoundException('Usuário não encontrado.');
 
       const now = new Date();
+      const wasActive = user.isActive;
       await user.update(
         { deletedBy: actorId, isActive: false, updatedBy: actorId },
         { fields: ['deletedBy', 'isActive', 'updatedBy'], transaction },
@@ -268,6 +318,22 @@ export class UsersService {
         { transaction, where: { revokedAt: null, userId } },
       );
       await user.destroy({ transaction });
+      await this.auditService.record(
+        {
+          action: AuditAction.USER_DELETED,
+          actorId,
+          changes: diffAuditFields(
+            { isActive: wasActive },
+            { isActive: false },
+            {
+              fields: ['isActive'],
+            },
+          ),
+          entityId: userId,
+          entityType: AuditEntityType.USER,
+        },
+        transaction,
+      );
 
       return { message: 'Usuário excluído com sucesso.' };
     });

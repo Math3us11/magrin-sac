@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Op } from 'sequelize';
 import { UsersService } from '../dist/modules/users/users.service.js';
+import { createAuditFake } from './audit-fake.mjs';
 
 function createService({ existingUser = null } = {}) {
   const calls = {
@@ -109,7 +110,10 @@ function createService({ existingUser = null } = {}) {
     },
   };
 
+  const audit = createAuditFake();
+
   return {
+    audit,
     calls,
     service: new UsersService(
       courseModel,
@@ -122,6 +126,7 @@ function createService({ existingUser = null } = {}) {
       { update: async () => undefined },
       sequelize,
       passwordHashService,
+      audit.service,
     ),
   };
 }
@@ -172,7 +177,7 @@ test('lista usuários paginados sem consultar campos sensíveis', async () => {
 });
 
 test('cadastra aluno e vínculos em uma transação sem persistir a senha em texto puro', async () => {
-  const { calls, service } = createService();
+  const { audit, calls, service } = createService();
   const response = await service.create(
     {
       academic: { academicPeriodId: 71, courseIds: [1], courseSubjectIds: [10] },
@@ -203,6 +208,22 @@ test('cadastra aluno e vínculos em uma transação sem persistir a senha em tex
     },
   ]);
   assert.deepEqual(response, { message: 'Usuário criado com sucesso.' });
+  assert.equal(audit.entries.length, 1);
+  assert.equal(audit.entries[0].action, 'user.created');
+  assert.equal(audit.entries[0].actorId, 3);
+  assert.equal(audit.entries[0].entityId, 50);
+  assert.deepEqual(audit.entries[0].changes, {
+    birthDate: { redacted: true },
+    cpf: { redacted: true },
+    email: { from: null, to: 'aluno@example.com' },
+    isActive: { from: null, to: true },
+    name: { from: null, to: 'Aluno Teste' },
+    phone: { redacted: true },
+    userType: { from: null, to: 'aluno' },
+  });
+  const serialized = JSON.stringify(audit.entries[0].changes);
+  assert.equal(serialized.includes('senha-temporaria'), false);
+  assert.equal(serialized.includes('11111111111'), false);
 });
 
 test('cadastra professor sem atribuir período acadêmico às matérias', async () => {

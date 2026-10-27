@@ -12,11 +12,13 @@ import { Sequelize } from 'sequelize-typescript';
 import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
 import { PasswordHashService } from '../../helpers/password/password.service.js';
 import { Appointment, AppointmentStatus } from '../../models/appointment.model.js';
+import { AuditAction, AuditEntityType } from '../../models/audit-log.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability, AvailabilityState } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { User, UserType } from '../../models/user.model.js';
 import type { AppointmentModality } from '../../types/appointment-modality.type.js';
+import { AuditService, diffAuditFields } from '../audit/audit.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateAppointmentDto } from './dto/create-appointment.dto.js';
 import type { CreateAppointmentResponseDto } from './dto/create-appointment-response.dto.js';
@@ -87,6 +89,7 @@ export class AppointmentsService {
     private readonly institutionDateTime: InstitutionDateTimeService,
     private readonly notificationsService: NotificationsService,
     private readonly passwordHashService: PasswordHashService,
+    private readonly auditService: AuditService,
   ) {}
 
   cancelMine(
@@ -528,6 +531,27 @@ export class AppointmentsService {
       },
       { transaction },
     );
+    await this.auditService.record(
+      {
+        action: AuditAction.APPOINTMENT_CREATED,
+        actorId: requesterId,
+        changes: diffAuditFields(
+          null,
+          {
+            availabilityId: availability.id,
+            endsAt: prepared.endsAt,
+            modality: input.modality,
+            protocol,
+            startsAt: prepared.startsAt,
+            status: AppointmentStatus.CONFIRMED,
+          },
+          { fields: ['protocol', 'availabilityId', 'startsAt', 'endsAt', 'modality', 'status'] },
+        ),
+        entityId: appointment.id,
+        entityType: AuditEntityType.APPOINTMENT,
+      },
+      transaction,
+    );
 
     return {
       notification: {
@@ -763,6 +787,21 @@ export class AppointmentsService {
           fields: ['cancelledAt', 'cancelledBy', 'cancellationReason', 'status', 'updatedBy'],
           transaction,
         },
+      );
+      await this.auditService.record(
+        {
+          action: AuditAction.APPOINTMENT_CANCELLED,
+          actorId,
+          changes: diffAuditFields(
+            { status: AppointmentStatus.CONFIRMED },
+            { status: AppointmentStatus.CANCELLED },
+            { fields: ['status'] },
+          ),
+          entityId: appointment.id,
+          entityType: AuditEntityType.APPOINTMENT,
+          reason: preparedReason,
+        },
+        transaction,
       );
 
       return {

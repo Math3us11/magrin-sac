@@ -661,6 +661,45 @@ detalham as classificações atuais desses atendimentos e, portanto, não devem 
 somados novamente a `performed`. O período segue o horário institucional, é
 inclusivo nas datas informadas e aceita no máximo 366 dias.
 
+### Auditoria administrativa
+
+```text
+GET /api/admin/audit-logs?from=AAAA-MM-DD&to=AAAA-MM-DD&action=...&entityType=...&actorId=...&page=1&pageSize=20
+```
+
+Exige `audit.read`, concedida somente ao administrador. `from` e `to` são
+obrigatórios, inclusivos, interpretados no timezone institucional e limitados a
+62 dias. `action`, `entityType` e `actorId` são filtros opcionais; `pageSize`
+aceita no máximo 100. A ordenação é do registro mais recente para o mais
+antigo.
+
+```json
+{
+  "entries": [
+    {
+      "id": 7,
+      "occurredAt": "2026-10-05T15:00:00.000Z",
+      "action": "user.updated",
+      "entityType": "user",
+      "entityId": 10,
+      "actor": { "id": 3, "name": "Administrador" },
+      "changes": {
+        "isActive": { "from": true, "to": false },
+        "cpf": { "redacted": true }
+      },
+      "reason": null
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1,
+  "range": { "from": "2026-10-01", "to": "2026-10-31" }
+}
+```
+
+`actor` é `null` somente em ações técnicas sem usuário autenticado. Campos com
+`redacted` foram alterados, mas seus valores não são armazenados.
+
 ### Usuários e permissões
 
 ```text

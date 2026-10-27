@@ -147,8 +147,8 @@ terceiro valor do catálogo.
 O professor proprietário pode bloquear uma janela ativa, ainda não encerrada e
 sem agendamento confirmado, e desbloqueá-la depois. Uma janela bloqueada não
 aparece na consulta do aluno, continua impedindo a publicação de janelas
-sobrepostas e não é excluída. A transição registra o ator em `updated_by`; a
-trilha completa de alterações depende do módulo de auditoria.
+sobrepostas e não é excluída. Publicação, bloqueio e desbloqueio são
+registrados na trilha de auditoria.
 
 ### Agendamento
 
@@ -221,9 +221,24 @@ quando o provider ainda não está configurado, preservando o caminho de reenvio
 
 ### Auditoria
 
-Registra ator, ação administrativa, tipo e identificador do alvo, data e
-metadados mínimos. Não deve guardar segredos ou cópias desnecessárias de dados
-pessoais.
+Registra ator, ação, tipo e identificador do alvo, instante, motivo quando
+houver e os campos alterados com valores anterior e novo. O modelo físico
+`audit_logs` é somente de inserção: não possui colunas de atualização nem
+exclusão lógica, e `actor_id` referencia `users` com `RESTRICT`, preservando o
+responsável mesmo após a desativação ou exclusão lógica da conta (`RF65`).
+
+O registro ocorre na mesma transação da operação auditada; se a operação falhar,
+nenhuma linha de auditoria é gravada. As ações registradas no primeiro recorte
+são:
+
+- `user.created`, `user.updated` e `user.deleted`;
+- `appointment.created` e `appointment.cancelled`, com o motivo do cancelamento;
+- `availability.created`, `availability.blocked` e `availability.unblocked`.
+
+Senhas e hashes nunca entram na trilha. CPF, telefone e data de nascimento
+aparecem apenas como alterados, sem valores. Assunto e detalhes do agendamento
+também ficam fora. Atendimentos continuam auditados por
+`attendance_status_history` (ADR-027).
 
 ## Relacionamentos propostos
 

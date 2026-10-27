@@ -3,6 +3,7 @@ import test from 'node:test';
 import { ForbiddenException } from '@nestjs/common';
 import { Op } from 'sequelize';
 import { UsersService } from '../dist/modules/users/users.service.js';
+import { createAuditFake } from './audit-fake.mjs';
 
 function createService() {
   const calls = {
@@ -113,7 +114,10 @@ function createService() {
     matches: async (password) => password === 'admin-password',
   };
 
+  const audit = createAuditFake();
+
   return {
+    audit,
     calls,
     service: new UsersService(
       courseModel,
@@ -126,6 +130,7 @@ function createService() {
       authSessionModel,
       sequelize,
       passwordHashService,
+      audit.service,
     ),
   };
 }
@@ -143,7 +148,7 @@ test('consulta detalhes administrativos sem expor credenciais', async () => {
 });
 
 test('atualiza usuário e reconcilia vínculos acadêmicos na mesma transação', async () => {
-  const { calls, service } = createService();
+  const { audit, calls, service } = createService();
   const response = await service.update(
     10,
     {
@@ -174,10 +179,23 @@ test('atualiza usuário e reconcilia vínculos acadêmicos na mesma transação'
     },
   ]);
   assert.equal(calls.identityWhere.id[Op.ne], 10);
+  assert.equal(audit.entries.length, 1);
+  assert.equal(audit.entries[0].action, 'user.updated');
+  assert.equal(audit.entries[0].actorId, 3);
+  assert.equal(audit.entries[0].entityId, 10);
+  assert.deepEqual(audit.entries[0].transaction, { id: 'transaction' });
+  assert.deepEqual(audit.entries[0].changes, {
+    birthDate: { redacted: true },
+    email: { from: 'aluno@example.com', to: 'professor@example.com' },
+    name: { from: 'Aluno Teste', to: 'Professor Atualizado' },
+    phone: { redacted: true },
+    userType: { from: 'aluno', to: 'professor' },
+  });
+  assert.equal(JSON.stringify(audit.entries[0].changes).includes('65988888888'), false);
 });
 
 test('exclui logicamente o usuário, registra o administrador e revoga sessões', async () => {
-  const { calls, service } = createService();
+  const { audit, calls, service } = createService();
 
   const response = await service.delete(10, 3, 'admin-password');
 
@@ -188,11 +206,28 @@ test('exclui logicamente o usuário, registra o administrador e revoga sessões'
   assert.equal(calls.userDestroyed, true);
   assert.equal(calls.revokedSessions.updatedBy, 3);
   assert.ok(calls.revokedSessions.revokedAt instanceof Date);
+  assert.deepEqual(
+    audit.entries.map(({ action, actorId, changes, entityId }) => ({
+      action,
+      actorId,
+      changes,
+      entityId,
+    })),
+    [
+      {
+        action: 'user.deleted',
+        actorId: 3,
+        changes: { isActive: { from: true, to: false } },
+        entityId: 10,
+      },
+    ],
+  );
 });
 
 test('rejeita exclusão com senha administrativa inválida ou da própria conta', async () => {
-  const { service } = createService();
+  const { audit, service } = createService();
 
   await assert.rejects(service.delete(10, 3, 'senha-incorreta'), ForbiddenException);
   await assert.rejects(service.delete(3, 3, 'admin-password'), ForbiddenException);
+  assert.equal(audit.entries.length, 0);
 });

@@ -104,6 +104,11 @@ documento de requisitos original.
 - Registrar criação, alteração e cancelamento de agendamentos (`RF61`–`RF63`).
 - Registrar o ator de operações administrativas (`RF64`).
 - Preservar histórico mesmo após desativação do usuário (`RF65`).
+- Registrar criação, alteração e exclusão lógica de usuários e a publicação,
+  o bloqueio e o desbloqueio de disponibilidades, na mesma transação da
+  operação e sem valores de dados pessoais sensíveis (`RNF26`).
+- Permitir ao administrador consultar a trilha por período, ação, alvo e
+  responsável.
 
 ## Requisitos não funcionais prioritários
 

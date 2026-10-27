@@ -9,12 +9,14 @@ import { Op, type Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
 import { Appointment, AppointmentStatus } from '../../models/appointment.model.js';
+import { AuditAction, AuditEntityType } from '../../models/audit-log.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability, AvailabilityState } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { User, UserType } from '../../models/user.model.js';
 import { AppointmentModality } from '../../types/appointment-modality.type.js';
+import { AuditService, diffAuditFields } from '../audit/audit.service.js';
 import type {
   AvailabilityItemResponseDto,
   CreateAvailabilityResponseDto,
@@ -46,6 +48,7 @@ export class AvailabilityService {
     @InjectConnection() private readonly sequelize: Sequelize,
     private readonly institutionDateTime: InstitutionDateTimeService,
     @InjectModel(Appointment) private readonly appointmentModel: typeof Appointment,
+    private readonly auditService: AuditService,
   ) {}
 
   async createBatch(
@@ -89,6 +92,25 @@ export class AvailabilityService {
       });
 
       await this.availabilityModalityModel.bulkCreate(modalityLinks, { transaction });
+      await this.auditService.record(
+        created.map((availability, index) => ({
+          action: AuditAction.AVAILABILITY_CREATED,
+          actorId: professorId,
+          changes: diffAuditFields(
+            null,
+            {
+              endsAt: availability.endsAt,
+              modalities: prepared[index]?.modalities.join(', '),
+              startsAt: availability.startsAt,
+              state: AvailabilityState.ACTIVE,
+            },
+            { fields: ['startsAt', 'endsAt', 'modalities', 'state'] },
+          ),
+          entityId: availability.id,
+          entityType: AuditEntityType.AVAILABILITY,
+        })),
+        transaction,
+      );
 
       return {
         availabilities: created.map((availability, index) =>
@@ -361,9 +383,24 @@ export class AvailabilityService {
         );
       }
 
+      const previousState = availability.state;
       await availability.update(
         { state: target, updatedBy: professorId },
         { fields: ['state', 'updatedBy'], transaction },
+      );
+      await this.auditService.record(
+        {
+          action: blocking ? AuditAction.AVAILABILITY_BLOCKED : AuditAction.AVAILABILITY_UNBLOCKED,
+          actorId: professorId,
+          changes: diffAuditFields(
+            { state: previousState },
+            { state: target },
+            { fields: ['state'] },
+          ),
+          entityId: availability.id,
+          entityType: AuditEntityType.AVAILABILITY,
+        },
+        transaction,
       );
       const modalityMap = await this.getModalitiesByAvailability([availability.id]);
 

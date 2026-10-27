@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Op } from 'sequelize';
 import { AvailabilityService } from '../dist/modules/availability/availability.service.js';
+import { createAuditFake } from './audit-fake.mjs';
 
 function createService({ existing = [] } = {}) {
   const calls = {
@@ -52,7 +53,10 @@ function createService({ existing = [] } = {}) {
     localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`),
   };
 
+  const audit = createAuditFake();
+
   return {
+    audit,
     calls,
     service: new AvailabilityService(
       availabilityModel,
@@ -62,12 +66,15 @@ function createService({ existing = [] } = {}) {
       userModel,
       sequelize,
       institutionDateTime,
+      {},
+      audit.service,
     ),
+    transaction,
   };
 }
 
 test('publica lote em UTC e cria um vínculo para cada modalidade', async () => {
-  const { calls, service } = createService();
+  const { audit, calls, service, transaction } = createService();
 
   const response = await service.createBatch(
     {
@@ -98,6 +105,12 @@ test('publica lote em UTC e cria um vínculo para cada modalidade', async () => 
   );
   assert.equal(calls.professorLookup.lock, 'UPDATE');
   assert.equal(response.availabilities[0].startsAt, '2099-10-03T18:00:00.000Z');
+  assert.equal(audit.entries.length, 1);
+  assert.equal(audit.entries[0].action, 'availability.created');
+  assert.equal(audit.entries[0].actorId, 8);
+  assert.equal(audit.entries[0].entityId, 100);
+  assert.equal(audit.entries[0].transaction, transaction);
+  assert.deepEqual(audit.entries[0].changes.modalities, { from: null, to: 'presencial, online' });
 });
 
 test('rejeita conflito persistido antes de criar o lote', async () => {
