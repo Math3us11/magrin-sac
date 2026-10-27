@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { AvailabilityService } from '../dist/modules/availability/availability.service.js';
+import { createAuditFake } from './audit-fake.mjs';
 
 const FUTURE_START = new Date('2099-10-05T12:00:00.000Z');
 const FUTURE_END = new Date('2099-10-05T16:00:00.000Z');
@@ -23,8 +24,13 @@ function createAvailability(overrides = {}) {
   return availability;
 }
 
-function createService({ availabilities = [], confirmed = [], target = createAvailability() } = {}) {
+function createService({
+  availabilities = [],
+  confirmed = [],
+  target = createAvailability(),
+} = {}) {
   const calls = { appointmentFindAll: [], availabilityFindByPk: null };
+  const audit = createAuditFake();
   const transaction = { LOCK: { UPDATE: 'UPDATE' }, id: 'transaction' };
   const availabilityModel = {
     findAll: async () => availabilities,
@@ -55,7 +61,9 @@ function createService({ availabilities = [], confirmed = [], target = createAva
       { transaction: async (callback) => callback(transaction) },
       {},
       appointmentModel,
+      audit.service,
     ),
+    audit,
     transaction,
   };
 }
@@ -86,7 +94,7 @@ test('agenda própria separa janelas livres, reservadas e bloqueadas', async () 
 
 test('professor bloqueia horário próprio sem agendamento confirmado', async () => {
   const target = createAvailability();
-  const { calls, service, transaction } = createService({ target });
+  const { audit, calls, service, transaction } = createService({ target });
 
   const response = await service.blockOwn(10, 8);
 
@@ -97,25 +105,33 @@ test('professor bloqueia horário próprio sem agendamento confirmado', async ()
   assert.equal(response.availability.state, 'bloqueada');
   assert.deepEqual(response.availability.modalities, ['presencial']);
   assert.equal(response.message, 'Horário bloqueado com sucesso.');
+  assert.equal(audit.entries.length, 1);
+  assert.equal(audit.entries[0].action, 'availability.blocked');
+  assert.equal(audit.entries[0].actorId, 8);
+  assert.equal(audit.entries[0].transaction, transaction);
+  assert.deepEqual(audit.entries[0].changes, { state: { from: 'ativa', to: 'bloqueada' } });
 });
 
 test('não bloqueia horário que já possui agendamento confirmado', async () => {
   const target = createAvailability();
-  const { service } = createService({ confirmed: [{ id: 30 }], target });
+  const { audit, service } = createService({ confirmed: [{ id: 30 }], target });
 
   await assert.rejects(() => service.blockOwn(10, 8), ConflictException);
+  assert.equal(audit.entries.length, 0);
   assert.equal(target.updates.length, 0);
   assert.equal(target.state, 'ativa');
 });
 
 test('professor desbloqueia horário próprio bloqueado', async () => {
   const target = createAvailability({ state: 'bloqueada' });
-  const { service } = createService({ target });
+  const { audit, service } = createService({ target });
 
   const response = await service.unblockOwn(10, 8);
 
   assert.deepEqual(target.updates[0].values, { state: 'ativa', updatedBy: 8 });
   assert.equal(response.message, 'Horário desbloqueado com sucesso.');
+  assert.equal(audit.entries[0].action, 'availability.unblocked');
+  assert.deepEqual(audit.entries[0].changes, { state: { from: 'bloqueada', to: 'ativa' } });
 });
 
 test('não altera horário de outro professor nem revela sua existência', async () => {

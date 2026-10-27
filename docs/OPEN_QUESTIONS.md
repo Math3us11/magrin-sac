@@ -165,6 +165,9 @@ operação.
 Definir finalidade, base de tratamento, dados mínimos, prazos de retenção,
 anonimização e atendimento de solicitações do titular.
 
+A trilha de auditoria (`audit_logs`, ADR-028) não é apagada e não possui prazo de
+retenção definido; esse prazo depende desta decisão.
+
 ### 20. Backup e restauração
 
 Definir frequência, retenção, criptografia, responsável e teste de restauração.

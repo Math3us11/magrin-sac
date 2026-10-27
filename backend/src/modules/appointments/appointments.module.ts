@@ -5,6 +5,7 @@ import { AvailabilityModality } from '../../models/availability-modality.model.j
 import { Availability } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { User } from '../../models/user.model.js';
+import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AdminAppointmentsController } from './admin-appointments.controller.js';
@@ -21,6 +22,7 @@ import { ProfessorAppointmentsController } from './professor-appointments.contro
     ProfessorAppointmentsController,
   ],
   imports: [
+    AuditModule,
     AuthModule,
     NotificationsModule,
     SequelizeModule.forFeature([

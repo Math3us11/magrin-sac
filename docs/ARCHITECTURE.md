@@ -315,8 +315,11 @@ até a configuração futura da Twilio.
 
 ### `modules/audit`
 
-Trilha de operações relevantes com ator, ação, alvo e data. Auditoria de negócio
-não substitui logging técnico.
+Trilha de operações relevantes com ator, ação, alvo, data, motivo e campos
+alterados. O `AuditService` é exportado para os módulos de usuários,
+agendamentos e disponibilidade, que o chamam dentro da própria transação; a
+consulta administrativa fica em `GET /api/admin/audit-logs`. Auditoria de
+negócio não substitui logging técnico. Consulte a ADR-028.
 
 ## Dependências permitidas
 

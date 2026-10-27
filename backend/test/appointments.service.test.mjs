@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Op } from 'sequelize';
 import { AppointmentsService } from '../dist/modules/appointments/appointments.service.js';
+import { createAuditFake } from './audit-fake.mjs';
 
 function createService() {
   const availability = {
@@ -213,6 +214,7 @@ function createBookingService({
 } = {}) {
   const transaction = { LOCK: { UPDATE: 'UPDATE' }, id: 'booking-transaction' };
   const calls = { appointmentCreate: [], availabilityLock: [], notification: [] };
+  const audit = createAuditFake();
   let transactionFinished = false;
   const appointmentModel = {
     create: async (values, options) => {
@@ -275,9 +277,11 @@ function createBookingService({
     sequelize,
     { localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`) },
     notificationsService,
+    {},
+    audit.service,
   );
 
-  return { calls, service, transaction };
+  return { audit, calls, service, transaction };
 }
 
 const validBooking = {
@@ -290,7 +294,7 @@ const validBooking = {
 };
 
 test('confirma agendamento em transação e notifica somente depois do commit', async () => {
-  const { calls, service, transaction } = createBookingService();
+  const { audit, calls, service, transaction } = createBookingService();
   const response = await service.create(validBooking, 4);
 
   assert.equal(response.message, 'Agendamento confirmado com sucesso.');
@@ -303,6 +307,13 @@ test('confirma agendamento em transação e notifica somente depois do commit', 
   assert.equal(calls.notification.length, 1);
   assert.equal(calls.notification[0].transactionFinished, true);
   assert.equal(calls.notification[0].input.appointmentId, 30);
+  assert.equal(audit.entries.length, 1);
+  assert.equal(audit.entries[0].action, 'appointment.created');
+  assert.equal(audit.entries[0].actorId, 4);
+  assert.equal(audit.entries[0].entityId, 30);
+  assert.equal(audit.entries[0].transaction, transaction);
+  assert.deepEqual(audit.entries[0].changes.status, { from: null, to: 'confirmado' });
+  assert.equal('details' in audit.entries[0].changes, false);
 });
 
 test('falha de notificação não desfaz nem transforma a confirmação em erro', async () => {
@@ -405,6 +416,8 @@ test('duas confirmações concorrentes reservam o mesmo intervalo somente uma ve
     },
     { localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`) },
     { attemptAppointmentConfirmation: async () => undefined },
+    {},
+    createAuditFake().service,
   );
 
   const results = await Promise.allSettled([
@@ -425,6 +438,7 @@ function createCancellationService({
 } = {}) {
   const transaction = { LOCK: { UPDATE: 'UPDATE' } };
   const updates = [];
+  const audit = createAuditFake();
   const appointment = {
     availabilityId: 10,
     id: 30,
@@ -453,13 +467,14 @@ function createCancellationService({
     {},
     {},
     { matches: async () => passwordMatches },
+    audit.service,
   );
 
-  return { appointment, service, transaction, updates };
+  return { appointment, audit, service, transaction, updates };
 }
 
 test('aluno cancela o próprio agendamento com antecedência e registra auditoria', async () => {
-  const { service, transaction, updates } = createCancellationService();
+  const { audit, service, transaction, updates } = createCancellationService();
 
   const response = await service.cancelMine(30, '  Imprevisto acadêmico.  ', 4);
 
@@ -468,10 +483,30 @@ test('aluno cancela o próprio agendamento com antecedência e registra auditori
   assert.equal(response.appointment.cancellationReason, 'Imprevisto acadêmico.');
   assert.equal(updates[0].values.updatedBy, 4);
   assert.equal(updates[0].options.transaction, transaction);
+  assert.deepEqual(
+    audit.entries.map(({ action, actorId, changes, entityId, reason, transaction: used }) => ({
+      action,
+      actorId,
+      changes,
+      entityId,
+      reason,
+      used,
+    })),
+    [
+      {
+        action: 'appointment.cancelled',
+        actorId: 4,
+        changes: { status: { from: 'confirmado', to: 'cancelado' } },
+        entityId: 30,
+        reason: 'Imprevisto acadêmico.',
+        used: transaction,
+      },
+    ],
+  );
 });
 
 test('aluno e professor não cancelam com menos de duas horas', async () => {
-  const { service } = createCancellationService({
+  const { audit, service } = createCancellationService({
     appointmentOverrides: { startsAt: new Date(Date.now() + 90 * 60 * 1000) },
   });
 
@@ -483,6 +518,7 @@ test('aluno e professor não cancelam com menos de duas horas', async () => {
     service.cancelAssigned(30, 'Imprevisto.', 8),
     /pelo menos 2 horas de antecedência/,
   );
+  assert.equal(audit.entries.length, 0);
 });
 
 test('professor não cancela agendamento atribuído a outro professor', async () => {
@@ -504,10 +540,13 @@ test('administrador cancela dentro de duas horas somente após validar a própri
   });
   const response = await allowed.service.cancelAny(30, 'Correção administrativa.', 1, 'senha');
   assert.equal(response.appointment.cancelledBy, 1);
+  assert.equal(allowed.audit.entries[0].actorId, 1);
+  assert.equal(allowed.audit.entries[0].reason, 'Correção administrativa.');
 
   const denied = createCancellationService({ actor, passwordMatches: false });
   await assert.rejects(
     denied.service.cancelAny(30, 'Correção administrativa.', 1, 'incorreta'),
     /Senha de confirmação inválida/,
   );
+  assert.equal(denied.audit.entries.length, 0);
 });

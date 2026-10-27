@@ -464,6 +464,34 @@ Consequência: uma correção de estado final exigirá uma decisão futura e um 
 administrativo auditado próprio. O dashboard pode derivar os quatro totais do
 estado atual sem manter contadores independentes.
 
+## ADR-028 — Trilha de auditoria transacional e somente de inserção
+
+**Estado:** aceita.
+
+As operações administrativas e de agenda relevantes gravam uma linha em
+`audit_logs` com ator, ação, tipo e identificador do alvo, instante, motivo e
+campos alterados. A gravação acontece pelo `AuditService`, sempre com a
+transação da operação auditada, de modo que a mudança e sua trilha são
+confirmadas ou desfeitas juntas.
+
+A tabela é somente de inserção e não possui atualização nem exclusão lógica. Os
+campos alterados são serializados como JSON em uma coluna `TEXT`, no formato
+`{ campo: { from, to } }`. Senhas e hashes nunca são registrados; CPF, telefone e
+data de nascimento são registrados apenas como `{ redacted: true }`; assunto e
+detalhes do agendamento ficam fora da trilha. A consulta exige a permissão
+`audit.read`, concedida somente ao administrador.
+
+Atendimentos mantêm a trilha própria em `attendance_status_history` (ADR-027),
+que já registra classificação, motivo, ator e instante de cada transição.
+
+Motivo: atender `RF61`–`RF64` e `RNF26` com uma estrutura única e consultável,
+sem depender das colunas `updated_by`, que são sobrescritas a cada alteração, e
+sem replicar dados pessoais além do necessário.
+
+Consequência: o prazo de retenção da trilha depende da política de LGPD ainda
+pendente. Operações novas que precisem de auditoria devem acrescentar uma ação ao
+catálogo e registrá-la na mesma transação.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão
