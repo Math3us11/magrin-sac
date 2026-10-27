@@ -492,6 +492,28 @@ Consequência: o prazo de retenção da trilha depende da política de LGPD aind
 pendente. Operações novas que precisem de auditoria devem acrescentar uma ação ao
 catálogo e registrá-la na mesma transação.
 
+## ADR-029 — Parâmetros institucionais tipados com valor aprovado
+
+**Estado:** aceita.
+
+Regras institucionais que podem mudar sem nova versão do código são lidas de
+`system_parameters` pelo `SystemParametersService`. Cada parâmetro é declarado
+em um catálogo com intervalo permitido e o valor aprovado. O serviço consulta o
+banco a cada uso, sem cache.
+
+Quando a linha falta ou o valor está fora do intervalo, o serviço usa o valor
+aprovado e registra um aviso no log técnico, em vez de interromper a operação. O
+primeiro parâmetro é `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES` (0 a 10080,
+padrão 120), que define a antecedência mínima de cancelamento de aluno e
+professor. O backend devolve `cancellableUntil` nas listagens para que o
+frontend não duplique a regra.
+
+Motivo: atender `RNF42` mantendo a regra no backend e sem permitir que um erro de
+configuração bloqueie cancelamentos válidos.
+
+Consequência: a alteração do valor ainda é feita diretamente no banco; uma tela
+administrativa de parâmetros, com auditoria, fica para uma evolução posterior.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

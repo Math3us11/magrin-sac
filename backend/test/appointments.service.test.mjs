@@ -4,6 +4,19 @@ import { Op } from 'sequelize';
 import { AppointmentsService } from '../dist/modules/appointments/appointments.service.js';
 import { createAuditFake } from './audit-fake.mjs';
 
+function createParametersFake(noticeMinutes = 120) {
+  const reads = [];
+  return {
+    reads,
+    service: {
+      getInteger: async (name) => {
+        reads.push(name);
+        return noticeMinutes;
+      },
+    },
+  };
+}
+
 function createService() {
   const availability = {
     endsAt: new Date('2099-10-03T16:00:00.000Z'),
@@ -91,6 +104,7 @@ test('rejeita intervalo de consulta invertido', async () => {
 });
 
 test('administrador consulta agendamentos globais sem campos internos', async () => {
+  const parameters = createParametersFake();
   const appointmentModel = {
     findAll: async () => [
       {
@@ -126,11 +140,15 @@ test('administrador consulta agendamentos globais sem campos internos', async ()
     { transaction: async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }) },
     { localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`) },
     { attemptAppointmentConfirmation: async () => undefined },
+    {},
+    createAuditFake().service,
+    parameters.service,
   );
 
   const response = await service.listAll({ from: '2099-10-01', to: '2099-10-31' });
 
   assert.deepEqual(response.appointments[0], {
+    cancellableUntil: '2099-10-03T14:00:00.000Z',
     cancelledAt: null,
     cancellationReason: undefined,
     endsAt: '2099-10-03T15:00:00.000Z',
@@ -144,6 +162,28 @@ test('administrador consulta agendamentos globais sem campos internos', async ()
     subject: 'Orientação acadêmica',
   });
   assert.equal(JSON.stringify(response).includes('details'), false);
+  // O administrador cancela até o início, então a antecedência configurada não é consultada.
+  assert.deepEqual(parameters.reads, []);
+
+  const professorParameters = createParametersFake(90);
+  const professorService = new AppointmentsService(
+    appointmentModel,
+    {
+      unscoped: () => ({ findAll: async () => [{ id: 10, professorId: 8 }] }),
+    },
+    { findAll: async () => [] },
+    { findAll: async () => [{ id: 22, value: 'online' }] },
+    userModel,
+    { transaction: async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }) },
+    { localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`) },
+    { attemptAppointmentConfirmation: async () => undefined },
+    {},
+    createAuditFake().service,
+    professorParameters.service,
+  );
+  const assigned = await professorService.listAssigned({ from: '2099-10-01', to: '2099-10-31' }, 8);
+  assert.equal(assigned.appointments[0].cancellableUntil, '2099-10-03T12:30:00.000Z');
+  assert.deepEqual(professorParameters.reads, ['APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES']);
 });
 
 test('aluno consulta somente os próprios próximos agendamentos', async () => {
@@ -184,6 +224,9 @@ test('aluno consulta somente os próprios próximos agendamentos', async () => {
     { transaction: async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' } }) },
     { localToUtc: (date, time) => new Date(`${date}T${time}:00.000-04:00`) },
     { attemptAppointmentConfirmation: async () => undefined },
+    {},
+    createAuditFake().service,
+    createParametersFake(120).service,
   );
 
   const response = await service.listMine({ page: 1, pageSize: 8, scope: 'upcoming' }, 4);
@@ -194,6 +237,7 @@ test('aluno consulta somente os próprios próximos agendamentos', async () => {
   assert.equal(receivedOptions.offset, 0);
   assert.equal(response.total, 1);
   assert.equal(response.appointments[0].professor.name, 'Professor Teste');
+  assert.equal(response.appointments[0].cancellableUntil, '2099-10-03T12:00:00.000Z');
   assert.equal(JSON.stringify(response).includes('studentId'), false);
 });
 
@@ -433,10 +477,12 @@ test('duas confirmações concorrentes reservam o mesmo intervalo somente uma ve
 function createCancellationService({
   actor = { id: 4, isActive: true, passwordHash: 'hash', userType: 'aluno' },
   appointmentOverrides = {},
+  noticeMinutes = 120,
   passwordMatches = true,
   professorId = 8,
 } = {}) {
   const transaction = { LOCK: { UPDATE: 'UPDATE' } };
+  const parameters = createParametersFake(noticeMinutes);
   const updates = [];
   const audit = createAuditFake();
   const appointment = {
@@ -468,9 +514,10 @@ function createCancellationService({
     {},
     { matches: async () => passwordMatches },
     audit.service,
+    parameters.service,
   );
 
-  return { appointment, audit, service, transaction, updates };
+  return { appointment, audit, parameters, service, transaction, updates };
 }
 
 test('aluno cancela o próprio agendamento com antecedência e registra auditoria', async () => {
@@ -521,6 +568,33 @@ test('aluno e professor não cancelam com menos de duas horas', async () => {
   assert.equal(audit.entries.length, 0);
 });
 
+test('antecedência mínima segue o parâmetro do sistema', async () => {
+  const shorterNotice = createCancellationService({
+    appointmentOverrides: { startsAt: new Date(Date.now() + 90 * 60 * 1000) },
+    noticeMinutes: 60,
+  });
+  const response = await shorterNotice.service.cancelMine(30, 'Imprevisto.', 4);
+  assert.equal(response.appointment.status, 'cancelado');
+  assert.deepEqual(shorterNotice.parameters.reads, ['APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES']);
+
+  const longerNotice = createCancellationService({
+    appointmentOverrides: { startsAt: new Date(Date.now() + 2 * 60 * 60 * 1000) },
+    noticeMinutes: 150,
+  });
+  await assert.rejects(
+    longerNotice.service.cancelAssigned(30, 'Imprevisto.', 8),
+    /pelo menos 2 horas e 30 minutos de antecedência/,
+  );
+  assert.equal(longerNotice.updates.length, 0);
+
+  const withoutNotice = createCancellationService({
+    appointmentOverrides: { startsAt: new Date(Date.now() + 60 * 1000) },
+    noticeMinutes: 0,
+  });
+  await withoutNotice.service.cancelMine(30, 'Imprevisto.', 4);
+  assert.equal(withoutNotice.updates.length, 1);
+});
+
 test('professor não cancela agendamento atribuído a outro professor', async () => {
   const { service } = createCancellationService({ professorId: 9 });
 
@@ -542,6 +616,7 @@ test('administrador cancela dentro de duas horas somente após validar a própri
   assert.equal(response.appointment.cancelledBy, 1);
   assert.equal(allowed.audit.entries[0].actorId, 1);
   assert.equal(allowed.audit.entries[0].reason, 'Correção administrativa.');
+  assert.deepEqual(allowed.parameters.reads, []);
 
   const denied = createCancellationService({ actor, passwordMatches: false });
   await assert.rejects(

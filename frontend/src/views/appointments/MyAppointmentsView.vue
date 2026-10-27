@@ -12,6 +12,7 @@ import {
   INSTITUTION_TIME_ZONE,
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
+import { isWithinCancellationDeadline } from '@/config/appointment-cancellation'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
   calendarCheckIcon,
@@ -96,7 +97,7 @@ const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize))
 const canCancelSelectedAppointment = computed(
   () =>
     selectedAppointment.value?.status === 'confirmado' &&
-    new Date(selectedAppointment.value.startsAt).getTime() - Date.now() >= 2 * 60 * 60 * 1000,
+    isWithinCancellationDeadline(selectedAppointment.value),
 )
 const cancellationAppointmentLabel = computed(() => {
   if (!selectedAppointment.value) return undefined
@@ -666,7 +667,7 @@ onMounted(() => void loadAppointments())
           :title="
             canCancelSelectedAppointment
               ? 'Cancelar este agendamento'
-              : 'O prazo de cancelamento encerra 2 horas antes do atendimento.'
+              : 'O prazo de cancelamento deste agendamento já encerrou.'
           "
           @click="requestCancellation"
         >
@@ -679,6 +680,7 @@ onMounted(() => void loadAppointments())
     <AppointmentCancellationModal
       v-model:open="cancellationOpen"
       :appointment-label="cancellationAppointmentLabel"
+      :cancellable-until="selectedAppointment?.cancellableUntil"
       :error="cancellationError"
       :loading="cancelling"
       @confirm="confirmCancellation"

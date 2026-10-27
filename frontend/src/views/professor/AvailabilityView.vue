@@ -16,6 +16,7 @@ import {
   INSTITUTION_TIME_ZONE,
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
+import { isWithinCancellationDeadline } from '@/config/appointment-cancellation'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
   calendarCheckIcon,
@@ -797,7 +798,7 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
               v-if="appointment.status === 'confirmado'"
               class="mt-5"
               variant="danger"
-              :disabled="new Date(appointment.startsAt).getTime() - Date.now() < 2 * 60 * 60 * 1000"
+              :disabled="!isWithinCancellationDeadline(appointment)"
               @click="requestCancellation(appointment)"
             >
               Cancelar agendamento
@@ -820,6 +821,7 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
     <AppointmentCancellationModal
       v-model:open="cancellationOpen"
       :appointment-label="cancellationAppointmentLabel"
+      :cancellable-until="appointmentToCancel?.cancellableUntil"
       :error="cancellationError"
       :loading="cancelling"
       @confirm="confirmCancellation"

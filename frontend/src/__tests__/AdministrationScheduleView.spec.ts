@@ -40,6 +40,7 @@ describe('Agenda geral administrativa', () => {
     appointmentMocks.listAdminAppointments.mockReset().mockResolvedValue({
       appointments: [
         {
+          cancellableUntil: `${date}T14:00:00.000Z`,
           endsAt: `${date}T15:00:00.000Z`,
           cancelledAt: null,
           cancellationReason: null,

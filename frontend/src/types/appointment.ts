@@ -32,6 +32,7 @@ export type CreateAppointmentResponse = {
 }
 
 export type AdminAppointmentItem = {
+  cancellableUntil: string | null
   cancelledAt: string | null
   cancellationReason: string | null
   endsAt: string
@@ -79,6 +80,7 @@ export type ListAdminAppointmentsResponse = {
 export type OwnAppointmentsScope = 'history' | 'upcoming'
 
 export type OwnAppointmentItem = Omit<CreatedAppointment, 'details'> & {
+  cancellableUntil: string | null
   cancelledAt: string | null
   cancellationReason: string | null
   details: string | null

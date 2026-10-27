@@ -11,6 +11,7 @@ const appointmentMocks = vi.hoisted(() => ({
 vi.mock('@/services/appointments', () => appointmentMocks)
 
 const appointment = {
+  cancellableUntil: '2099-10-03T12:00:00.000Z',
   cancelledAt: null,
   cancellationReason: null,
   details: 'Levar histórico acadêmico.',
@@ -55,6 +56,45 @@ describe('MyAppointmentsView', () => {
     await wrapper.get('[data-testid="next-appointment"] button').trigger('click')
     expect(document.body.textContent).toContain('AG-20991003-ABCDEF1234')
     expect(document.body.textContent).toContain('Levar histórico acadêmico.')
+  })
+
+  it('habilita o cancelamento somente dentro do prazo informado pelo backend', async () => {
+    const findCancelButton = () =>
+      [...document.body.querySelectorAll('button')].find(
+        (button) => button.textContent?.trim() === 'Cancelar agendamento',
+      )
+
+    const withinDeadline = mount(MyAppointmentsView, {
+      attachTo: document.body,
+      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+    })
+    await expect
+      .poll(() => withinDeadline.find('[data-testid="next-appointment"]').exists())
+      .toBe(true)
+    await withinDeadline.get('[data-testid="next-appointment"] button').trigger('click')
+    expect(findCancelButton()?.disabled).toBe(false)
+    withinDeadline.unmount()
+    document.body.innerHTML = ''
+
+    appointmentMocks.listOwnAppointments.mockResolvedValue({
+      appointments: [{ ...appointment, cancellableUntil: '2000-01-01T00:00:00.000Z' }],
+      page: 1,
+      pageSize: 8,
+      total: 1,
+    })
+    const afterDeadline = mount(MyAppointmentsView, {
+      attachTo: document.body,
+      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+    })
+    await expect
+      .poll(() => afterDeadline.find('[data-testid="next-appointment"]').exists())
+      .toBe(true)
+    await afterDeadline.get('[data-testid="next-appointment"] button').trigger('click')
+    const blocked = findCancelButton()
+    expect(blocked?.disabled).toBe(true)
+    expect(blocked?.getAttribute('title')).toBe(
+      'O prazo de cancelamento deste agendamento já encerrou.',
+    )
   })
 
   it('alterna para histórico e calendário usando consultas próprias', async () => {

@@ -493,9 +493,10 @@ tabela `system_parameters` guarda somente parâmetros operacionais não secretos
 `integration_endpoints` pode guardar URL e nomes das variáveis que apontam para
 segredos externos, nunca os valores secretos.
 
-Providers de configuração poderão combinar ambiente e banco, sem copiar dados
-para `process.env`. Alterações de parâmetro em runtime exigirão estratégia
-explícita de cache e invalidação quando o módulo correspondente for criado.
+O helper `helpers/system-parameters` expõe `SystemParametersService`, que lê
+parâmetros tipados do banco a cada uso, sem cache e sem copiar valores para
+`process.env`. Assim, uma alteração no banco vale na operação seguinte. Uma
+eventual camada de cache exigirá estratégia explícita de invalidação.
 
 ## Consistência da reserva
 
