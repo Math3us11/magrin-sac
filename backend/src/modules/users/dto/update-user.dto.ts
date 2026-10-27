@@ -13,7 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { UserType } from '../../../models/user.model.js';
-import { CreateUserAcademicDto } from './create-user.dto.js';
+import { CreateUserAcademicDto, REGISTRATION_NUMBER_PATTERN } from './create-user.dto.js';
 
 export class UpdateUserDto {
   @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
@@ -48,6 +48,14 @@ export class UpdateUserDto {
 
   @IsEnum(UserType)
   declare userType: UserType;
+
+  @ValidateIf(({ userType }: UpdateUserDto) => userType === UserType.STUDENT)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString({ message: 'Informe a matrícula do aluno.' })
+  @Matches(REGISTRATION_NUMBER_PATTERN, {
+    message: 'A matrícula deve conter somente números, com até 20 dígitos.',
+  })
+  declare registrationNumber?: string;
 
   @IsBoolean()
   declare isActive: boolean;

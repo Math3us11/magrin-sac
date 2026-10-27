@@ -87,6 +87,13 @@ evolução global autorizada.
 Especialização ou perfil associado a usuário, com matrícula, curso e outros
 dados mínimos definidos pela instituição.
 
+A matrícula fica em `users.registration_number`, como texto de até 20 dígitos
+para preservar zeros à esquerda. O banco garante que ela contenha somente
+números, que seja única — inclusive entre contas excluídas logicamente — e que
+apenas usuários do tipo `aluno` a possuam. A coluna aceita nulo para manter os
+alunos cadastrados antes da exigência; a API passa a exigi-la no cadastro e na
+edição de aluno. O formato oficial permanece pendente em `OPEN_QUESTIONS.md`.
+
 ### Curso
 
 Representa um curso de graduação ou pós-graduação disponível no catálogo

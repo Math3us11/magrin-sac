@@ -49,6 +49,9 @@ export class User extends Model {
   @Column({ allowNull: true, type: DataType.STRING(11) })
   declare phone: string | null;
 
+  @Column({ allowNull: true, type: DataType.STRING(20), unique: true })
+  declare registrationNumber: string | null;
+
   @Column({ allowNull: false, defaultValue: true, type: DataType.BOOLEAN })
   declare isActive: boolean;
 

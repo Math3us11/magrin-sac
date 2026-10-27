@@ -107,6 +107,8 @@ Entregas:
 - [ ] definir a validação institucional para futuro cadastro de aluno;
 - [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
 - [x] usuários ativos/inativos no gerenciamento administrativo;
+- [x] registrar a matrícula do aluno, numérica e única, com garantia no banco,
+      busca na listagem e auditoria das alterações;
 - perfis e permissões mínimas;
 - proteção de rotas administrativas;
 - testes de isolamento entre alunos.

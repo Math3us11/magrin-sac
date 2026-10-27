@@ -24,6 +24,7 @@ function createService() {
     mustChangePassword: false,
     name: 'Aluno Teste',
     phone: '65999999999',
+    registrationNumber: '20230001',
     updatedAt: new Date('2026-10-02T12:00:00.000Z'),
     userType: 'aluno',
     destroy: async () => {
@@ -141,6 +142,7 @@ test('consulta detalhes administrativos sem expor credenciais', async () => {
 
   assert.equal(response.cpf, '11111111111');
   assert.equal(response.phone, '65999999999');
+  assert.equal(response.registrationNumber, '20230001');
   assert.equal(response.academic.courses[0].name, 'Ciência da Computação');
   assert.equal(response.academic.subjects[0].subjectName, 'Algoritmos e Programação');
   assert.equal(response.academic.academicPeriod.name, '2º período');
@@ -167,6 +169,7 @@ test('atualiza usuário e reconcilia vínculos acadêmicos na mesma transação'
   assert.deepEqual(response, { message: 'Usuário atualizado com sucesso.' });
   assert.equal(calls.userUpdate.updatedBy, 3);
   assert.equal(calls.userUpdate.userType, 'professor');
+  assert.equal(calls.userUpdate.registrationNumber, null);
   assert.equal(calls.linkUpdates[0].isActive, true);
   assert.deepEqual(calls.createdLinks, [
     {
@@ -189,6 +192,7 @@ test('atualiza usuário e reconcilia vínculos acadêmicos na mesma transação'
     email: { from: 'aluno@example.com', to: 'professor@example.com' },
     name: { from: 'Aluno Teste', to: 'Professor Atualizado' },
     phone: { redacted: true },
+    registrationNumber: { from: '20230001', to: null },
     userType: { from: 'aluno', to: 'professor' },
   });
   assert.equal(JSON.stringify(audit.entries[0].changes).includes('65988888888'), false);

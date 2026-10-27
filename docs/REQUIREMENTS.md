@@ -16,7 +16,8 @@ documento de requisitos original.
   confirmar a própria senha, registrando o responsável e preservando o
   histórico. A própria conta administrativa não pode ser excluída por esse
   fluxo.
-- Manter os dados mínimos do aluno (`RF07`).
+- Manter os dados mínimos do aluno, incluindo matrícula única, numérica e
+  obrigatória no cadastro e na edição de aluno (`RF07`).
 - Exigir telefone com DDD no cadastro e na edição administrativa para viabilizar
   os fluxos de notificação.
 - Não oferecer autocadastro de professor ou administrador; essas contas são

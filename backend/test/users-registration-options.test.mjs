@@ -73,6 +73,7 @@ function createService({ existingUser = null } = {}) {
             isActive: true,
             mustChangePassword: false,
             name: 'Administrador',
+            registrationNumber: null,
             userType: 'administrador',
           },
           {
@@ -92,7 +93,10 @@ function createService({ existingUser = null } = {}) {
         calls.createdUser = values;
         return { id: 50, ...values };
       },
-      findOne: async () => existingUser,
+      findOne: async (options) => {
+        calls.identityLookup = options;
+        return existingUser;
+      },
     }),
   };
   const userSubjectModel = {
@@ -172,8 +176,11 @@ test('lista usuários paginados sem consultar campos sensíveis', async () => {
   assert.equal(calls.userFindAndCountAll.where.isActive, false);
   assert.equal(calls.userFindAndCountAll.where.userType, 'professor');
   assert.equal(calls.userFindAndCountAll.where[Op.or][0].name[Op.like], '%professor%');
+  assert.equal(calls.userFindAndCountAll.where[Op.or][2].registrationNumber[Op.like], 'professor%');
+  assert.ok(calls.userFindAndCountAll.attributes.includes('registrationNumber'));
   assert.equal(response.total, 2);
   assert.equal(response.users[0].name, 'Administrador');
+  assert.equal(response.users[0].registrationNumber, null);
 });
 
 test('cadastra aluno e vínculos em uma transação sem persistir a senha em texto puro', async () => {
@@ -187,6 +194,7 @@ test('cadastra aluno e vínculos em uma transação sem persistir a senha em tex
       isActive: true,
       name: 'Aluno Teste',
       phone: '65999999999',
+      registrationNumber: '0020231001',
       temporaryPassword: 'senha-temporaria',
       userType: 'aluno',
     },
@@ -194,6 +202,12 @@ test('cadastra aluno e vínculos em uma transação sem persistir a senha em tex
   );
 
   assert.equal(calls.password, 'senha-temporaria');
+  assert.equal(calls.createdUser.registrationNumber, '0020231001');
+  assert.deepEqual(calls.identityLookup.where[Op.or], [
+    { email: 'aluno@example.com' },
+    { cpf: '11111111111' },
+    { registrationNumber: '0020231001' },
+  ]);
   assert.equal(calls.createdUser.passwordHash, '$argon2id$temporary-password-hash');
   assert.equal(calls.createdUser.temporaryPassword, undefined);
   assert.equal(calls.createdUser.mustChangePassword, true);
@@ -219,6 +233,7 @@ test('cadastra aluno e vínculos em uma transação sem persistir a senha em tex
     isActive: { from: null, to: true },
     name: { from: null, to: 'Aluno Teste' },
     phone: { redacted: true },
+    registrationNumber: { from: null, to: '0020231001' },
     userType: { from: null, to: 'aluno' },
   });
   const serialized = JSON.stringify(audit.entries[0].changes);
@@ -238,6 +253,7 @@ test('cadastra professor sem atribuir período acadêmico às matérias', async 
       isActive: true,
       name: 'Professor Teste',
       phone: '65999999999',
+      registrationNumber: '123',
       temporaryPassword: 'senha-temporaria',
       userType: 'professor',
     },
@@ -247,5 +263,48 @@ test('cadastra professor sem atribuir período acadêmico às matérias', async 
   assert.deepEqual(
     calls.userSubjects.map(({ periodOptionItemId }) => periodOptionItemId),
     [null, null],
+  );
+  assert.equal(calls.createdUser.registrationNumber, null);
+  assert.equal(calls.identityLookup.where[Op.or].length, 2);
+});
+
+test('rejeita matrícula já usada por outro cadastro com mensagem específica', async () => {
+  const studentInput = {
+    academic: { academicPeriodId: 71, courseIds: [1], courseSubjectIds: [10] },
+    birthDate: '2001-02-03',
+    cpf: '11111111111',
+    email: 'aluno@example.com',
+    isActive: true,
+    name: 'Aluno Teste',
+    phone: '65999999999',
+    registrationNumber: '20231001',
+    temporaryPassword: 'senha-temporaria',
+    userType: 'aluno',
+  };
+  const duplicatedRegistration = createService({
+    existingUser: {
+      cpf: '99999999999',
+      email: 'outro@example.com',
+      id: 9,
+      registrationNumber: '20231001',
+    },
+  });
+  await assert.rejects(
+    duplicatedRegistration.service.create(studentInput, 3),
+    /Já existe um usuário com a matrícula informada/,
+  );
+  assert.equal(duplicatedRegistration.calls.createdUser, null);
+
+  const duplicatedEmail = createService({
+    existingUser: {
+      cpf: '99999999999',
+      email: 'aluno@example.com',
+      id: 9,
+      registrationNumber: null,
+    },
+  });
+  await assert.rejects(
+    duplicatedEmail.service.create(studentInput, 3),
+    /Já existe um usuário com o e-mail ou CPF informado/,
   );
 });

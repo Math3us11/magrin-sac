@@ -337,7 +337,7 @@ function startUserCreation() {
         :records="users"
         :search="search"
         searchable
-        search-placeholder="Buscar por nome ou e-mail"
+        search-placeholder="Buscar por nome, e-mail ou matrícula"
         :total="totalUsers"
         @retry="loadUsers"
         @search="submitSearch"
@@ -346,8 +346,14 @@ function startUserCreation() {
         @update:page-size="updatePageSize"
         @update:search="updateSearch"
       >
-        <template #cell-name="{ value }">
+        <template #cell-name="{ record, value }">
           <span class="font-semibold">{{ value }}</span>
+          <span
+            v-if="(record as UserListItem).registrationNumber"
+            class="mt-1 block text-xs text-content-muted"
+          >
+            Matrícula {{ (record as UserListItem).registrationNumber }}
+          </span>
         </template>
 
         <template #cell-userType="{ value }">

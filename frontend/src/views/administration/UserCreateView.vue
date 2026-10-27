@@ -51,6 +51,7 @@ interface RegistrationDraft {
   email: string
   name: string
   phone: string
+  registrationNumber: string
   temporaryPassword: string
   temporaryPasswordConfirmation: string
   userType: UserType
@@ -67,6 +68,7 @@ function createEmptyRegistrationDraft(): RegistrationDraft {
     email: '',
     name: '',
     phone: '',
+    registrationNumber: '',
     temporaryPassword: '',
     temporaryPasswordConfirmation: '',
     userType: '',
@@ -273,6 +275,7 @@ function saveProfile(values: GenericObject) {
     draft.academicPeriodIds = []
     draft.courseIds = []
     draft.courseSubjectIds = []
+    draft.registrationNumber = ''
     registrationSubjects.value = []
     subjectsRequestSequence += 1
     subjectsLoading.value = false
@@ -294,6 +297,8 @@ function saveAcademicDetails(values: GenericObject) {
     draft.userType === 'student'
       ? ((details.academicPeriodIds ?? []).filter(Boolean) as string[])
       : []
+  draft.registrationNumber =
+    draft.userType === 'student' ? (details.registrationNumber ?? '').trim() : ''
   currentStep.value = 4
 }
 
@@ -332,6 +337,8 @@ async function saveUser() {
     temporaryPassword: draft.temporaryPassword,
     userType: userTypes[draft.userType],
   }
+
+  if (draft.userType === 'student') payload.registrationNumber = draft.registrationNumber
 
   if (hasAcademicProfile.value) {
     payload.academic = {
@@ -676,6 +683,18 @@ async function saveUser() {
             os cursos selecionados.
           </div>
 
+          <div v-if="draft.userType === 'student'" class="max-w-sm">
+            <AppInput
+              help-text="Somente números, com até 20 dígitos."
+              inputmode="numeric"
+              label="Matrícula"
+              :maxlength="20"
+              name="registrationNumber"
+              placeholder="Ex.: 20231001"
+              required
+            />
+          </div>
+
           <div
             class="grid gap-5"
             :class="draft.userType === 'student' ? 'lg:grid-cols-3' : 'lg:grid-cols-2'"
@@ -855,6 +874,12 @@ async function saveUser() {
                   Identificação
                 </dt>
                 <dd class="mt-2 text-sm font-semibold text-content">CPF {{ draft.cpf }}</dd>
+                <dd
+                  v-if="draft.userType === 'student'"
+                  class="mt-1 text-sm font-semibold text-content"
+                >
+                  Matrícula {{ draft.registrationNumber }}
+                </dd>
                 <dd class="mt-1 text-sm text-content-muted">Nascimento: {{ draft.birthDate }}</dd>
               </div>
             </dl>

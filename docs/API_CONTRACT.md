@@ -713,8 +713,9 @@ DELETE /api/admin/users/:userId
 ```
 
 `GET /api/admin/users` está implementado, exige `users.manage` e aceita `page`
-a partir de 1, `pageSize` entre 1 e 100, busca opcional por nome ou e-mail em
-`search`, filtro de perfil em `userType` e filtro booleano em `isActive`. A
+a partir de 1, `pageSize` entre 1 e 100, busca opcional por nome ou e-mail, ou
+pelo início da matrícula, em `search`, filtro de perfil em `userType` e filtro
+booleano em `isActive`. A
 consulta seleciona explicitamente somente dados próprios da listagem; CPF,
 telefone e hash de senha não fazem parte da resposta:
 
@@ -731,6 +732,7 @@ telefone e hash de senha não fazem parte da resposta:
       "userType": "administrador",
       "isActive": true,
       "mustChangePassword": false,
+      "registrationNumber": null,
       "createdAt": "2026-10-03T12:00:00.000Z"
     }
   ]
@@ -750,6 +752,7 @@ credencial. CPF e telefone permanecem restritos a essa operação protegida:
   "birthDate": "2004-07-17",
   "cpf": "12345678900",
   "phone": "69999999999",
+  "registrationNumber": "20231001",
   "userType": "aluno",
   "isActive": true,
   "mustChangePassword": false,
@@ -823,6 +826,7 @@ e a permissão `users.manage`. O cadastro de aluno usa o seguinte formato:
   "birthDate": "2004-07-17",
   "cpf": "12345678900",
   "phone": "69999999999",
+  "registrationNumber": "20231001",
   "userType": "aluno",
   "isActive": true,
   "temporaryPassword": {
@@ -845,6 +849,9 @@ e a permissão `users.manage`. O cadastro de aluno usa o seguinte formato:
 As regras condicionais do payload são:
 
 - `phone` é obrigatório, normalizado e deve conter 10 ou 11 dígitos com DDD;
+- `registrationNumber` é obrigatório para `aluno` e aceita somente dígitos, de 1
+  a 20, preservando zeros à esquerda; para `professor` e `administrador` o valor
+  é ignorado e persistido como nulo;
 - `administrador` não recebe `academic`;
 - `aluno` informa exatamente um curso, período válido e uma ou mais matérias;
 - `professor` informa um ou mais cursos e matérias, sem período acadêmico;
@@ -852,9 +859,10 @@ As regras condicionais do payload são:
 - toda matéria deve pertencer a um dos cursos selecionados por meio de
   `course_subjects` ativo.
 
-Nome, e-mail, CPF e telefone são obrigatórios e normalizados no DTO. E-mail e CPF são
-verificados inclusive contra registros excluídos logicamente; duplicidade
-retorna `409`. A criação do usuário e de todos os vínculos acadêmicos ocorre em
+Nome, e-mail, CPF e telefone são obrigatórios e normalizados no DTO. E-mail, CPF e
+matrícula são verificados inclusive contra registros excluídos logicamente;
+duplicidade retorna `409`, com mensagem específica quando somente a matrícula
+coincide. A criação do usuário e de todos os vínculos acadêmicos ocorre em
 uma única transação. A senha temporária é transformada em hash Argon2id antes da
 persistência. Dados do usuário e credenciais nunca aparecem na resposta:
 
@@ -890,8 +898,9 @@ completo, aplica as mesmas regras condicionais de perfil e retorna somente:
 }
 ```
 
-E-mail e CPF permanecem únicos, desconsiderando o próprio usuário durante a
-validação. Dados pessoais, situação, perfil e vínculos acadêmicos são atualizados
+E-mail, CPF e matrícula permanecem únicos, desconsiderando o próprio usuário
+durante a validação. Ao mudar um aluno para outro perfil, a matrícula é removida;
+ao tornar um usuário aluno, ela passa a ser exigida. Dados pessoais, situação, perfil e vínculos acadêmicos são atualizados
 na mesma transação. Vínculos removidos ficam inativos para preservar histórico;
 vínculos existentes são reativados quando aplicável. `updated_by` registra o
 administrador responsável.
