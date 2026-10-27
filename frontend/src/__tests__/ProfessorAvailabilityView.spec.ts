@@ -1,12 +1,27 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ApiError } from '@/services/api'
 import AvailabilityView from '@/views/professor/AvailabilityView.vue'
 
 const availabilityMocks = vi.hoisted(() => ({
+  blockOwnAvailability: vi.fn(),
   createAvailabilities: vi.fn(),
   listOwnAvailabilities: vi.fn(),
+  unblockOwnAvailability: vi.fn(),
 }))
+
+function availabilityItem(overrides: Record<string, unknown> = {}) {
+  return {
+    confirmedAppointments: 0,
+    endsAt: '2099-10-03T18:45:00.000Z',
+    id: 15,
+    modalities: ['presencial', 'online'],
+    startsAt: '2099-10-03T18:00:00.000Z',
+    state: 'ativa',
+    ...overrides,
+  }
+}
 
 vi.mock('@/services/availability', () => availabilityMocks)
 
@@ -19,6 +34,14 @@ describe('AvailabilityView do professor', () => {
     availabilityMocks.listOwnAvailabilities.mockReset().mockResolvedValue({
       availabilities: [],
       summary: { available: 0, blocked: 0, reserved: 0 },
+    })
+    availabilityMocks.blockOwnAvailability.mockReset().mockResolvedValue({
+      availability: availabilityItem({ state: 'bloqueada' }),
+      message: 'Horário bloqueado com sucesso.',
+    })
+    availabilityMocks.unblockOwnAvailability.mockReset().mockResolvedValue({
+      availability: availabilityItem(),
+      message: 'Horário desbloqueado com sucesso.',
     })
   })
 
@@ -91,15 +114,7 @@ describe('AvailabilityView do professor', () => {
 
   it('renderiza somente disponibilidades retornadas pelo backend', async () => {
     availabilityMocks.listOwnAvailabilities.mockResolvedValue({
-      availabilities: [
-        {
-          endsAt: '2099-10-03T18:45:00.000Z',
-          id: 15,
-          modalities: ['presencial', 'online'],
-          startsAt: '2099-10-03T18:00:00.000Z',
-          state: 'ativa',
-        },
-      ],
+      availabilities: [availabilityItem()],
       summary: { available: 1, blocked: 0, reserved: 0 },
     })
     const wrapper = mount(AvailabilityView, {
@@ -110,6 +125,79 @@ describe('AvailabilityView do professor', () => {
     expect(wrapper.text()).toContain('Presencial e online')
     expect(wrapper.get('[aria-label="1 Disponíveis"]').text()).toBe('1')
     expect(wrapper.text()).not.toContain('Nenhum horário publicado ainda')
+  })
+
+  it('identifica horário reservado sem oferecer bloqueio', async () => {
+    availabilityMocks.listOwnAvailabilities.mockResolvedValue({
+      availabilities: [availabilityItem({ confirmedAppointments: 2 })],
+      summary: { available: 0, blocked: 0, reserved: 1 },
+    })
+    const wrapper = mount(AvailabilityView, {
+      global: { stubs: { Teleport: true } },
+    })
+
+    await expect.poll(() => wrapper.text()).toContain('14:00–14:45')
+    expect(wrapper.text()).toContain('Reservada')
+    expect(wrapper.text()).toContain('2 agendamentos confirmados')
+    expect(wrapper.get('[aria-label="1 Reservados"]').text()).toBe('1')
+    expect(wrapper.find('[data-testid="calendar-event-action-15"]').exists()).toBe(false)
+  })
+
+  it('confirma o bloqueio de um horário livre e recarrega a agenda', async () => {
+    availabilityMocks.listOwnAvailabilities.mockResolvedValue({
+      availabilities: [availabilityItem()],
+      summary: { available: 1, blocked: 0, reserved: 0 },
+    })
+    const wrapper = mount(AvailabilityView, {
+      global: { stubs: { Teleport: true } },
+    })
+
+    await expect
+      .poll(() => wrapper.find('[data-testid="calendar-event-action-15"]').exists())
+      .toBe(true)
+    const action = wrapper.get('[data-testid="calendar-event-action-15"]')
+    expect(action.text()).toBe('Bloquear horário')
+    await action.trigger('click')
+
+    expect(wrapper.text()).toContain('Bloquear horário?')
+    expect(wrapper.text()).toContain('deixará de aparecer para os alunos')
+    expect(availabilityMocks.blockOwnAvailability).not.toHaveBeenCalled()
+
+    await wrapper.get('[data-testid="confirm-dialog-confirm"]').trigger('click')
+
+    await expect.poll(() => availabilityMocks.blockOwnAvailability).toHaveBeenCalledWith(15)
+    await expect.poll(() => availabilityMocks.listOwnAvailabilities).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).not.toContain('Bloquear horário?')
+    expect(availabilityMocks.unblockOwnAvailability).not.toHaveBeenCalled()
+  })
+
+  it('desbloqueia horário bloqueado e mantém o erro do backend no diálogo', async () => {
+    availabilityMocks.listOwnAvailabilities.mockResolvedValue({
+      availabilities: [availabilityItem({ state: 'bloqueada' })],
+      summary: { available: 0, blocked: 1, reserved: 0 },
+    })
+    availabilityMocks.unblockOwnAvailability.mockRejectedValueOnce(
+      new ApiError(409, 'Não é possível alterar um horário já encerrado.', 'warning'),
+    )
+    const wrapper = mount(AvailabilityView, {
+      global: { stubs: { Teleport: true } },
+    })
+
+    await expect
+      .poll(() => wrapper.find('[data-testid="calendar-event-action-15"]').exists())
+      .toBe(true)
+    expect(wrapper.text()).toContain('Bloqueada')
+    const action = wrapper.get('[data-testid="calendar-event-action-15"]')
+    expect(action.text()).toBe('Desbloquear horário')
+    await action.trigger('click')
+    await wrapper.get('[data-testid="confirm-dialog-confirm"]').trigger('click')
+
+    await expect
+      .poll(() => wrapper.text())
+      .toContain('Não é possível alterar um horário já encerrado.')
+    expect(availabilityMocks.unblockOwnAvailability).toHaveBeenCalledWith(15)
+    expect(wrapper.text()).toContain('Desbloquear horário?')
+    expect(availabilityMocks.listOwnAvailabilities).toHaveBeenCalledOnce()
   })
 
   it('expande dias da semana e múltiplas faixas em disponibilidades concretas', async () => {

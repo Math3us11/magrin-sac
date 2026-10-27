@@ -241,9 +241,11 @@ omitidos:
 ```text
 GET  /api/professor/availability
 POST /api/professor/availability
+POST /api/professor/availability/:availabilityId/block
+POST /api/professor/availability/:availabilityId/unblock
 ```
 
-As duas operações exigem `availability.manage.own`. O proprietário é sempre
+Todas as operações exigem `availability.manage.own`. O proprietário é sempre
 derivado da sessão autenticada; o contrato não aceita `professorId`.
 
 A publicação recebe um lote de até 500 intervalos no horário institucional:
@@ -275,15 +277,50 @@ Uma publicação bem-sucedida retorna `201`:
       "startsAt": "2026-10-05T18:00:00.000Z",
       "endsAt": "2026-10-05T18:45:00.000Z",
       "state": "ativa",
-      "modalities": ["presencial", "online"]
+      "modalities": ["presencial", "online"],
+      "confirmedAppointments": 0
     }
   ]
 }
 ```
 
-O `GET` retorna as disponibilidades futuras não canceladas e os totais de
-disponíveis, reservadas e bloqueadas. Instantes da resposta são ISO 8601 em UTC;
-o cliente os exibe no timezone institucional.
+O `GET` retorna as disponibilidades futuras não canceladas, com a quantidade de
+agendamentos confirmados de cada uma em `confirmedAppointments`, e os totais do
+resumo:
+
+- `available`: janelas ativas sem agendamento confirmado;
+- `reserved`: janelas ativas com pelo menos um agendamento confirmado;
+- `blocked`: janelas bloqueadas.
+
+Instantes da resposta são ISO 8601 em UTC; o cliente os exibe no timezone
+institucional.
+
+#### Bloqueio e desbloqueio
+
+`block` retira temporariamente da consulta do aluno uma janela própria, ativa,
+ainda não encerrada e sem agendamento confirmado (`RF12`). `unblock` devolve ao
+estado `ativa` uma janela própria bloqueada e ainda não encerrada. Nenhuma das
+rotas recebe corpo.
+
+A transação bloqueia a linha da disponibilidade — o mesmo lock usado na
+confirmação do agendamento — antes de verificar estado e reservas, de modo que
+bloqueio e reserva não se intercalam. Janela de outro professor responde `404`;
+transição inválida, janela encerrada ou reserva confirmada respondem `409`.
+A resposta `200` traz a disponibilidade atualizada:
+
+```json
+{
+  "message": "Horário bloqueado com sucesso.",
+  "availability": {
+    "id": 15,
+    "startsAt": "2026-10-05T18:00:00.000Z",
+    "endsAt": "2026-10-05T18:45:00.000Z",
+    "state": "bloqueada",
+    "modalities": ["presencial", "online"],
+    "confirmedAppointments": 0
+  }
+}
+```
 
 O modo semanal do frontend é somente um gerador: a semana selecionada, apenas os
 dias marcados e todas as janelas preenchidas são expandidos em itens concretos

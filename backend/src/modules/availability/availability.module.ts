@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SequelizeModule } from '@nestjs/sequelize';
+import { Appointment } from '../../models/appointment.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
@@ -15,6 +16,7 @@ import { AvailabilityService } from './availability.service.js';
   imports: [
     AuthModule,
     SequelizeModule.forFeature([
+      Appointment,
       Availability,
       AvailabilityModality,
       SystemOption,

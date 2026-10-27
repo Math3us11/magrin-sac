@@ -7,6 +7,7 @@ import type {
   ListOwnAvailabilityResponse,
   ListStudentAvailabilityParams,
   ListStudentAvailabilityResponse,
+  UpdateAvailabilityStateResponse,
 } from '@/types/availability'
 
 export function listOwnAvailabilities(): Promise<ListOwnAvailabilityResponse> {
@@ -22,6 +23,24 @@ export function createAvailabilities(
     body: JSON.stringify(payload),
     method: 'POST',
   })
+}
+
+export function blockOwnAvailability(
+  availabilityId: number,
+): Promise<UpdateAvailabilityStateResponse> {
+  return apiRequest<UpdateAvailabilityStateResponse>(
+    `/professor/availability/${availabilityId}/block`,
+    { method: 'POST' },
+  )
+}
+
+export function unblockOwnAvailability(
+  availabilityId: number,
+): Promise<UpdateAvailabilityStateResponse> {
+  return apiRequest<UpdateAvailabilityStateResponse>(
+    `/professor/availability/${availabilityId}/unblock`,
+    { method: 'POST' },
+  )
 }
 
 export function listStudentAvailabilities(

@@ -206,7 +206,11 @@ test('consulta mensal dos próprios agendamentos exige um período completo e li
   );
 });
 
-function createBookingService({ appointmentFindOne = async () => null, notification } = {}) {
+function createBookingService({
+  appointmentFindOne = async () => null,
+  availabilityState = 'ativa',
+  notification,
+} = {}) {
   const transaction = { LOCK: { UPDATE: 'UPDATE' }, id: 'booking-transaction' };
   const calls = { appointmentCreate: [], availabilityLock: [], notification: [] };
   let transactionFinished = false;
@@ -225,7 +229,7 @@ function createBookingService({ appointmentFindOne = async () => null, notificat
         id: 10,
         professorId: 8,
         startsAt: new Date('2099-10-03T12:00:00.000Z'),
-        state: 'ativa',
+        state: availabilityState,
       };
     },
   };
@@ -313,6 +317,14 @@ test('falha de notificação não desfaz nem transforma a confirmação em erro'
   assert.equal(response.appointment.status, 'confirmado');
   assert.equal(calls.appointmentCreate.length, 1);
   assert.equal(calls.notification.length, 1);
+});
+
+test('rejeita reserva em disponibilidade bloqueada', async () => {
+  const { calls, service } = createBookingService({ availabilityState: 'bloqueada' });
+
+  await assert.rejects(service.create(validBooking, 4), /não está mais ativa/);
+  assert.equal(calls.appointmentCreate.length, 0);
+  assert.equal(calls.notification.length, 0);
 });
 
 test('rejeita sobreposição na disponibilidade sem criar novo registro', async () => {
