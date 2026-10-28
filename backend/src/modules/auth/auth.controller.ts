@@ -10,7 +10,9 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
+import type { AuthConfig } from '../../config/auth.config.js';
 import { AllowPasswordChangePending } from '../../decorators/allow-password-change-pending.decorator.js';
 import { CurrentUser } from '../../decorators/current-user.decorator.js';
 import { RequestOriginGuard } from '../../guards/request-origin.guard.js';
@@ -20,6 +22,7 @@ import type { CredentialPublicKeyDto } from '../../helpers/credential-encryption
 import { CredentialEncryptionService } from '../../helpers/credential-encryption/credential-encryption.service.js';
 import type { AuthenticatedUser } from '../../types/authenticated-user.type.js';
 import { AuthService } from './auth.service.js';
+import { resolveClientIp } from './client-ip.js';
 import type { CurrentUserDto } from './dto/current-user.dto.js';
 import { FirstAccessPasswordDto } from './dto/first-access-password.dto.js';
 import { LoginDto } from './dto/login.dto.js';
@@ -27,11 +30,17 @@ import type { LoginResponseDto } from './dto/login-response.dto.js';
 
 @Controller()
 export class AuthController {
+  private readonly clientIpHeader: string | null;
+
   constructor(
     private readonly authService: AuthService,
     private readonly credentialEncryptionService: CredentialEncryptionService,
     private readonly sessionCookieService: SessionCookieService,
-  ) {}
+    configService: ConfigService,
+  ) {
+    this.clientIpHeader =
+      configService.get<AuthConfig['loginAttempts']>('auth.loginAttempts')?.clientIpHeader ?? null;
+  }
 
   @Get('auth/credential-key')
   @Header('Cache-Control', 'no-store')
@@ -45,6 +54,7 @@ export class AuthController {
   @UseGuards(RequestOriginGuard)
   async login(
     @Body() input: LoginDto,
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<LoginResponseDto> {
     const password = this.credentialEncryptionService.decrypt(input.credential, {
@@ -52,7 +62,11 @@ export class AuthController {
       minLength: 1,
       purpose: 'login',
     });
-    const result = await this.authService.login({ email: input.email, password });
+    const result = await this.authService.login({
+      clientIp: resolveClientIp(request, this.clientIpHeader),
+      email: input.email,
+      password,
+    });
     this.sessionCookieService.write(response, result.token);
 
     return { user: result.user };

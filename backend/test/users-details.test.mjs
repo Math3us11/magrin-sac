@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { Op } from 'sequelize';
 import { UsersService } from '../dist/modules/users/users.service.js';
 import { createAuditFake } from './audit-fake.mjs';
 
-function createService() {
+function createService({ activeAdministrators = [{ id: 3 }], userOverrides = {} } = {}) {
   const calls = {
+    administratorLookup: null,
     createdLinks: [],
     identityWhere: null,
     linkUpdates: [],
@@ -27,6 +28,7 @@ function createService() {
     registrationNumber: '20230001',
     updatedAt: new Date('2026-10-02T12:00:00.000Z'),
     userType: 'aluno',
+    ...userOverrides,
     destroy: async () => {
       calls.userDestroyed = true;
     },
@@ -89,6 +91,10 @@ function createService() {
           : id === 3
             ? { id: 3, isActive: true, passwordHash: 'admin-password-hash' }
             : null,
+      findAll: async (options) => {
+        calls.administratorLookup = options;
+        return activeAdministrators;
+      },
       findOne: async (options) => {
         calls.identityWhere = options.where;
         return null;
@@ -108,7 +114,7 @@ function createService() {
     },
   };
   const sequelize = {
-    transaction: async (callback) => callback({ id: 'transaction' }),
+    transaction: async (callback) => callback({ LOCK: { UPDATE: 'UPDATE' }, id: 'transaction' }),
   };
   const passwordHashService = {
     hash: async () => 'unused',
@@ -186,7 +192,7 @@ test('atualiza usuário e reconcilia vínculos acadêmicos na mesma transação'
   assert.equal(audit.entries[0].action, 'user.updated');
   assert.equal(audit.entries[0].actorId, 3);
   assert.equal(audit.entries[0].entityId, 10);
-  assert.deepEqual(audit.entries[0].transaction, { id: 'transaction' });
+  assert.equal(audit.entries[0].transaction.id, 'transaction');
   assert.deepEqual(audit.entries[0].changes, {
     birthDate: { redacted: true },
     email: { from: 'aluno@example.com', to: 'professor@example.com' },
@@ -234,4 +240,76 @@ test('rejeita exclusão com senha administrativa inválida ou da própria conta'
   await assert.rejects(service.delete(10, 3, 'senha-incorreta'), ForbiddenException);
   await assert.rejects(service.delete(3, 3, 'admin-password'), ForbiddenException);
   assert.equal(audit.entries.length, 0);
+});
+
+const administratorInput = {
+  birthDate: '1980-04-05',
+  cpf: '11111111111',
+  email: 'admin2@example.com',
+  isActive: true,
+  name: 'Segundo Administrador',
+  phone: '65988888888',
+  userType: 'administrador',
+};
+
+test('administrador não desativa nem rebaixa a própria conta', async () => {
+  const { calls, service } = createService({ userOverrides: { id: 3, userType: 'administrador' } });
+
+  await assert.rejects(
+    service.update(3, { ...administratorInput, isActive: false }, 3),
+    (error) => error instanceof ForbiddenException && /própria conta/.test(error.message),
+  );
+  await assert.rejects(
+    service.update(3, { ...administratorInput, userType: 'professor' }, 3),
+    ForbiddenException,
+  );
+  assert.equal(calls.userUpdate, null);
+
+  await service.update(3, { ...administratorInput, name: 'Nome Atualizado' }, 3);
+  assert.equal(calls.userUpdate.name, 'Nome Atualizado');
+  assert.equal(calls.administratorLookup, null);
+});
+
+test('mantém pelo menos um administrador ativo, travando a contagem', async () => {
+  const lastAdministrator = createService({
+    activeAdministrators: [{ id: 10 }],
+    userOverrides: { userType: 'administrador' },
+  });
+
+  await assert.rejects(
+    lastAdministrator.service.update(10, { ...administratorInput, isActive: false }, 3),
+    (error) =>
+      error instanceof ConflictException && /pelo menos um administrador ativo/.test(error.message),
+  );
+  assert.equal(lastAdministrator.calls.administratorLookup.lock, 'UPDATE');
+  assert.deepEqual(lastAdministrator.calls.administratorLookup.where, {
+    isActive: true,
+    userType: 'administrador',
+  });
+  assert.equal(lastAdministrator.calls.userUpdate, null);
+
+  const withAnotherAdministrator = createService({
+    activeAdministrators: [{ id: 10 }, { id: 3 }],
+    userOverrides: { userType: 'administrador' },
+  });
+  await withAnotherAdministrator.service.update(
+    10,
+    {
+      ...administratorInput,
+      userType: 'professor',
+      academic: { courseIds: [1], courseSubjectIds: [10] },
+    },
+    3,
+  );
+  assert.equal(withAnotherAdministrator.calls.userUpdate.userType, 'professor');
+});
+
+test('não exclui o último administrador ativo', async () => {
+  const { calls, service } = createService({
+    activeAdministrators: [{ id: 10 }],
+    userOverrides: { userType: 'administrador' },
+  });
+
+  await assert.rejects(service.delete(10, 3, 'admin-password'), ConflictException);
+  assert.equal(calls.userDestroyed, false);
 });

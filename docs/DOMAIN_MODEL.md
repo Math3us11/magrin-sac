@@ -363,6 +363,8 @@ resolvido são finais e não possuem reabertura.
 33. Somente `em_tratativa` pode mudar de classificação no MVP.
 34. Toda transição de atendimento registra motivo, ator e data na mesma
     transação da atualização.
+35. O sistema mantém pelo menos um administrador ativo; o administrador não
+    desativa nem rebaixa a própria conta.
 
 ## Convenção de auditoria
 

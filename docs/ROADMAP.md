@@ -237,6 +237,8 @@ Entregas:
       externo sem sessão;
 - [x] isolar a `main` em worktree e separar os bancos da versão estável e do
       desenvolvimento;
+- [x] limitar falhas de login por conta + IP e por IP, registrar eventos
+      suspeitos pseudonimizados e preservar sempre um administrador ativo;
 - [x] revisar o transporte de credenciais, cookies, origem, validação de entrada
       e exposição de dados pessoais, incluindo limitação de falhas de login;
 - [x] revisar a acessibilidade dos componentes e fluxos principais;

@@ -106,7 +106,11 @@ function createAuthService(overrides = {}) {
 
 test('login válido cria sessão e retorna somente dados públicos do usuário', async () => {
   const { service, state } = createAuthService();
-  const result = await service.login({ email: activeUser.email, password: 'correct-password' });
+  const result = await service.login({
+    clientIp: '203.0.113.7',
+    email: activeUser.email,
+    password: 'correct-password',
+  });
 
   assert.equal(result.token, 'signed.jwt.value');
   assert.deepEqual(result.user, {
@@ -120,20 +124,24 @@ test('login válido cria sessão e retorna somente dados públicos do usuário',
   assert.equal(state.createdSession.userId, activeUser.id);
   assert.equal(state.createdSession.createdBy, activeUser.id);
   assert.equal(state.createdSession.tokenId, '9a2575e1-7707-4381-aa11-15a78455d5d6');
-  assert.equal(state.checkedLoginAttempt, activeUser.email);
-  assert.equal(state.clearedLoginAttempt, activeUser.email);
+  const attempt = { clientIp: '203.0.113.7', identity: activeUser.email };
+  assert.deepEqual(state.checkedLoginAttempt, attempt);
+  assert.deepEqual(state.clearedLoginAttempt, attempt);
 });
 
 test('login rejeita credenciais inválidas com mensagem genérica', async () => {
   const { service, state } = createAuthService({ passwordMatches: false });
 
   await assert.rejects(
-    service.login({ email: activeUser.email, password: 'wrong-password' }),
+    service.login({ clientIp: '203.0.113.7', email: activeUser.email, password: 'wrong-password' }),
     (error) =>
       error instanceof UnauthorizedException && error.message === 'E-mail ou senha inválidos.',
   );
   assert.equal(state.createdSession, null);
-  assert.equal(state.failedLoginAttempt, activeUser.email);
+  assert.deepEqual(state.failedLoginAttempt, {
+    clientIp: '203.0.113.7',
+    identity: activeUser.email,
+  });
 });
 
 test('autenticação consulta sessão e usuário atuais e registra atividade', async () => {
