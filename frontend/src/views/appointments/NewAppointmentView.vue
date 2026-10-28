@@ -388,7 +388,9 @@ onMounted(() => void loadAvailabilities())
           <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
             Dia selecionado
           </p>
-          <h2 class="mt-1 text-xl font-bold capitalize text-content">{{ selectedDateLabel }}</h2>
+          <h2 class="mt-1 text-xl font-bold first-letter:uppercase text-content">
+            {{ selectedDateLabel }}
+          </h2>
 
           <div class="mt-6" data-testid="selected-day-summary">
             <div class="flex items-center justify-between gap-3">
@@ -606,7 +608,7 @@ onMounted(() => void loadAvailabilities())
       data-testid="appointment-review"
     >
       <div class="rounded-2xl bg-brand-primary-soft p-5 text-brand-primary">
-        <p class="font-bold capitalize">{{ selectedDateLabel }}</p>
+        <p class="font-bold first-letter:uppercase">{{ selectedDateLabel }}</p>
         <p class="mt-1 text-sm font-semibold">{{ reviewTimeLabel }}</p>
       </div>
 
@@ -688,7 +690,7 @@ onMounted(() => void loadAvailabilities())
       <dl class="grid gap-4 text-sm">
         <div>
           <dt class="text-content-muted">Data e horário</dt>
-          <dd class="mt-1 font-bold capitalize text-content">
+          <dd class="mt-1 font-bold first-letter:uppercase text-content">
             {{ confirmedDateLabel }} · {{ confirmedTimeLabel }}
           </dd>
         </div>

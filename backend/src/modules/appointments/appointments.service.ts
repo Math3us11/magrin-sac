@@ -509,7 +509,7 @@ export class AppointmentsService {
     }
 
     const availabilityConflict = await this.appointmentModel.findOne({
-      attributes: ['id'],
+      attributes: ['id', 'studentId'],
       lock: transaction.LOCK.UPDATE,
       transaction,
       where: {
@@ -520,7 +520,11 @@ export class AppointmentsService {
       },
     });
     if (availabilityConflict) {
-      throw new ConflictException('Este horário acabou de ser reservado por outra pessoa.');
+      throw new ConflictException(
+        availabilityConflict.studentId === requesterId
+          ? 'Você já possui um agendamento nesse intervalo.'
+          : 'Este horário acabou de ser reservado por outra pessoa.',
+      );
     }
 
     const requesterConflict = await this.appointmentModel.findOne({

@@ -237,7 +237,7 @@ watch(
           <Icon class="h-5 w-5" :icon="chevronLeftIcon" aria-hidden="true" />
         </button>
         <h3
-          class="min-w-0 flex-1 px-1 text-center text-base font-bold capitalize text-content sm:min-w-44 sm:flex-none sm:px-2 sm:text-lg"
+          class="min-w-0 flex-1 px-1 text-center text-base font-bold first-letter:uppercase text-content sm:min-w-44 sm:flex-none sm:px-2 sm:text-lg"
           data-testid="calendar-month-label"
         >
           {{ formatMonth(visibleMonth) }}
@@ -369,7 +369,7 @@ watch(
           <p class="text-xs font-bold uppercase tracking-[0.12em] text-content-muted">
             Agenda do dia
           </p>
-          <h4 class="font-bold capitalize text-content">{{ selectedDateLabel }}</h4>
+          <h4 class="font-bold first-letter:uppercase text-content">{{ selectedDateLabel }}</h4>
         </div>
       </div>
 

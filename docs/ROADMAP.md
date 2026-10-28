@@ -254,6 +254,9 @@ Entregas:
 - [x] registrar a trilha de auditoria de usuários, agendamentos e
       disponibilidades na mesma transação das operações, com consulta
       administrativa paginada e dados pessoais sensíveis protegidos;
+- [x] revisar de ponta a ponta, no navegador, os fluxos de aluno, professor e
+      administrador, corrigindo a checagem de permissão em acesso direto por
+      URL, o teclado em modais e textos ou datas inconsistentes;
 - observabilidade mínima;
 - seed ou roteiro de demonstração sem dados pessoais reais;
 - revisão final da documentação.

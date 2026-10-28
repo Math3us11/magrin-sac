@@ -535,4 +535,36 @@ describe('componentes básicos', () => {
 
     wrapper.unmount()
   })
+
+  it('AppModal responde ao teclado quando o foco sai para o body', async () => {
+    const wrapper = mount(
+      {
+        components: { AppModal },
+        data: () => ({ open: true }),
+        template: `
+        <AppModal v-model:open="open" title="Publicar horários">
+          <input data-modal-autofocus aria-label="Campo inicial" />
+          <template #footer><button type="button">Publicar</button></template>
+        </AppModal>
+      `,
+      },
+      { attachTo: document.body },
+    )
+    await nextTick()
+
+    // Simula o botão desabilitado durante a requisição, que tira o foco do diálogo.
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    expect(document.activeElement).toBe(document.body)
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Tab' }))
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Fechar modal')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }))
+    await nextTick()
+
+    expect(document.body.querySelector('[role="dialog"]')).toBeNull()
+
+    wrapper.unmount()
+  })
 })

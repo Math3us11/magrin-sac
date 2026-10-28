@@ -11,35 +11,53 @@ export const useNavigationStore = defineStore('navigation', () => {
   const initialized = ref(false)
   const isLoading = ref(false)
   const errorMessage = ref('')
+  // Chamadas simultâneas (guard do router e AppShell) aguardam a mesma requisição.
+  let pendingLoad: Promise<void> | null = null
+  // Invalida respostas que chegam depois de um reset, como no logout.
+  let generation = 0
 
   function hasPermission(code: string): boolean {
     return permissions.value.includes(code)
   }
 
-  async function load(force = false): Promise<void> {
-    if ((initialized.value && !force) || isLoading.value) return
+  function load(force = false): Promise<void> {
+    if (pendingLoad) return pendingLoad
+    if (initialized.value && !force) return Promise.resolve()
 
+    const requestGeneration = generation
     isLoading.value = true
     errorMessage.value = ''
 
-    try {
-      const response = await getCurrentNavigation()
-      items.value = response.items
-      permissions.value = response.permissions
-      initialized.value = true
-    } catch (error) {
-      initialized.value = false
-      errorMessage.value =
-        error instanceof ApiError
-          ? error.message
-          : 'Não foi possível carregar a navegação. Tente novamente.'
-      throw error
-    } finally {
-      isLoading.value = false
-    }
+    pendingLoad = getCurrentNavigation()
+      .then(
+        (response) => {
+          if (requestGeneration !== generation) return
+          items.value = response.items
+          permissions.value = response.permissions
+          initialized.value = true
+        },
+        (error: unknown) => {
+          if (requestGeneration !== generation) return
+          initialized.value = false
+          errorMessage.value =
+            error instanceof ApiError
+              ? error.message
+              : 'Não foi possível carregar a navegação. Tente novamente.'
+          throw error
+        },
+      )
+      .finally(() => {
+        if (requestGeneration !== generation) return
+        isLoading.value = false
+        pendingLoad = null
+      })
+
+    return pendingLoad
   }
 
   function reset() {
+    generation += 1
+    pendingLoad = null
     items.value = []
     permissions.value = []
     initialized.value = false

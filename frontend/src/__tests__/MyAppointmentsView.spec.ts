@@ -92,8 +92,8 @@ describe('MyAppointmentsView', () => {
     await afterDeadline.get('[data-testid="next-appointment"] button').trigger('click')
     const blocked = findCancelButton()
     expect(blocked?.disabled).toBe(true)
-    expect(blocked?.getAttribute('title')).toBe(
-      'O prazo de cancelamento deste agendamento já encerrou.',
+    expect(document.body.querySelector('[role="dialog"]')?.textContent).toContain(
+      'O prazo para cancelar encerrou em 31/12/1999, 20:00.',
     )
   })
 

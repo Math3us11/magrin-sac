@@ -56,6 +56,9 @@ O diretório `frontend/` foi criado com:
 - tela de login responsiva, proteção de navegação e logout;
 - shell autenticado com header e sidebar responsiva alimentada pela API;
 - store de navegação com permissões atuais e estados de carregamento e erro;
+  chamadas simultâneas (guard do router e shell) aguardam a mesma requisição,
+  para que a checagem de permissão nunca ocorra antes da resposta, e um
+  `reset` descarta respostas que chegarem depois do logout;
 - store global de notificações e `AppNotify` para feedback de sucesso,
   informação, atenção e erro interpretado pelo cliente HTTP;
 - store global de loading com operações identificadas, mantendo o `AppLoading`

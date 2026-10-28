@@ -504,7 +504,13 @@ As listagens do aluno, do professor e da administração retornam
 consulta ainda pode cancelá-lo, ou `null` quando ele não está confirmado. Para
 aluno e professor, o valor é o início menos a antecedência configurada; para o
 administrador, é o próprio início. O frontend usa esse campo para habilitar a
-ação e não repete a regra.
+ação e, quando o prazo já passou, exibe em texto o instante em que ele encerrou,
+sem repetir a regra.
+
+Na confirmação, uma sobreposição dentro da mesma disponibilidade responde `409`
+com "Você já possui um agendamento nesse intervalo." quando a reserva
+conflitante é do próprio aluno, e com "Este horário acabou de ser reservado por
+outra pessoa." nos demais casos.
 
 ### Administração de disponibilidade
 

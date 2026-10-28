@@ -16,6 +16,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  invalid: []
   submit: [values: GenericObject, actions: FormActions<GenericObject>]
 }>()
 
@@ -34,6 +35,7 @@ function setFieldValue(field: string, value: unknown) {
 }
 
 function focusFirstInvalidField({ errors }: InvalidSubmissionContext<GenericObject>) {
+  emit('invalid')
   const firstInvalidField = Object.keys(errors)[0]
 
   if (!firstInvalidField) return
