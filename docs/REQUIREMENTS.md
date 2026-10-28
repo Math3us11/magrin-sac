@@ -16,6 +16,9 @@ documento de requisitos original.
   confirmar a própria senha, registrando o responsável e preservando o
   histórico. A própria conta administrativa não pode ser excluída por esse
   fluxo.
+- Manter sempre pelo menos um administrador ativo: o administrador não desativa
+  nem rebaixa a própria conta, e nenhuma edição ou exclusão remove o último
+  administrador ativo.
 - Manter os dados mínimos do aluno, incluindo matrícula única, numérica e
   obrigatória no cadastro e na edição de aluno (`RF07`).
 - Exigir telefone com DDD no cadastro e na edição administrativa para viabilizar
@@ -124,7 +127,8 @@ documento de requisitos original.
 - Autorização obrigatória no servidor (`RNF17`, `RNF18`).
 - Validação e sanitização de entrada (`RNF19`, `RNF20`).
 - Sessão segura e registro controlado de tentativas suspeitas
-  (`RNF21`, `RNF22`).
+  (`RNF21`, `RNF22`); o limite de falhas de login é aplicado por conta + IP e por
+  IP, e os bloqueios são registrados com identificadores pseudonimizados.
 - Access token JWT em cookie `HttpOnly`, com assinatura e claims validadas antes
   de consultar a sessão stateful. Inatividade, duração absoluta, revogação e
   usuário ativo são sempre validados no backend.

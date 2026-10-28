@@ -117,13 +117,28 @@ e-mail existe. `GET /api/me` retorna o mesmo objeto de usuário, sem o envelope
 `user`. `POST /api/auth/logout` é idempotente, revoga a sessão reconhecida,
 remove o cookie e responde `204` sem corpo.
 
-O backend limita falhas consecutivas por identidade normalizada, sem armazenar
-ou registrar o e-mail em texto legível nesse controle. Ao alcançar
-`AUTH_LOGIN_MAX_FAILURES` dentro da janela configurada por
-`AUTH_LOGIN_WINDOW_SECONDS`, o login responde `429` até o término da janela. O
-contador é limpo após um login concluído. Este controle local é limitado à
-instância atual; uma publicação com múltiplas instâncias deverá substituí-lo por
-um armazenamento compartilhado ou por proteção equivalente na borda.
+O backend limita falhas em dois níveis, dentro da janela
+`AUTH_LOGIN_WINDOW_SECONDS`:
+
+- **conta + IP:** `AUTH_LOGIN_MAX_FAILURES` falhas da mesma identidade normalizada
+  a partir do mesmo IP bloqueiam somente essa combinação. Falhas vindas de outro
+  endereço não impedem o titular de entrar;
+- **IP:** `AUTH_LOGIN_MAX_FAILURES_PER_CLIENT` falhas do mesmo IP, em qualquer
+  conta, bloqueiam o endereço, o que limita testes de senha em várias contas.
+
+Enquanto houver bloqueio, o login responde `429`. Um login concluído limpa o
+contador da conta naquele IP, mas não o contador do IP. E-mail e IP nunca são
+guardados nem registrados em texto legível: o controle e o log usam pseudônimos
+HMAC. O IP vem da conexão; `AUTH_LOGIN_CLIENT_IP_HEADER` só deve ser definido
+quando o backend escuta em loopback atrás de um proxy confiável, e o ambiente
+remoto usa `cf-connecting-ip` do Cloudflare Tunnel.
+
+Eventos suspeitos são registrados no log técnico com o contexto
+`SecurityEvents` (`RNF22`): `auth.login.account_blocked`,
+`auth.login.client_blocked` e `auth.login.rejected_while_blocked`, este último
+uma única vez por bloqueio. Este controle local é limitado à instância atual;
+uma publicação com múltiplas instâncias deverá substituí-lo por um armazenamento
+compartilhado ou por proteção equivalente na borda.
 
 Quando `mustChangePassword` for `true`, a sessão fica restrita à consulta de
 `GET /api/me`, ao logout e à definição da senha inicial. Qualquer outro endpoint
@@ -937,6 +952,13 @@ registra o administrador em `deleted_by` e `updated_by`, preenche `deleted_at` e
 revoga todas as sessões ativas do usuário excluído. O histórico e os vínculos
 permanecem preservados. Um administrador não pode excluir a própria conta. Senha
 incorreta responde `403`; usuário inexistente ou já excluído responde `404`.
+
+Edição e exclusão preservam pelo menos um administrador ativo. O administrador
+autenticado não pode desativar a própria conta nem remover dela o perfil de
+administrador (`403`). Qualquer alteração que deixaria o sistema sem
+administrador ativo responde `409`. A verificação trava as linhas dos
+administradores ativos na mesma transação, para que alterações simultâneas não
+zerem o perfil.
 
 ```json
 {

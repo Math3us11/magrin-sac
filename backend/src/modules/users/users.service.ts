@@ -52,6 +52,10 @@ type CreateUserInput = Omit<CreateUserDto, 'temporaryPassword'> & {
   temporaryPassword: string;
 };
 
+function isActiveAdministrator(user: Pick<User, 'isActive' | 'userType'>): boolean {
+  return user.isActive && user.userType === UserType.ADMINISTRATOR;
+}
+
 // Matrícula pertence somente ao aluno; os demais perfis a mantêm nula.
 function registrationNumberFor(input: Pick<CreateUserDto, 'registrationNumber' | 'userType'>) {
   return input.userType === UserType.STUDENT ? (input.registrationNumber ?? null) : null;
@@ -264,6 +268,17 @@ export class UsersService {
 
         if (!user) throw new NotFoundException('Usuário não encontrado.');
 
+        const remainsActiveAdministrator =
+          input.userType === UserType.ADMINISTRATOR && input.isActive;
+        if (userId === actorId && !remainsActiveAdministrator) {
+          throw new ForbiddenException(
+            'Você não pode desativar a própria conta nem remover dela o perfil de administrador.',
+          );
+        }
+        if (isActiveAdministrator(user) && !remainsActiveAdministrator) {
+          await this.assertAnotherActiveAdministrator(userId, transaction);
+        }
+
         const registrationNumber = registrationNumberFor(input);
         await this.assertUniqueIdentity(
           { cpf: input.cpf, email: input.email, registrationNumber },
@@ -350,6 +365,9 @@ export class UsersService {
       const user = await this.userModel.unscoped().findByPk(userId, { transaction });
 
       if (!user) throw new NotFoundException('Usuário não encontrado.');
+      if (isActiveAdministrator(user)) {
+        await this.assertAnotherActiveAdministrator(userId, transaction);
+      }
 
       const now = new Date();
       const wasActive = user.isActive;
@@ -612,6 +630,23 @@ export class UsersService {
     periodOptionItemId: number | null;
   }): string {
     return `${link.courseSubjectId}:${link.periodOptionItemId ?? 'none'}`;
+  }
+
+  private async assertAnotherActiveAdministrator(
+    userId: number,
+    transaction: Transaction,
+  ): Promise<void> {
+    // Trava os administradores ativos: duas alterações simultâneas não podem zerar o perfil.
+    const administrators = await this.userModel.unscoped().findAll({
+      attributes: ['id'],
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+      where: { isActive: true, userType: UserType.ADMINISTRATOR },
+    });
+
+    if (!administrators.some(({ id }) => id !== userId)) {
+      throw new ConflictException('O sistema precisa manter pelo menos um administrador ativo.');
+    }
   }
 
   private async assertUniqueIdentity(

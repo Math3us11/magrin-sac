@@ -34,6 +34,7 @@ export type LoginResult = {
 };
 
 type LoginInput = {
+  clientIp: string;
   email: string;
   password: string;
 };
@@ -55,7 +56,8 @@ export class AuthService {
   }
 
   async login(input: LoginInput): Promise<LoginResult> {
-    this.loginAttemptService.assertAllowed(input.email);
+    const attempt = { clientIp: input.clientIp, identity: input.email };
+    this.loginAttemptService.assertAllowed(attempt);
     const user = await this.userModel.unscoped().findOne({
       attributes: [...SAFE_USER_ATTRIBUTES, 'passwordHash'],
       where: { email: input.email },
@@ -66,7 +68,7 @@ export class AuthService {
     );
 
     if (!user || !user.isActive || !passwordMatches) {
-      this.loginAttemptService.recordFailure(input.email);
+      this.loginAttemptService.recordFailure(attempt);
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
@@ -97,7 +99,7 @@ export class AuthService {
       return { token, user: userDto };
     });
 
-    this.loginAttemptService.clear(input.email);
+    this.loginAttemptService.clear(attempt);
     return result;
   }
 

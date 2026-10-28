@@ -18,6 +18,7 @@ vi.mock('@/services/users', () => usersServiceMocks)
 import UserCreateView from '@/views/administration/UserCreateView.vue'
 import UserDetailsView from '@/views/administration/UserDetailsView.vue'
 import UsersView from '@/views/administration/UsersView.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 
 const registrationCourses = [
@@ -338,6 +339,32 @@ describe('UsersView', () => {
       }),
     )
     expect(router.currentRoute.value.name).toBe('administration-users-view')
+  })
+
+  it('não oferece rebaixar ou desativar a própria conta na edição', async () => {
+    const router = createAdministrationRouter()
+    await router.push({ name: 'administration-users-edit', params: { userId: 2 } })
+    await router.isReady()
+    const pinia = createPinia()
+    useAuthStore(pinia).user = {
+      birthDate: '2001-02-03',
+      email: 'aluno@example.com',
+      id: 2,
+      mustChangePassword: false,
+      name: 'Aluno Teste',
+      userType: 'aluno',
+    }
+    const wrapper = mount(UserDetailsView, {
+      props: { mode: 'edit' },
+      global: { plugins: [pinia, router] },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="own-account-access-notice"]').exists()).toBe(true)
+    for (const input of wrapper.findAll('input[name="userType"], input[name="accountStatus"]')) {
+      expect(input.attributes()).toHaveProperty('disabled')
+    }
+    expect(wrapper.get('input[name="name"]').attributes()).not.toHaveProperty('disabled')
   })
 
   it('consulta usuários com busca, filtros e paginação controlados pela tela', async () => {

@@ -49,13 +49,30 @@ test('mantém compatibilidade usando APP_ENV quando não há override do cookie'
 test('configura a proteção de tentativas de login com valores explícitos', () => {
   withEnvironment(
     {
+      AUTH_LOGIN_CLIENT_IP_HEADER: ' CF-Connecting-IP ',
       AUTH_LOGIN_MAX_FAILURES: '4',
+      AUTH_LOGIN_MAX_FAILURES_PER_CLIENT: '15',
       AUTH_LOGIN_WINDOW_SECONDS: '120',
     },
     () =>
       assert.deepEqual(authConfig().loginAttempts, {
+        clientIpHeader: 'cf-connecting-ip',
         maxFailures: 4,
+        maxFailuresPerClient: 15,
         windowSeconds: 120,
       }),
+  );
+});
+
+test('não confia em cabeçalho de IP sem configuração explícita', () => {
+  withEnvironment(
+    {
+      AUTH_LOGIN_CLIENT_IP_HEADER: '',
+      AUTH_LOGIN_MAX_FAILURES_PER_CLIENT: undefined,
+    },
+    () => {
+      assert.equal(authConfig().loginAttempts.clientIpHeader, null);
+      assert.equal(authConfig().loginAttempts.maxFailuresPerClient, 20);
+    },
   );
 });

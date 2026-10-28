@@ -514,6 +514,33 @@ configuração bloqueie cancelamentos válidos.
 Consequência: a alteração do valor ainda é feita diretamente no banco; uma tela
 administrativa de parâmetros, com auditoria, fica para uma evolução posterior.
 
+## ADR-030 — Limite de login por conta + IP e eventos pseudonimizados
+
+**Estado:** aceita.
+
+O bloqueio por falhas de login deixa de valer somente por identidade, o que
+permitia que qualquer pessoa travasse a conta de outra apenas errando a senha
+com o e-mail dela. Agora há dois contadores em memória: conta + IP, com o limite
+`AUTH_LOGIN_MAX_FAILURES`, e IP, com `AUTH_LOGIN_MAX_FAILURES_PER_CLIENT`. Um
+sucesso limpa somente o contador da conta naquele IP.
+
+O IP vem da conexão. Um cabeçalho de proxy só é usado quando configurado em
+`AUTH_LOGIN_CLIENT_IP_HEADER`, porque ele só é confiável com o backend escutando
+em loopback atrás do proxy, como no Cloudflare Tunnel (`cf-connecting-ip`).
+
+Bloqueios e tentativas durante bloqueio são registrados no log técnico
+(`SecurityEvents`) com pseudônimos HMAC do e-mail e do IP, derivados do segredo
+da sessão. Isso permite correlacionar eventos sem gravar dados pessoais no log
+(`RNF22`, `RNF25`).
+
+Motivo: impedir o bloqueio malicioso de contas alheias sem abrir mão da proteção
+contra força bruta.
+
+Consequência: um atacante distribuído em muitos IPs ainda pode testar senhas de
+uma conta em ritmo lento. Os contadores e o log são locais à instância; múltiplas
+instâncias ou retenção dos eventos exigirão armazenamento compartilhado e a
+observabilidade mínima prevista no roadmap.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

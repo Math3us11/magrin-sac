@@ -89,6 +89,7 @@ const runtimeEnvironment = {
   APP_ENV: "development",
   APP_HOST: cloudflareConfig.origin.hostname,
   APP_SERVE_FRONTEND: "true",
+  AUTH_LOGIN_CLIENT_IP_HEADER: "cf-connecting-ip",
   AUTH_SESSION_COOKIE_SECURE: "true",
   CORS_ORIGIN: `https://${cloudflareConfig.publicHostname}`,
   DB_DATABASE: stableDatabase,
