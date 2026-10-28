@@ -33,3 +33,6 @@ npm-debug.log*
 
 # Worktree local da versão estável
 .worktrees/
+
+# Saídas locais do Playwright MCP
+.playwright-mcp/

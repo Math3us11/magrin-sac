@@ -155,7 +155,8 @@ documento de requisitos original.
 - Controle de versão e revisão de alterações relevantes (`RNF37`, `RNF38`).
 - Testes de regras críticas, concorrência e indicadores (`RNF39`–`RNF41`).
 - Configurações institucionais parametrizáveis (`RNF42`); a antecedência mínima
-  de cancelamento já é lida de `system_parameters`.
+  de cancelamento é lida de `system_parameters` e alterada pelo administrador em
+  tela própria, com motivo obrigatório e auditoria.
 - Logs úteis sem conteúdo sensível (`RNF43`).
 
 ### Experiência e acessibilidade

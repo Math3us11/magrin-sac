@@ -53,6 +53,11 @@ com intervalo permitido e valor aprovado. O primeiro parâmetro é
 `120`. Valor ausente ou inválido não interrompe a operação: o serviço usa o valor
 aprovado e registra um aviso no log técnico (ADR-029).
 
+O administrador com `parameters.manage` altera os parâmetros do catálogo pela
+interface. A alteração valida o intervalo, exige motivo, trava a linha e grava a
+auditoria na mesma transação. Uma linha ausente é criada e uma excluída
+logicamente é restaurada, preservando a unicidade do nome.
+
 ### Endpoint de integração
 
 URL nomeada de um serviço externo. Quando houver autenticação, guarda apenas os
@@ -247,7 +252,8 @@ são:
 
 - `user.created`, `user.updated` e `user.deleted`;
 - `appointment.created` e `appointment.cancelled`, com o motivo do cancelamento;
-- `availability.created`, `availability.blocked` e `availability.unblocked`.
+- `availability.created`, `availability.blocked` e `availability.unblocked`;
+- `system_parameter.updated`, com o valor anterior, o novo e o motivo.
 
 Senhas e hashes nunca entram na trilha. CPF, telefone e data de nascimento
 aparecem apenas como alterados, sem valores. Assunto e detalhes do agendamento

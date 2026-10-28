@@ -511,8 +511,10 @@ frontend não duplique a regra.
 Motivo: atender `RNF42` mantendo a regra no backend e sem permitir que um erro de
 configuração bloqueie cancelamentos válidos.
 
-Consequência: a alteração do valor ainda é feita diretamente no banco; uma tela
-administrativa de parâmetros, com auditoria, fica para uma evolução posterior.
+Consequência: novos parâmetros entram pelo catálogo, com rótulo, descrição,
+unidade e intervalo. O administrador os altera pela tela de parâmetros, com
+motivo obrigatório e registro `system_parameter.updated` na auditoria, na mesma
+transação da alteração.
 
 ## ADR-030 — Limite de login por conta + IP e eventos pseudonimizados
 

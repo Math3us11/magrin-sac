@@ -313,6 +313,12 @@ módulo importa a SDK do provedor. A implementação atual registra cada tentati
 em `notifications`, mascara o destino e usa um provider indisponível explícito
 até a configuração futura da Twilio.
 
+### `modules/parameters`
+
+Consulta e alteração administrativa dos parâmetros do catálogo de
+`helpers/system-parameters`, em `GET` e `PATCH /api/admin/system-parameters`.
+Cada alteração é registrada pelo `AuditService` na mesma transação.
+
 ### `modules/audit`
 
 Trilha de operações relevantes com ator, ação, alvo, data, motivo e campos

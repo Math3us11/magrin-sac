@@ -684,6 +684,44 @@ detalham as classificações atuais desses atendimentos e, portanto, não devem 
 somados novamente a `performed`. O período segue o horário institucional, é
 inclusivo nas datas informadas e aceita no máximo 366 dias.
 
+### Parâmetros do sistema
+
+```text
+GET   /api/admin/system-parameters
+PATCH /api/admin/system-parameters/:name
+```
+
+As duas rotas exigem `parameters.manage`, concedida somente ao administrador. O
+`GET` retorna os parâmetros do catálogo, mesmo sem linha no banco:
+
+```json
+{
+  "parameters": [
+    {
+      "name": "APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES",
+      "label": "Antecedência mínima de cancelamento",
+      "description": "Antecedência mínima para aluno e professor cancelarem um agendamento. O administrador pode cancelar até o início.",
+      "unit": "minutes",
+      "min": 0,
+      "max": 10080,
+      "fallback": 120,
+      "value": 120,
+      "usingFallback": false,
+      "updatedAt": "2026-10-28T12:00:00.000Z",
+      "updatedBy": { "id": 3, "name": "Administrador" }
+    }
+  ]
+}
+```
+
+`usingFallback` indica que a linha falta ou está inválida e que o valor em uso é
+o aprovado. O `PATCH` recebe `{ "value": 90, "reason": "Decisão da coordenação." }`.
+O valor deve ser inteiro dentro do intervalo do parâmetro e diferente do atual;
+o motivo é obrigatório, com até 500 caracteres. Parâmetro fora do catálogo
+responde `404`; valor inválido ou igual ao atual responde `400`. A alteração
+trava a linha, grava `system_parameter.updated` na auditoria com valor anterior,
+novo valor e motivo, e responde `200` com o parâmetro atualizado.
+
 ### Auditoria administrativa
 
 ```text
