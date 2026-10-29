@@ -1,5 +1,8 @@
 import { array, object, ref, string, type InferType } from 'yup'
 
+// Formato provisório: somente dígitos. O padrão institucional segue em OPEN_QUESTIONS.md.
+export const REGISTRATION_NUMBER_PATTERN = /^\d{1,20}$/
+
 const requiredText = (label: string, limit = 120) =>
   string()
     .trim()
@@ -64,6 +67,16 @@ export function createAcademicDetailsValidationSchema(userType: 'student' | 'tea
             .min(1, 'Selecione o período atual do aluno.')
             .max(1, 'Selecione somente um período atual.')
         : array().of(string().required()).default([]),
+    registrationNumber:
+      userType === 'student'
+        ? string()
+            .trim()
+            .required('Informe a matrícula do aluno.')
+            .matches(
+              REGISTRATION_NUMBER_PATTERN,
+              'A matrícula deve conter somente números, com até 20 dígitos.',
+            )
+        : string().default(''),
   })
 }
 
@@ -94,4 +107,5 @@ export interface AcademicDetailsFormValues {
   academicPeriodIds?: Array<string | undefined>
   courseIds?: Array<string | undefined>
   courseSubjectIds?: Array<string | undefined>
+  registrationNumber?: string
 }

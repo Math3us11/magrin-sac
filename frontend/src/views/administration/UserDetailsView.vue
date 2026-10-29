@@ -17,6 +17,7 @@ import {
   getUserRegistrationSubjects,
   updateUser,
 } from '@/services/users'
+import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 import { useNotificationStore } from '@/stores/notification'
 import type { UpdateUserPayload, UserDetails } from '@/types/user'
@@ -40,6 +41,7 @@ interface UserDetailsFormValues {
   email: string
   name: string
   phone: string
+  registrationNumber?: string
   userType: UserDetails['userType']
 }
 
@@ -73,6 +75,10 @@ const formVersion = ref(0)
 let subjectsRequestSequence = 0
 
 const isEditing = computed(() => props.mode === 'edit')
+const authStore = useAuthStore()
+// O backend recusa rebaixar ou desativar a própria conta; a tela nem oferece essa alteração.
+const isOwnAccount = computed(() => authStore.user?.id === userId.value)
+const canChangeAccess = computed(() => isEditing.value && !isOwnAccount.value)
 const userId = computed(() => Number(route.params.userId))
 const hasAcademicProfile = computed(() => selectedUserType.value !== 'administrador')
 const validationSchema = computed(() => createUserDetailsValidationSchema(selectedUserType.value))
@@ -98,7 +104,13 @@ const phoneMasks = ['(##) ####-####', '(##) #####-####']
 
 const courseOptions = computed(() => {
   const options = new Map(
-    courseCatalog.value.map(({ id, name }) => [String(id), { label: name, value: String(id) }]),
+    courseCatalog.value.map(({ educationLevel, id, name }) => [
+      String(id),
+      {
+        label: educationLevel === 'pos_graduacao' ? `${name} (pós-graduação)` : name,
+        value: String(id),
+      },
+    ]),
   )
 
   for (const course of user.value?.academic?.courses ?? []) {
@@ -184,6 +196,7 @@ const initialValues = computed<UserDetailsFormValues | undefined>(() => {
     email: user.value.email,
     name: user.value.name,
     phone: user.value.phone ?? '',
+    registrationNumber: user.value.registrationNumber ?? '',
     userType: user.value.userType,
   }
 })
@@ -324,6 +337,8 @@ async function saveUser(values: GenericObject) {
     phone: form.phone.trim(),
     userType: form.userType,
   }
+
+  if (form.userType === 'aluno') payload.registrationNumber = (form.registrationNumber ?? '').trim()
 
   if (form.userType !== 'administrador') {
     payload.academic = {
@@ -494,6 +509,15 @@ onMounted(() => {
               </div>
             </div>
 
+            <p
+              v-if="isEditing && isOwnAccount"
+              class="mt-6 rounded-xl border border-outline bg-surface-subtle p-4 text-sm leading-6 text-content-muted"
+              data-testid="own-account-access-notice"
+            >
+              Para preservar o acesso administrativo, o perfil e a situação da sua própria conta não
+              podem ser alterados aqui.
+            </p>
+
             <fieldset class="mt-6">
               <legend class="text-sm font-semibold text-content">Tipo de usuário</legend>
               <div class="mt-3 grid gap-4 md:grid-cols-3">
@@ -511,7 +535,7 @@ onMounted(() => {
                       field.checked
                         ? 'border-brand-primary bg-brand-primary-soft'
                         : 'border-outline bg-surface-subtle',
-                      isEditing
+                      canChangeAccess
                         ? 'cursor-pointer hover:border-brand-primary'
                         : 'cursor-not-allowed',
                     ]"
@@ -520,7 +544,7 @@ onMounted(() => {
                       class="sr-only"
                       type="radio"
                       v-bind="field"
-                      :disabled="!isEditing"
+                      :disabled="!canChangeAccess"
                       :value="profile.value"
                       @change="updateUserType(profile.value, setFieldValue)"
                     />
@@ -557,7 +581,7 @@ onMounted(() => {
                       field.checked
                         ? 'border-brand-primary bg-brand-primary-soft'
                         : 'border-outline bg-surface-subtle',
-                      isEditing
+                      canChangeAccess
                         ? 'cursor-pointer hover:border-brand-primary'
                         : 'cursor-not-allowed',
                     ]"
@@ -566,7 +590,7 @@ onMounted(() => {
                       class="sr-only"
                       type="radio"
                       v-bind="field"
-                      :disabled="!isEditing"
+                      :disabled="!canChangeAccess"
                       :value="status.value"
                     />
                     <span class="font-bold text-content">{{ status.label }}</span>
@@ -595,6 +619,18 @@ onMounted(() => {
                   : 'Professor pode possuir vários cursos e matérias, sem período acadêmico.'
               }}
             </p>
+
+            <div v-if="selectedUserType === 'aluno'" class="mt-6 max-w-sm">
+              <AppInput
+                :disabled="!isEditing"
+                help-text="Somente números, com até 20 dígitos."
+                inputmode="numeric"
+                label="Matrícula"
+                :maxlength="20"
+                name="registrationNumber"
+                required
+              />
+            </div>
 
             <div
               class="mt-6 grid gap-5"

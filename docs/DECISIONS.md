@@ -464,6 +464,116 @@ Consequência: uma correção de estado final exigirá uma decisão futura e um 
 administrativo auditado próprio. O dashboard pode derivar os quatro totais do
 estado atual sem manter contadores independentes.
 
+## ADR-028 — Trilha de auditoria transacional e somente de inserção
+
+**Estado:** aceita.
+
+As operações administrativas e de agenda relevantes gravam uma linha em
+`audit_logs` com ator, ação, tipo e identificador do alvo, instante, motivo e
+campos alterados. A gravação acontece pelo `AuditService`, sempre com a
+transação da operação auditada, de modo que a mudança e sua trilha são
+confirmadas ou desfeitas juntas.
+
+A tabela é somente de inserção e não possui atualização nem exclusão lógica. Os
+campos alterados são serializados como JSON em uma coluna `TEXT`, no formato
+`{ campo: { from, to } }`. Senhas e hashes nunca são registrados; CPF, telefone e
+data de nascimento são registrados apenas como `{ redacted: true }`; assunto e
+detalhes do agendamento ficam fora da trilha. A consulta exige a permissão
+`audit.read`, concedida somente ao administrador.
+
+Atendimentos mantêm a trilha própria em `attendance_status_history` (ADR-027),
+que já registra classificação, motivo, ator e instante de cada transição.
+
+Motivo: atender `RF61`–`RF64` e `RNF26` com uma estrutura única e consultável,
+sem depender das colunas `updated_by`, que são sobrescritas a cada alteração, e
+sem replicar dados pessoais além do necessário.
+
+Consequência: o prazo de retenção da trilha depende da política de LGPD ainda
+pendente. Operações novas que precisem de auditoria devem acrescentar uma ação ao
+catálogo e registrá-la na mesma transação.
+
+## ADR-029 — Parâmetros institucionais tipados com valor aprovado
+
+**Estado:** aceita.
+
+Regras institucionais que podem mudar sem nova versão do código são lidas de
+`system_parameters` pelo `SystemParametersService`. Cada parâmetro é declarado
+em um catálogo com intervalo permitido e o valor aprovado. O serviço consulta o
+banco a cada uso, sem cache.
+
+Quando a linha falta ou o valor está fora do intervalo, o serviço usa o valor
+aprovado e registra um aviso no log técnico, em vez de interromper a operação. O
+primeiro parâmetro é `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES` (0 a 10080,
+padrão 120), que define a antecedência mínima de cancelamento de aluno e
+professor. O backend devolve `cancellableUntil` nas listagens para que o
+frontend não duplique a regra.
+
+Motivo: atender `RNF42` mantendo a regra no backend e sem permitir que um erro de
+configuração bloqueie cancelamentos válidos.
+
+Consequência: novos parâmetros entram pelo catálogo, com rótulo, descrição,
+unidade e intervalo. O administrador os altera pela tela de parâmetros, com
+motivo obrigatório e registro `system_parameter.updated` na auditoria, na mesma
+transação da alteração.
+
+## ADR-030 — Limite de login por conta + IP e eventos pseudonimizados
+
+**Estado:** aceita.
+
+O bloqueio por falhas de login deixa de valer somente por identidade, o que
+permitia que qualquer pessoa travasse a conta de outra apenas errando a senha
+com o e-mail dela. Agora há dois contadores em memória: conta + IP, com o limite
+`AUTH_LOGIN_MAX_FAILURES`, e IP, com `AUTH_LOGIN_MAX_FAILURES_PER_CLIENT`. Um
+sucesso limpa somente o contador da conta naquele IP.
+
+O IP vem da conexão. Um cabeçalho de proxy só é usado quando configurado em
+`AUTH_LOGIN_CLIENT_IP_HEADER`, porque ele só é confiável com o backend escutando
+em loopback atrás do proxy, como no Cloudflare Tunnel (`cf-connecting-ip`).
+
+Bloqueios e tentativas durante bloqueio são registrados no log técnico
+(`SecurityEvents`) com pseudônimos HMAC do e-mail e do IP, derivados do segredo
+da sessão. Isso permite correlacionar eventos sem gravar dados pessoais no log
+(`RNF22`, `RNF25`).
+
+Motivo: impedir o bloqueio malicioso de contas alheias sem abrir mão da proteção
+contra força bruta.
+
+Consequência: um atacante distribuído em muitos IPs ainda pode testar senhas de
+uma conta em ritmo lento. Os contadores e o log são locais à instância; múltiplas
+instâncias ou retenção dos eventos exigirão armazenamento compartilhado e a
+observabilidade mínima prevista no roadmap.
+
+## ADR-031 — Dados de demonstração recriáveis e isolados
+
+**Estado:** aceita.
+
+A demonstração usa contas fictícias no domínio reservado `@demo.test`, criadas pelo
+comando `pnpm --filter backend db:seed:demo`. As identidades não podem pertencer
+a pessoas reais: os CPFs têm dígito verificador propositalmente inválido, os
+telefones começam com `0` após o DDD e as matrículas usam o prefixo `9900`.
+A senha comum das contas vem de `DEMO_SEED_PASSWORD`, nunca do código, e o
+comando só executa com `DEMO_SEED_ENABLED=true` e sem migrations pendentes.
+
+Cada execução recria os dados operacionais da demonstração com datas relativas
+ao dia: disponibilidades dos professores de demo, agendamentos, atendimentos,
+histórico de status, notificações desses agendamentos e vínculos acadêmicos das
+contas de demo. Essa remoção física é a política de retenção explícita para dados
+fictícios e vale somente para eles. As contas são preservadas e atualizadas, e a
+trilha de auditoria nunca é apagada.
+
+O comando aborta sem alterar nada quando algum agendamento liga uma conta de demo
+a uma conta real, ou quando CPF ou matrícula fictícios já pertencem a uma conta
+real.
+
+Motivo: apresentar todos os estados do fluxo (resolvido, não resolvido, em
+tratativa, ausência e cancelamento) sem dados pessoais reais e sem depender do
+estado acumulado do banco.
+
+Consequência: registros de auditoria gerados durante uma apresentação podem
+apontar para agendamentos removidos na recriação seguinte. Se a validação do
+dígito verificador do CPF for adotada no futuro, as contas de demo precisarão de
+outro critério de identificação fictícia.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

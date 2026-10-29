@@ -1,18 +1,27 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/sequelize';
 import { Op, type Transaction } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { InstitutionDateTimeService } from '../../helpers/institution-date-time/institution-date-time.service.js';
+import { Appointment, AppointmentStatus } from '../../models/appointment.model.js';
+import { AuditAction, AuditEntityType } from '../../models/audit-log.model.js';
 import { AvailabilityModality } from '../../models/availability-modality.model.js';
 import { Availability, AvailabilityState } from '../../models/availability.model.js';
 import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { User, UserType } from '../../models/user.model.js';
 import { AppointmentModality } from '../../types/appointment-modality.type.js';
+import { AuditService, diffAuditFields } from '../audit/audit.service.js';
 import type {
   AvailabilityItemResponseDto,
   CreateAvailabilityResponseDto,
   ListOwnAvailabilityResponseDto,
+  UpdateAvailabilityStateResponseDto,
 } from './dto/availability-response.dto.js';
 import type { CreateAvailabilityBatchDto } from './dto/create-availability.dto.js';
 import type { ListAdminAvailabilityQueryDto } from './dto/list-admin-availability.dto.js';
@@ -38,6 +47,8 @@ export class AvailabilityService {
     @InjectModel(User) private readonly userModel: typeof User,
     @InjectConnection() private readonly sequelize: Sequelize,
     private readonly institutionDateTime: InstitutionDateTimeService,
+    @InjectModel(Appointment) private readonly appointmentModel: typeof Appointment,
+    private readonly auditService: AuditService,
   ) {}
 
   async createBatch(
@@ -81,6 +92,25 @@ export class AvailabilityService {
       });
 
       await this.availabilityModalityModel.bulkCreate(modalityLinks, { transaction });
+      await this.auditService.record(
+        created.map((availability, index) => ({
+          action: AuditAction.AVAILABILITY_CREATED,
+          actorId: professorId,
+          changes: diffAuditFields(
+            null,
+            {
+              endsAt: availability.endsAt,
+              modalities: prepared[index]?.modalities.join(', '),
+              startsAt: availability.startsAt,
+              state: AvailabilityState.ACTIVE,
+            },
+            { fields: ['startsAt', 'endsAt', 'modalities', 'state'] },
+          ),
+          entityId: availability.id,
+          entityType: AuditEntityType.AVAILABILITY,
+        })),
+        transaction,
+      );
 
       return {
         availabilities: created.map((availability, index) =>
@@ -106,20 +136,42 @@ export class AvailabilityService {
         state: { [Op.ne]: AvailabilityState.CANCELLED },
       },
     });
-    const modalityMap = await this.getModalitiesByAvailability(availabilities.map(({ id }) => id));
-    const available = availabilities.filter(
-      ({ state }) => state === AvailabilityState.ACTIVE,
-    ).length;
-    const blocked = availabilities.filter(
-      ({ state }) => state === AvailabilityState.BLOCKED,
-    ).length;
+    const availabilityIds = availabilities.map(({ id }) => id);
+    const [modalityMap, confirmedMap] = await Promise.all([
+      this.getModalitiesByAvailability(availabilityIds),
+      this.countConfirmedAppointments(availabilityIds),
+    ]);
+    const items = availabilities.map((availability) =>
+      this.toResponse(
+        availability,
+        modalityMap.get(availability.id) ?? [],
+        confirmedMap.get(availability.id) ?? 0,
+      ),
+    );
+    const active = items.filter(({ state }) => state === AvailabilityState.ACTIVE);
 
     return {
-      availabilities: availabilities.map((availability) =>
-        this.toResponse(availability, modalityMap.get(availability.id) ?? []),
-      ),
-      summary: { available, blocked, reserved: 0 },
+      availabilities: items,
+      summary: {
+        available: active.filter(({ confirmedAppointments }) => confirmedAppointments === 0).length,
+        blocked: items.filter(({ state }) => state === AvailabilityState.BLOCKED).length,
+        reserved: active.filter(({ confirmedAppointments }) => confirmedAppointments > 0).length,
+      },
     };
+  }
+
+  blockOwn(
+    availabilityId: number,
+    professorId: number,
+  ): Promise<UpdateAvailabilityStateResponseDto> {
+    return this.changeOwnState(availabilityId, professorId, AvailabilityState.BLOCKED);
+  }
+
+  unblockOwn(
+    availabilityId: number,
+    professorId: number,
+  ): Promise<UpdateAvailabilityStateResponseDto> {
+    return this.changeOwnState(availabilityId, professorId, AvailabilityState.ACTIVE);
   }
 
   async listAll(query: ListAdminAvailabilityQueryDto): Promise<ListAdminAvailabilityResponseDto> {
@@ -291,6 +343,99 @@ export class AvailabilityService {
     }
   }
 
+  private changeOwnState(
+    availabilityId: number,
+    professorId: number,
+    target: AvailabilityState.ACTIVE | AvailabilityState.BLOCKED,
+  ): Promise<UpdateAvailabilityStateResponseDto> {
+    const blocking = target === AvailabilityState.BLOCKED;
+
+    return this.sequelize.transaction(async (transaction) => {
+      // Mesmo lock usado na confirmação do agendamento: bloqueio e reserva não se intercalam.
+      const availability = await this.availabilityModel.findByPk(availabilityId, {
+        attributes: ['endsAt', 'id', 'professorId', 'startsAt', 'state'],
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+      });
+
+      if (!availability || availability.professorId !== professorId) {
+        throw new NotFoundException('Disponibilidade não encontrada.');
+      }
+      if (availability.endsAt.getTime() <= Date.now()) {
+        throw new ConflictException('Não é possível alterar um horário já encerrado.');
+      }
+      if (blocking && availability.state !== AvailabilityState.ACTIVE) {
+        throw new ConflictException('Somente horários ativos podem ser bloqueados.');
+      }
+      if (!blocking && availability.state !== AvailabilityState.BLOCKED) {
+        throw new ConflictException('Somente horários bloqueados podem ser desbloqueados.');
+      }
+
+      const confirmed = await this.appointmentModel.findAll({
+        attributes: ['id'],
+        lock: transaction.LOCK.UPDATE,
+        transaction,
+        where: { availabilityId: availability.id, status: AppointmentStatus.CONFIRMED },
+      });
+      if (blocking && confirmed.length > 0) {
+        throw new ConflictException(
+          'Este horário já possui agendamento confirmado e não pode ser bloqueado.',
+        );
+      }
+
+      const previousState = availability.state;
+      await availability.update(
+        { state: target, updatedBy: professorId },
+        { fields: ['state', 'updatedBy'], transaction },
+      );
+      await this.auditService.record(
+        {
+          action: blocking ? AuditAction.AVAILABILITY_BLOCKED : AuditAction.AVAILABILITY_UNBLOCKED,
+          actorId: professorId,
+          changes: diffAuditFields(
+            { state: previousState },
+            { state: target },
+            { fields: ['state'] },
+          ),
+          entityId: availability.id,
+          entityType: AuditEntityType.AVAILABILITY,
+        },
+        transaction,
+      );
+      const modalityMap = await this.getModalitiesByAvailability([availability.id]);
+
+      return {
+        availability: this.toResponse(
+          availability,
+          modalityMap.get(availability.id) ?? [],
+          confirmed.length,
+        ),
+        message: blocking ? 'Horário bloqueado com sucesso.' : 'Horário desbloqueado com sucesso.',
+      };
+    });
+  }
+
+  private async countConfirmedAppointments(
+    availabilityIds: number[],
+  ): Promise<Map<number, number>> {
+    const result = new Map<number, number>();
+    if (availabilityIds.length === 0) return result;
+
+    const appointments = await this.appointmentModel.findAll({
+      attributes: ['availabilityId'],
+      where: {
+        availabilityId: { [Op.in]: availabilityIds },
+        status: AppointmentStatus.CONFIRMED,
+      },
+    });
+
+    for (const { availabilityId } of appointments) {
+      result.set(availabilityId, (result.get(availabilityId) ?? 0) + 1);
+    }
+
+    return result;
+  }
+
   private async getModalitiesByAvailability(
     availabilityIds: number[],
   ): Promise<Map<number, AppointmentModality[]>> {
@@ -326,8 +471,10 @@ export class AvailabilityService {
   private toResponse(
     availability: Availability,
     modalities: AppointmentModality[],
+    confirmedAppointments = 0,
   ): AvailabilityItemResponseDto {
     return {
+      confirmedAppointments,
       endsAt: availability.endsAt.toISOString(),
       id: availability.id,
       modalities,

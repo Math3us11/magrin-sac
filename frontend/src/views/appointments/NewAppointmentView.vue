@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
 import { ErrorMessage, Field, type GenericObject } from 'vee-validate'
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
 import AppButton from '@/components/basic/AppButton.vue'
 import AppCalendar from '@/components/basic/AppCalendar.vue'
@@ -16,7 +16,7 @@ import {
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
-import { calendarCheckIcon, clockIcon, triangleAlertIcon, usersIcon } from '@/icons'
+import { calendarCheckIcon, clockIcon, triangleAlertIcon } from '@/icons'
 import { ApiError } from '@/services/api'
 import { createAppointment } from '@/services/appointments'
 import { listStudentAvailabilities } from '@/services/availability'
@@ -48,6 +48,7 @@ const selectedDate = ref(currentInstitutionDate)
 const selectedModality = ref<AvailabilityModality | ''>('')
 const availabilities = ref<StudentAvailabilityItem[]>([])
 const selectedInterval = ref<SelectableInterval | null>(null)
+const bookingHeading = ref<HTMLElement | null>(null)
 const appointmentReview = ref<AppointmentFormValues | null>(null)
 const confirmedAppointment = ref<CreatedAppointment | null>(null)
 const confirming = ref(false)
@@ -81,6 +82,16 @@ function formatModality(modality: AvailabilityModality): string {
 
 function intervalId(availabilityId: number, interval: FreeAvailabilityInterval): string {
   return `${availabilityId}-${interval.startsAt}`
+}
+
+// O ref guarda um proxy reativo: compara pela chave do intervalo, não pela identidade.
+function isSelectedInterval(item: SelectableInterval): boolean {
+  const selected = selectedInterval.value
+  return (
+    selected !== null &&
+    intervalId(selected.availability.id, selected.interval) ===
+      intervalId(item.availability.id, item.interval)
+  )
 }
 
 const calendarEvents = computed<AppCalendarEvent[]>(() =>
@@ -220,9 +231,18 @@ function selectCalendarDate(date: string) {
   appointmentReview.value = null
 }
 
-function selectInterval(interval: SelectableInterval) {
+async function selectInterval(interval: SelectableInterval) {
   selectedInterval.value = interval
   appointmentReview.value = null
+
+  // O formulário fica abaixo do calendário: leva o foco e a rolagem até ele.
+  await nextTick()
+  const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  bookingHeading.value?.scrollIntoView?.({
+    behavior: reduceMotion ? 'auto' : 'smooth',
+    block: 'start',
+  })
+  bookingHeading.value?.focus({ preventScroll: true })
 }
 
 function formatIntervalTime(interval: FreeAvailabilityInterval): string {
@@ -342,7 +362,7 @@ onMounted(() => void loadAvailabilities())
 
       <div class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1fr)_26rem]">
         <section
-          class="h-fit self-start overflow-hidden rounded-3xl border border-outline bg-surface"
+          class="h-fit min-w-0 self-start overflow-hidden rounded-3xl border border-outline bg-surface"
         >
           <div class="border-b border-outline px-6 py-5 sm:px-8">
             <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
@@ -384,11 +404,15 @@ onMounted(() => void loadAvailabilities())
           />
         </section>
 
-        <aside class="h-fit rounded-3xl border border-outline bg-surface p-6 xl:sticky xl:top-6">
+        <aside
+          class="h-fit min-w-0 rounded-3xl border border-outline bg-surface p-6 xl:sticky xl:top-6"
+        >
           <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
             Dia selecionado
           </p>
-          <h2 class="mt-1 text-xl font-bold capitalize text-content">{{ selectedDateLabel }}</h2>
+          <h2 class="mt-1 text-xl font-bold first-letter:uppercase text-content">
+            {{ selectedDateLabel }}
+          </h2>
 
           <div class="mt-6" data-testid="selected-day-summary">
             <div class="flex items-center justify-between gap-3">
@@ -425,84 +449,115 @@ onMounted(() => void loadAvailabilities())
               </p>
             </div>
 
-            <ul v-else class="mt-4 space-y-3" aria-label="Horários livres do dia selecionado">
+            <ul
+              v-else
+              class="mt-4 space-y-2 xl:max-h-[26rem] xl:overflow-y-auto xl:pr-1"
+              aria-label="Horários livres do dia selecionado"
+            >
               <li
                 v-for="item in selectedDateIntervals"
                 :key="intervalId(item.availability.id, item.interval)"
               >
                 <button
-                  class="w-full rounded-2xl border p-4 text-left transition-colors"
+                  class="flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors"
                   :class="
-                    selectedInterval === item
+                    isSelectedInterval(item)
                       ? 'border-brand-primary bg-brand-primary-soft'
                       : 'border-outline bg-surface-subtle hover:border-brand-primary'
                   "
                   type="button"
-                  :aria-pressed="selectedInterval === item"
+                  :aria-pressed="isSelectedInterval(item)"
                   :data-testid="`day-interval-${intervalId(item.availability.id, item.interval)}`"
                   @click="selectInterval(item)"
                 >
-                  <span class="flex items-start justify-between gap-3">
-                    <span>
-                      <span class="flex items-center gap-2 font-bold text-content">
-                        <Icon
-                          class="h-4 w-4 text-brand-primary"
-                          :icon="clockIcon"
-                          aria-hidden="true"
-                        />
-                        {{ formatIntervalTime(item.interval) }}
-                      </span>
-                      <span class="mt-2 flex items-center gap-2 text-sm text-content-muted">
-                        <Icon class="h-4 w-4" :icon="usersIcon" aria-hidden="true" />
-                        {{ item.availability.professor.name }}
-                      </span>
+                  <Icon
+                    class="h-4 w-4 shrink-0 text-brand-primary"
+                    :icon="clockIcon"
+                    aria-hidden="true"
+                  />
+                  <span class="min-w-0 flex-1">
+                    <span class="block font-bold text-content">
+                      {{ formatIntervalTime(item.interval) }}
                     </span>
-                    <span
-                      class="shrink-0 rounded-full bg-status-success-soft px-2.5 py-1 text-[0.68rem] font-bold text-status-success"
-                    >
-                      Livre
+                    <span class="block truncate text-xs text-content-muted">
+                      {{ item.availability.professor.name }} ·
+                      {{ formatModalities(item.availability.modalities) }}
                     </span>
                   </span>
-                  <span class="mt-3 block text-xs font-semibold text-content-muted">
-                    {{ formatModalities(item.availability.modalities) }}
+                  <span
+                    class="shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-bold"
+                    :class="
+                      isSelectedInterval(item)
+                        ? 'bg-brand-primary text-white'
+                        : 'bg-status-success-soft text-status-success'
+                    "
+                  >
+                    {{ isSelectedInterval(item) ? 'Escolhido' : 'Livre' }}
                   </span>
                 </button>
               </li>
             </ul>
           </div>
 
-          <div
-            v-if="selectedInterval"
-            class="mt-6 border-t border-outline pt-6"
-            data-testid="selected-availability"
+          <p
+            v-if="!selectedInterval && selectedDateIntervals.length"
+            class="mt-5 rounded-xl border border-outline bg-surface-subtle p-4 text-sm leading-6 text-content-muted"
           >
-            <div class="rounded-2xl bg-brand-primary-soft p-4 text-brand-primary">
-              <p class="text-xs font-bold uppercase tracking-[0.1em]">Janela escolhida</p>
-              <p class="mt-2 font-bold">{{ formatIntervalTime(selectedInterval.interval) }}</p>
+            Escolha um dos horários livres acima para preencher os dados do atendimento.
+          </p>
+        </aside>
+      </div>
+
+      <section
+        v-if="selectedInterval"
+        class="mt-8 rounded-3xl border border-outline bg-surface p-6 sm:p-8"
+        data-testid="selected-availability"
+        aria-labelledby="booking-title"
+      >
+        <AppForm
+          v-if="appointmentInitialValues && appointmentValidationSchema"
+          :key="appointmentFormKey"
+          v-slot="{ isSubmitting }"
+          data-testid="appointment-form"
+          :initial-values="appointmentInitialValues"
+          :validation-schema="appointmentValidationSchema"
+          @submit="reviewAppointment"
+        >
+          <div
+            class="flex flex-col gap-4 border-b border-outline pb-6 lg:flex-row lg:items-center lg:justify-between"
+          >
+            <div>
+              <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
+                Janela escolhida
+              </p>
+              <h2
+                id="booking-title"
+                ref="bookingHeading"
+                class="mt-1 scroll-mt-28 text-xl font-bold text-content focus:outline-none"
+                tabindex="-1"
+              >
+                Dados do atendimento
+              </h2>
+              <p class="mt-1 text-sm leading-6 text-content-muted">
+                Ajuste o horário somente dentro da janela livre selecionada.
+              </p>
+            </div>
+            <div
+              class="rounded-2xl bg-brand-primary-soft px-5 py-3 text-brand-primary lg:text-right"
+            >
+              <p class="font-bold first-letter:uppercase">
+                {{ selectedDateLabel }} · {{ formatIntervalTime(selectedInterval.interval) }}
+              </p>
               <p class="mt-1 text-sm font-semibold">
                 {{ selectedInterval.availability.professor.name }} ·
                 {{ formatModalities(selectedInterval.availability.modalities) }}
               </p>
             </div>
+          </div>
 
-            <AppForm
-              v-if="appointmentInitialValues && appointmentValidationSchema"
-              :key="appointmentFormKey"
-              v-slot="{ isSubmitting }"
-              class="mt-5 space-y-5"
-              data-testid="appointment-form"
-              :initial-values="appointmentInitialValues"
-              :validation-schema="appointmentValidationSchema"
-              @submit="reviewAppointment"
-            >
-              <div>
-                <h3 class="font-bold text-content">Dados do atendimento</h3>
-                <p class="mt-1 text-xs leading-5 text-content-muted">
-                  Ajuste o horário somente dentro da janela livre selecionada.
-                </p>
-              </div>
-
-              <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+          <div class="mt-6 grid gap-6 lg:grid-cols-2">
+            <div class="space-y-5">
+              <div class="grid gap-4 sm:grid-cols-2">
                 <AppInput
                   name="startTime"
                   label="Início"
@@ -525,7 +580,7 @@ onMounted(() => void loadAvailabilities())
                 <legend class="text-sm font-semibold text-content">
                   Modalidade <span class="text-status-danger" aria-hidden="true">*</span>
                 </legend>
-                <div class="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+                <div class="mt-2 grid gap-2 sm:grid-cols-2">
                   <Field
                     v-for="modality in selectedInterval.availability.modalities"
                     :key="modality"
@@ -562,32 +617,28 @@ onMounted(() => void loadAvailabilities())
                 placeholder="Ex.: orientação sobre estágio"
                 required
               />
+            </div>
 
-              <AppTextarea
-                name="details"
-                label="Informações complementares"
-                help-text="Opcional. Inclua apenas informações úteis para preparar o atendimento."
-                placeholder="Descreva brevemente sua dúvida ou necessidade."
-              />
-
-              <p class="rounded-xl bg-status-info-soft p-4 text-xs leading-5 text-status-info">
-                A disponibilidade será validada novamente pelo servidor no momento da confirmação.
-              </p>
-
-              <AppButton block type="submit" :loading="isSubmitting">
-                Revisar agendamento
-              </AppButton>
-            </AppForm>
+            <AppTextarea
+              name="details"
+              label="Informações complementares"
+              help-text="Opcional. Inclua apenas informações úteis para preparar o atendimento."
+              placeholder="Descreva brevemente sua dúvida ou necessidade."
+            />
           </div>
 
-          <p
-            v-else-if="selectedDateIntervals.length"
-            class="mt-5 rounded-xl border border-outline bg-surface-subtle p-4 text-sm leading-6 text-content-muted"
+          <div
+            class="mt-6 flex flex-col gap-4 border-t border-outline pt-6 sm:flex-row sm:items-center sm:justify-between"
           >
-            Escolha um dos horários livres acima para preencher os dados do atendimento.
-          </p>
-        </aside>
-      </div>
+            <p class="text-xs leading-5 text-status-info">
+              A disponibilidade será validada novamente pelo servidor no momento da confirmação.
+            </p>
+            <AppButton class="sm:w-auto" type="submit" :loading="isSubmitting">
+              Revisar agendamento
+            </AppButton>
+          </div>
+        </AppForm>
+      </section>
     </div>
   </section>
 
@@ -606,7 +657,7 @@ onMounted(() => void loadAvailabilities())
       data-testid="appointment-review"
     >
       <div class="rounded-2xl bg-brand-primary-soft p-5 text-brand-primary">
-        <p class="font-bold capitalize">{{ selectedDateLabel }}</p>
+        <p class="font-bold first-letter:uppercase">{{ selectedDateLabel }}</p>
         <p class="mt-1 text-sm font-semibold">{{ reviewTimeLabel }}</p>
       </div>
 
@@ -688,7 +739,7 @@ onMounted(() => void loadAvailabilities())
       <dl class="grid gap-4 text-sm">
         <div>
           <dt class="text-content-muted">Data e horário</dt>
-          <dd class="mt-1 font-bold capitalize text-content">
+          <dd class="mt-1 font-bold first-letter:uppercase text-content">
             {{ confirmedDateLabel }} · {{ confirmedTimeLabel }}
           </dd>
         </div>

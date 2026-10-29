@@ -117,13 +117,28 @@ e-mail existe. `GET /api/me` retorna o mesmo objeto de usuário, sem o envelope
 `user`. `POST /api/auth/logout` é idempotente, revoga a sessão reconhecida,
 remove o cookie e responde `204` sem corpo.
 
-O backend limita falhas consecutivas por identidade normalizada, sem armazenar
-ou registrar o e-mail em texto legível nesse controle. Ao alcançar
-`AUTH_LOGIN_MAX_FAILURES` dentro da janela configurada por
-`AUTH_LOGIN_WINDOW_SECONDS`, o login responde `429` até o término da janela. O
-contador é limpo após um login concluído. Este controle local é limitado à
-instância atual; uma publicação com múltiplas instâncias deverá substituí-lo por
-um armazenamento compartilhado ou por proteção equivalente na borda.
+O backend limita falhas em dois níveis, dentro da janela
+`AUTH_LOGIN_WINDOW_SECONDS`:
+
+- **conta + IP:** `AUTH_LOGIN_MAX_FAILURES` falhas da mesma identidade normalizada
+  a partir do mesmo IP bloqueiam somente essa combinação. Falhas vindas de outro
+  endereço não impedem o titular de entrar;
+- **IP:** `AUTH_LOGIN_MAX_FAILURES_PER_CLIENT` falhas do mesmo IP, em qualquer
+  conta, bloqueiam o endereço, o que limita testes de senha em várias contas.
+
+Enquanto houver bloqueio, o login responde `429`. Um login concluído limpa o
+contador da conta naquele IP, mas não o contador do IP. E-mail e IP nunca são
+guardados nem registrados em texto legível: o controle e o log usam pseudônimos
+HMAC. O IP vem da conexão; `AUTH_LOGIN_CLIENT_IP_HEADER` só deve ser definido
+quando o backend escuta em loopback atrás de um proxy confiável, e o ambiente
+remoto usa `cf-connecting-ip` do Cloudflare Tunnel.
+
+Eventos suspeitos são registrados no log técnico com o contexto
+`SecurityEvents` (`RNF22`): `auth.login.account_blocked`,
+`auth.login.client_blocked` e `auth.login.rejected_while_blocked`, este último
+uma única vez por bloqueio. Este controle local é limitado à instância atual;
+uma publicação com múltiplas instâncias deverá substituí-lo por um armazenamento
+compartilhado ou por proteção equivalente na borda.
 
 Quando `mustChangePassword` for `true`, a sessão fica restrita à consulta de
 `GET /api/me`, ao logout e à definição da senha inicial. Qualquer outro endpoint
@@ -241,9 +256,11 @@ omitidos:
 ```text
 GET  /api/professor/availability
 POST /api/professor/availability
+POST /api/professor/availability/:availabilityId/block
+POST /api/professor/availability/:availabilityId/unblock
 ```
 
-As duas operações exigem `availability.manage.own`. O proprietário é sempre
+Todas as operações exigem `availability.manage.own`. O proprietário é sempre
 derivado da sessão autenticada; o contrato não aceita `professorId`.
 
 A publicação recebe um lote de até 500 intervalos no horário institucional:
@@ -275,15 +292,50 @@ Uma publicação bem-sucedida retorna `201`:
       "startsAt": "2026-10-05T18:00:00.000Z",
       "endsAt": "2026-10-05T18:45:00.000Z",
       "state": "ativa",
-      "modalities": ["presencial", "online"]
+      "modalities": ["presencial", "online"],
+      "confirmedAppointments": 0
     }
   ]
 }
 ```
 
-O `GET` retorna as disponibilidades futuras não canceladas e os totais de
-disponíveis, reservadas e bloqueadas. Instantes da resposta são ISO 8601 em UTC;
-o cliente os exibe no timezone institucional.
+O `GET` retorna as disponibilidades futuras não canceladas, com a quantidade de
+agendamentos confirmados de cada uma em `confirmedAppointments`, e os totais do
+resumo:
+
+- `available`: janelas ativas sem agendamento confirmado;
+- `reserved`: janelas ativas com pelo menos um agendamento confirmado;
+- `blocked`: janelas bloqueadas.
+
+Instantes da resposta são ISO 8601 em UTC; o cliente os exibe no timezone
+institucional.
+
+#### Bloqueio e desbloqueio
+
+`block` retira temporariamente da consulta do aluno uma janela própria, ativa,
+ainda não encerrada e sem agendamento confirmado (`RF12`). `unblock` devolve ao
+estado `ativa` uma janela própria bloqueada e ainda não encerrada. Nenhuma das
+rotas recebe corpo.
+
+A transação bloqueia a linha da disponibilidade — o mesmo lock usado na
+confirmação do agendamento — antes de verificar estado e reservas, de modo que
+bloqueio e reserva não se intercalam. Janela de outro professor responde `404`;
+transição inválida, janela encerrada ou reserva confirmada respondem `409`.
+A resposta `200` traz a disponibilidade atualizada:
+
+```json
+{
+  "message": "Horário bloqueado com sucesso.",
+  "availability": {
+    "id": 15,
+    "startsAt": "2026-10-05T18:00:00.000Z",
+    "endsAt": "2026-10-05T18:45:00.000Z",
+    "state": "bloqueada",
+    "modalities": ["presencial", "online"],
+    "confirmedAppointments": 0
+  }
+}
+```
 
 O modo semanal do frontend é somente um gerador: a semana selecionada, apenas os
 dias marcados e todas as janelas preenchidas são expandidos em itens concretos
@@ -427,8 +479,9 @@ internas de atendimento não fazem parte do contrato.
 
 O `POST /api/appointments/:appointmentId/cancel` exige
 `appointments.cancel.own`, motivo obrigatório de até 500 caracteres e que o
-agendamento confirmado pertença ao aluno autenticado. O início deve estar a no
-mínimo duas horas do instante da requisição:
+agendamento confirmado pertença ao aluno autenticado. O início deve respeitar a
+antecedência mínima do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`,
+hoje 120 minutos:
 
 ```json
 { "reason": "Imprevisto acadêmico." }
@@ -444,7 +497,20 @@ POST /api/professor/appointments/:appointmentId/cancel
 O `GET` exige `appointments.read.assigned`, aceita período de até 62 dias e
 retorna somente agendamentos ligados às disponibilidades do professor da sessão.
 O cancelamento exige `appointments.cancel.assigned`, motivo obrigatório e a
-mesma antecedência mínima de duas horas aplicada ao aluno.
+mesma antecedência mínima configurada para o aluno.
+
+As listagens do aluno, do professor e da administração retornam
+`cancellableUntil` em cada agendamento: o último instante em que o perfil da
+consulta ainda pode cancelá-lo, ou `null` quando ele não está confirmado. Para
+aluno e professor, o valor é o início menos a antecedência configurada; para o
+administrador, é o próprio início. O frontend usa esse campo para habilitar a
+ação e, quando o prazo já passou, exibe em texto o instante em que ele encerrou,
+sem repetir a regra.
+
+Na confirmação, uma sobreposição dentro da mesma disponibilidade responde `409`
+com "Você já possui um agendamento nesse intervalo." quando a reserva
+conflitante é do próprio aluno, e com "Este horário acabou de ser reservado por
+outra pessoa." nos demais casos.
 
 ### Administração de disponibilidade
 
@@ -478,7 +544,7 @@ listagem.
 O cancelamento administrativo exige `appointments.cancel.any`, motivo
 obrigatório e confirmação da senha do administrador autenticado com a finalidade
 criptográfica `appointment-admin-cancellation`. É permitido até o início do
-atendimento, inclusive dentro das duas horas reservadas aos demais perfis. A
+atendimento, inclusive dentro da antecedência exigida dos demais perfis. A
 senha não é persistida. Alteração direta de horário permanece fora deste recorte.
 
 ```json
@@ -624,6 +690,83 @@ detalham as classificações atuais desses atendimentos e, portanto, não devem 
 somados novamente a `performed`. O período segue o horário institucional, é
 inclusivo nas datas informadas e aceita no máximo 366 dias.
 
+### Parâmetros do sistema
+
+```text
+GET   /api/admin/system-parameters
+PATCH /api/admin/system-parameters/:name
+```
+
+As duas rotas exigem `parameters.manage`, concedida somente ao administrador. O
+`GET` retorna os parâmetros do catálogo, mesmo sem linha no banco:
+
+```json
+{
+  "parameters": [
+    {
+      "name": "APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES",
+      "label": "Antecedência mínima de cancelamento",
+      "description": "Antecedência mínima para aluno e professor cancelarem um agendamento. O administrador pode cancelar até o início.",
+      "unit": "minutes",
+      "min": 0,
+      "max": 10080,
+      "fallback": 120,
+      "value": 120,
+      "usingFallback": false,
+      "updatedAt": "2026-10-28T12:00:00.000Z",
+      "updatedBy": { "id": 3, "name": "Administrador" }
+    }
+  ]
+}
+```
+
+`usingFallback` indica que a linha falta ou está inválida e que o valor em uso é
+o aprovado. O `PATCH` recebe `{ "value": 90, "reason": "Decisão da coordenação." }`.
+O valor deve ser inteiro dentro do intervalo do parâmetro e diferente do atual;
+o motivo é obrigatório, com até 500 caracteres. Parâmetro fora do catálogo
+responde `404`; valor inválido ou igual ao atual responde `400`. A alteração
+trava a linha, grava `system_parameter.updated` na auditoria com valor anterior,
+novo valor e motivo, e responde `200` com o parâmetro atualizado.
+
+### Auditoria administrativa
+
+```text
+GET /api/admin/audit-logs?from=AAAA-MM-DD&to=AAAA-MM-DD&action=...&entityType=...&actorId=...&page=1&pageSize=20
+```
+
+Exige `audit.read`, concedida somente ao administrador. `from` e `to` são
+obrigatórios, inclusivos, interpretados no timezone institucional e limitados a
+62 dias. `action`, `entityType` e `actorId` são filtros opcionais; `pageSize`
+aceita no máximo 100. A ordenação é do registro mais recente para o mais
+antigo.
+
+```json
+{
+  "entries": [
+    {
+      "id": 7,
+      "occurredAt": "2026-10-05T15:00:00.000Z",
+      "action": "user.updated",
+      "entityType": "user",
+      "entityId": 10,
+      "actor": { "id": 3, "name": "Administrador" },
+      "changes": {
+        "isActive": { "from": true, "to": false },
+        "cpf": { "redacted": true }
+      },
+      "reason": null
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "total": 1,
+  "range": { "from": "2026-10-01", "to": "2026-10-31" }
+}
+```
+
+`actor` é `null` somente em ações técnicas sem usuário autenticado. Campos com
+`redacted` foram alterados, mas seus valores não são armazenados.
+
 ### Usuários e permissões
 
 ```text
@@ -637,8 +780,9 @@ DELETE /api/admin/users/:userId
 ```
 
 `GET /api/admin/users` está implementado, exige `users.manage` e aceita `page`
-a partir de 1, `pageSize` entre 1 e 100, busca opcional por nome ou e-mail em
-`search`, filtro de perfil em `userType` e filtro booleano em `isActive`. A
+a partir de 1, `pageSize` entre 1 e 100, busca opcional por nome ou e-mail, ou
+pelo início da matrícula, em `search`, filtro de perfil em `userType` e filtro
+booleano em `isActive`. A
 consulta seleciona explicitamente somente dados próprios da listagem; CPF,
 telefone e hash de senha não fazem parte da resposta:
 
@@ -655,6 +799,7 @@ telefone e hash de senha não fazem parte da resposta:
       "userType": "administrador",
       "isActive": true,
       "mustChangePassword": false,
+      "registrationNumber": null,
       "createdAt": "2026-10-03T12:00:00.000Z"
     }
   ]
@@ -674,6 +819,7 @@ credencial. CPF e telefone permanecem restritos a essa operação protegida:
   "birthDate": "2004-07-17",
   "cpf": "12345678900",
   "phone": "69999999999",
+  "registrationNumber": "20231001",
   "userType": "aluno",
   "isActive": true,
   "mustChangePassword": false,
@@ -747,6 +893,7 @@ e a permissão `users.manage`. O cadastro de aluno usa o seguinte formato:
   "birthDate": "2004-07-17",
   "cpf": "12345678900",
   "phone": "69999999999",
+  "registrationNumber": "20231001",
   "userType": "aluno",
   "isActive": true,
   "temporaryPassword": {
@@ -769,6 +916,9 @@ e a permissão `users.manage`. O cadastro de aluno usa o seguinte formato:
 As regras condicionais do payload são:
 
 - `phone` é obrigatório, normalizado e deve conter 10 ou 11 dígitos com DDD;
+- `registrationNumber` é obrigatório para `aluno` e aceita somente dígitos, de 1
+  a 20, preservando zeros à esquerda; para `professor` e `administrador` o valor
+  é ignorado e persistido como nulo;
 - `administrador` não recebe `academic`;
 - `aluno` informa exatamente um curso, período válido e uma ou mais matérias;
 - `professor` informa um ou mais cursos e matérias, sem período acadêmico;
@@ -776,9 +926,10 @@ As regras condicionais do payload são:
 - toda matéria deve pertencer a um dos cursos selecionados por meio de
   `course_subjects` ativo.
 
-Nome, e-mail, CPF e telefone são obrigatórios e normalizados no DTO. E-mail e CPF são
-verificados inclusive contra registros excluídos logicamente; duplicidade
-retorna `409`. A criação do usuário e de todos os vínculos acadêmicos ocorre em
+Nome, e-mail, CPF e telefone são obrigatórios e normalizados no DTO. E-mail, CPF e
+matrícula são verificados inclusive contra registros excluídos logicamente;
+duplicidade retorna `409`, com mensagem específica quando somente a matrícula
+coincide. A criação do usuário e de todos os vínculos acadêmicos ocorre em
 uma única transação. A senha temporária é transformada em hash Argon2id antes da
 persistência. Dados do usuário e credenciais nunca aparecem na resposta:
 
@@ -814,8 +965,9 @@ completo, aplica as mesmas regras condicionais de perfil e retorna somente:
 }
 ```
 
-E-mail e CPF permanecem únicos, desconsiderando o próprio usuário durante a
-validação. Dados pessoais, situação, perfil e vínculos acadêmicos são atualizados
+E-mail, CPF e matrícula permanecem únicos, desconsiderando o próprio usuário
+durante a validação. Ao mudar um aluno para outro perfil, a matrícula é removida;
+ao tornar um usuário aluno, ela passa a ser exigida. Dados pessoais, situação, perfil e vínculos acadêmicos são atualizados
 na mesma transação. Vínculos removidos ficam inativos para preservar histórico;
 vínculos existentes são reativados quando aplicável. `updated_by` registra o
 administrador responsável.
@@ -844,6 +996,13 @@ registra o administrador em `deleted_by` e `updated_by`, preenche `deleted_at` e
 revoga todas as sessões ativas do usuário excluído. O histórico e os vínculos
 permanecem preservados. Um administrador não pode excluir a própria conta. Senha
 incorreta responde `403`; usuário inexistente ou já excluído responde `404`.
+
+Edição e exclusão preservam pelo menos um administrador ativo. O administrador
+autenticado não pode desativar a própria conta nem remover dela o perfil de
+administrador (`403`). Qualquer alteração que deixaria o sistema sem
+administrador ativo responde `409`. A verificação trava as linhas dos
+administradores ativos na mesma transação, para que alterações simultâneas não
+zerem o perfil.
 
 ```json
 {

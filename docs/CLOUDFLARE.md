@@ -44,7 +44,9 @@ iniciador remoto:
 8. serve o build Vue no mesmo processo;
 9. restringe CORS à origem HTTPS pública;
 10. força o cookie de sessão como `Secure`;
-11. confirma a SPA e `GET /api/health` antes de declarar o serviço pronto.
+11. define `AUTH_LOGIN_CLIENT_IP_HEADER=cf-connecting-ip`, para que o limite de
+    falhas de login use o IP real do visitante, e não o do túnel;
+12. confirma a SPA e `GET /api/health` antes de declarar o serviço pronto.
 
 `pnpm tunnel` valida a credencial do túnel, repete os checks locais e somente
 então inicia `cloudflared`.

@@ -38,6 +38,7 @@ export class UserDetailsResponseDto {
   declare mustChangePassword: boolean;
   declare name: string;
   declare phone: string | null;
+  declare registrationNumber: string | null;
   declare updatedAt: Date;
   declare userType: UserType;
 }

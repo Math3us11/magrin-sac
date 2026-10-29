@@ -22,6 +22,8 @@ import {
 import { UserType } from '../../../models/user.model.js';
 import { EncryptedCredentialDto } from '../../../helpers/credential-encryption/credential-encryption.dto.js';
 
+export const REGISTRATION_NUMBER_PATTERN = /^\d{1,20}$/;
+
 export class CreateUserAcademicDto {
   @IsArray()
   @ArrayNotEmpty()
@@ -78,6 +80,14 @@ export class CreateUserDto {
 
   @IsEnum(UserType)
   declare userType: UserType;
+
+  @ValidateIf(({ userType }: CreateUserDto) => userType === UserType.STUDENT)
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString({ message: 'Informe a matrícula do aluno.' })
+  @Matches(REGISTRATION_NUMBER_PATTERN, {
+    message: 'A matrícula deve conter somente números, com até 20 dígitos.',
+  })
+  declare registrationNumber?: string;
 
   @IsBoolean()
   declare isActive: boolean;

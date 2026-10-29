@@ -4,6 +4,7 @@ import { CredentialEncryptionModule } from './credential-encryption/credential-e
 import { JwtHelperModule } from './jwt/jwt.module.js';
 import { PasswordModule } from './password/password.module.js';
 import { InstitutionDateTimeModule } from './institution-date-time/institution-date-time.module.js';
+import { SystemParametersModule } from './system-parameters/system-parameters.module.js';
 
 @Module({
   exports: [
@@ -12,6 +13,7 @@ import { InstitutionDateTimeModule } from './institution-date-time/institution-d
     InstitutionDateTimeModule,
     JwtHelperModule,
     PasswordModule,
+    SystemParametersModule,
   ],
   imports: [
     CookieModule,
@@ -19,6 +21,7 @@ import { InstitutionDateTimeModule } from './institution-date-time/institution-d
     InstitutionDateTimeModule,
     JwtHelperModule,
     PasswordModule,
+    SystemParametersModule,
   ],
 })
 export class HelpersModule {}

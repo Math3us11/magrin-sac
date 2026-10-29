@@ -5,6 +5,7 @@ export type UserListItem = {
   isActive: boolean
   mustChangePassword: boolean
   name: string
+  registrationNumber: string | null
   userType: 'administrador' | 'aluno' | 'professor'
 }
 
@@ -61,6 +62,7 @@ export type UserDetails = {
   mustChangePassword: boolean
   name: string
   phone: string | null
+  registrationNumber: string | null
   updatedAt: string
   userType: UserListItem['userType']
 }

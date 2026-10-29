@@ -7,6 +7,7 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import AppShell from '@/components/layout/AppShell.vue'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import { setTheme } from '@/composables/useTheme'
+import { filterRoutableNavigation } from '@/config/navigation'
 import { getCurrentNavigation } from '@/services/navigation'
 import { useNavigationStore } from '@/stores/navigation'
 import type { NavigationItem, NavigationResponse } from '@/types/navigation'
@@ -127,6 +128,177 @@ describe('navegação autenticada', () => {
     expect(navigation.permissions).toEqual([])
   })
 
+  it('filtra itens sem rota no frontend e agrupadores que ficam vazios', () => {
+    const unknown: string[] = []
+    const items: NavigationItem[] = [
+      ...navigationItems,
+      {
+        children: [
+          {
+            children: [],
+            code: 'future.report',
+            iconKey: 'settings',
+            id: 90,
+            label: 'Relatório futuro',
+            routeName: 'future-report',
+          },
+        ],
+        code: 'future',
+        iconKey: 'settings',
+        id: 89,
+        label: 'Futuro',
+        routeName: null,
+      },
+    ]
+    const knownRoutes = new Set([
+      'home',
+      'professor-availability',
+      'reports-dashboard',
+      'administration-users',
+    ])
+
+    const visible = filterRoutableNavigation(
+      items,
+      (routeName) => knownRoutes.has(routeName),
+      (routeName) => unknown.push(routeName),
+    )
+
+    expect(visible.map(({ code }) => code)).toEqual(navigationItems.map(({ code }) => code))
+    expect(unknown).toEqual(['future-report'])
+
+    const withoutUsersRoute = filterRoutableNavigation(
+      navigationItems,
+      (routeName) => routeName !== 'administration-users',
+    )
+    expect(withoutUsersRoute.map(({ code }) => code)).not.toContain('administration')
+  })
+
+  it('sidebar ignora item com rota inexistente sem quebrar o menu', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', name: 'home', component: { template: '<div />' } },
+        {
+          path: '/professor/agenda',
+          name: 'professor-availability',
+          component: { template: '<div />' },
+        },
+        {
+          path: '/relatorios/dashboard',
+          name: 'reports-dashboard',
+          component: { template: '<div />' },
+        },
+        {
+          path: '/administracao/usuarios',
+          name: 'administration-users',
+          component: { template: '<div />' },
+        },
+      ],
+    })
+    await router.push('/')
+    await router.isReady()
+    const administration = navigationItems.find(({ code }) => code === 'administration')
+    const items: NavigationItem[] = navigationItems.map((item) =>
+      item === administration
+        ? {
+            ...item,
+            children: [
+              ...item.children,
+              {
+                children: [],
+                code: 'administration.parameters',
+                iconKey: 'settings',
+                id: 99,
+                label: 'Parâmetros',
+                routeName: 'administration-parameters',
+              },
+            ],
+          }
+        : item,
+    )
+
+    const wrapper = mount(AppSidebar, {
+      global: { plugins: [router] },
+      props: {
+        collapsed: false,
+        errorMessage: '',
+        isLoading: false,
+        items,
+        mobileOpen: false,
+      },
+    })
+
+    expect(wrapper.text()).toContain('Usuários')
+    expect(wrapper.text()).toContain('Dashboard')
+    expect(wrapper.text()).not.toContain('Parâmetros')
+    expect(warn).toHaveBeenCalledOnce()
+    expect(warn.mock.calls[0]?.[0]).toContain('administration-parameters')
+    warn.mockRestore()
+  })
+
+  it('chamadas simultâneas aguardam a mesma requisição antes de liberar permissões', async () => {
+    setActivePinia(createPinia())
+    let resolveFetch: (response: Response) => void = () => {}
+    const fetchMock = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const navigation = useNavigationStore()
+
+    // AppShell dispara a carga ao montar e o guard do router chama load() logo depois.
+    const shellLoad = navigation.load(true)
+    let guardSettled = false
+    const guardLoad = navigation.load().then(() => {
+      guardSettled = true
+    })
+    await Promise.resolve()
+
+    expect(guardSettled).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    resolveFetch(
+      new Response(JSON.stringify(navigationResponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      }),
+    )
+    await Promise.all([shellLoad, guardLoad])
+
+    expect(navigation.initialized).toBe(true)
+    expect(navigation.hasPermission('users.manage')).toBe(true)
+  })
+
+  it('descarta a resposta de uma carga iniciada antes do reset', async () => {
+    setActivePinia(createPinia())
+    let resolveFetch: (response: Response) => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+      ),
+    )
+    const navigation = useNavigationStore()
+
+    const staleLoad = navigation.load()
+    navigation.reset()
+    resolveFetch(
+      new Response(JSON.stringify(navigationResponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      }),
+    )
+    await staleLoad
+
+    expect(navigation.initialized).toBe(false)
+    expect(navigation.permissions).toEqual([])
+    expect(navigation.isLoading).toBe(false)
+  })
+
   it('sidebar renderiza a árvore e permite expandir o desktop minimizado', async () => {
     const router = createRouter({
       history: createMemoryHistory(),
@@ -222,7 +394,9 @@ describe('navegação autenticada', () => {
     const wrapper = mount(AppShell, {
       attachTo: document.body,
       global: { plugins: [pinia, router] },
-      slots: { default: '<section data-testid="page-content">Conteúdo</section>' },
+      slots: {
+        default: '<section data-testid="page-content">Conteúdo</section>',
+      },
     })
 
     expect(wrapper.classes()).toContain('grid')

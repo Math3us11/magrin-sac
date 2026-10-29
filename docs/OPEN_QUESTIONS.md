@@ -53,6 +53,10 @@ motivo obrigatório e antecedência mínima de duas horas. O administrador pode
 cancelar qualquer agendamento confirmado até seu início, inclusive dentro das
 duas horas, mas deve informar motivo e confirmar a própria senha.
 
+A antecedência é lida do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`,
+semeado com 120 minutos, para que a coordenação possa ajustá-la sem alterar o
+código (`RNF42`, ADR-029).
+
 O cancelamento preserva o registro, grava `cancelled_at`, `cancelled_by`,
 `cancellation_reason` e `updated_by`, e libera imediatamente o intervalo porque
 somente agendamentos confirmados ocupam disponibilidade. A senha administrativa
@@ -78,6 +82,11 @@ posterior ao início. O modo semanal expande a semana selecionada, seus dias e
 janelas em disponibilidades concretas sem persistir recorrência. Ainda é
 necessário definir antecedência mínima, janela máxima de agendamento e
 comportamento de horários já reservados quando a agenda muda.
+
+O bloqueio implementado segue o texto do `RF12` e aceita somente janelas sem
+agendamento confirmado. Bloquear parcialmente uma janela, ou bloquear uma
+janela com reservas cancelando ou realocando os alunos, continua pendente desta
+definição.
 
 ## Decisões do módulo de atendimento e bloqueadores dos indicadores
 
@@ -160,6 +169,9 @@ operação.
 Definir finalidade, base de tratamento, dados mínimos, prazos de retenção,
 anonimização e atendimento de solicitações do titular.
 
+A trilha de auditoria (`audit_logs`, ADR-028) não é apagada e não possui prazo de
+retenção definido; esse prazo depende desta decisão.
+
 ### 20. Backup e restauração
 
 Definir frequência, retenção, criptografia, responsável e teste de restauração.
@@ -189,6 +201,14 @@ Definir como registrar aprovação, reprovação, aproveitamento, dispensa e
 conclusão. Essa decisão será necessária para impedir que um aluno selecione como
 novo vínculo uma matéria já concluída, sem tratar apenas a existência de um
 registro anterior como aprovação.
+
+### 25. Formato da matrícula
+
+**Decisão provisória:** a matrícula do aluno aceita somente números, com até 20
+dígitos, e é única. Confirmar com a secretaria acadêmica o formato oficial
+(quantidade fixa de dígitos, prefixo de ano ou dígito verificador) e quem
+fornecerá as matrículas dos alunos cadastrados antes dessa exigência, que hoje
+precisam ser completadas na próxima edição administrativa.
 
 ## Registro de respostas
 

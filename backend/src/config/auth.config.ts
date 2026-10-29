@@ -14,7 +14,10 @@ export type AuthConfig = {
     ttlSeconds: number;
   };
   loginAttempts: {
+    // Cabeçalho confiável com o IP real do cliente, como cf-connecting-ip atrás do túnel.
+    clientIpHeader: string | null;
     maxFailures: number;
+    maxFailuresPerClient: number;
     windowSeconds: number;
   };
 };
@@ -36,7 +39,12 @@ export default registerAs('auth', (): AuthConfig => ({
     ttlSeconds: Number.parseInt(process.env.AUTH_SESSION_JWT_TTL_SECONDS as string, 10),
   },
   loginAttempts: {
+    clientIpHeader: process.env.AUTH_LOGIN_CLIENT_IP_HEADER?.trim().toLowerCase() || null,
     maxFailures: Number.parseInt(process.env.AUTH_LOGIN_MAX_FAILURES ?? '5', 10),
+    maxFailuresPerClient: Number.parseInt(
+      process.env.AUTH_LOGIN_MAX_FAILURES_PER_CLIENT ?? '20',
+      10,
+    ),
     windowSeconds: Number.parseInt(process.env.AUTH_LOGIN_WINDOW_SECONDS ?? '300', 10),
   },
 }));

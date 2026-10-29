@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../../decorators/current-user.decorator.js';
 import { RequirePermissions } from '../../decorators/require-permissions.decorator.js';
 import { PermissionGuard } from '../../guards/permission.guard.js';
@@ -9,6 +19,7 @@ import { AvailabilityService } from './availability.service.js';
 import type {
   CreateAvailabilityResponseDto,
   ListOwnAvailabilityResponseDto,
+  UpdateAvailabilityStateResponseDto,
 } from './dto/availability-response.dto.js';
 import { CreateAvailabilityBatchDto } from './dto/create-availability.dto.js';
 
@@ -30,5 +41,23 @@ export class AvailabilityController {
     @Body() input: CreateAvailabilityBatchDto,
   ): Promise<CreateAvailabilityResponseDto> {
     return this.availabilityService.createBatch(input, user.id);
+  }
+
+  @Post(':availabilityId/block')
+  @HttpCode(HttpStatus.OK)
+  blockOwn(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('availabilityId', ParseIntPipe) availabilityId: number,
+  ): Promise<UpdateAvailabilityStateResponseDto> {
+    return this.availabilityService.blockOwn(availabilityId, user.id);
+  }
+
+  @Post(':availabilityId/unblock')
+  @HttpCode(HttpStatus.OK)
+  unblockOwn(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('availabilityId', ParseIntPipe) availabilityId: number,
+  ): Promise<UpdateAvailabilityStateResponseDto> {
+    return this.availabilityService.unblockOwn(availabilityId, user.id);
   }
 }

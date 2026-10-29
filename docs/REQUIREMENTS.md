@@ -16,7 +16,11 @@ documento de requisitos original.
   confirmar a própria senha, registrando o responsável e preservando o
   histórico. A própria conta administrativa não pode ser excluída por esse
   fluxo.
-- Manter os dados mínimos do aluno (`RF07`).
+- Manter sempre pelo menos um administrador ativo: o administrador não desativa
+  nem rebaixa a própria conta, e nenhuma edição ou exclusão remove o último
+  administrador ativo.
+- Manter os dados mínimos do aluno, incluindo matrícula única, numérica e
+  obrigatória no cadastro e na edição de aluno (`RF07`).
 - Exigir telefone com DDD no cadastro e na edição administrativa para viabilizar
   os fluxos de notificação.
 - Não oferecer autocadastro de professor ou administrador; essas contas são
@@ -37,8 +41,8 @@ documento de requisitos original.
 - Cadastrar data, início e fim livres e pelo menos uma modalidade entre
   presencial e online (`RF08`–`RF11`), exigindo término posterior ao início e
   sem solicitar sala ou link no primeiro recorte.
-- Bloquear horários livres e impedir disponibilidades conflitantes
-  (`RF12`, `RF13`).
+- Bloquear e desbloquear horários próprios sem agendamento confirmado e impedir
+  disponibilidades conflitantes (`RF12`, `RF13`).
 - Interpretar e exibir a agenda no timezone institucional
   `America/Porto_Velho`, normalizando os instantes na persistência.
 - Consultar agenda por data ou período e mostrar ao aluno apenas opções aptas
@@ -104,6 +108,11 @@ documento de requisitos original.
 - Registrar criação, alteração e cancelamento de agendamentos (`RF61`–`RF63`).
 - Registrar o ator de operações administrativas (`RF64`).
 - Preservar histórico mesmo após desativação do usuário (`RF65`).
+- Registrar criação, alteração e exclusão lógica de usuários e a publicação,
+  o bloqueio e o desbloqueio de disponibilidades, na mesma transação da
+  operação e sem valores de dados pessoais sensíveis (`RNF26`).
+- Permitir ao administrador consultar a trilha por período, ação, alvo e
+  responsável.
 
 ## Requisitos não funcionais prioritários
 
@@ -118,7 +127,8 @@ documento de requisitos original.
 - Autorização obrigatória no servidor (`RNF17`, `RNF18`).
 - Validação e sanitização de entrada (`RNF19`, `RNF20`).
 - Sessão segura e registro controlado de tentativas suspeitas
-  (`RNF21`, `RNF22`).
+  (`RNF21`, `RNF22`); o limite de falhas de login é aplicado por conta + IP e por
+  IP, e os bloqueios são registrados com identificadores pseudonimizados.
 - Access token JWT em cookie `HttpOnly`, com assinatura e claims validadas antes
   de consultar a sessão stateful. Inatividade, duração absoluta, revogação e
   usuário ativo são sempre validados no backend.
@@ -144,7 +154,9 @@ documento de requisitos original.
 - Documentação de instalação e operação (`RNF36`).
 - Controle de versão e revisão de alterações relevantes (`RNF37`, `RNF38`).
 - Testes de regras críticas, concorrência e indicadores (`RNF39`–`RNF41`).
-- Configurações institucionais parametrizáveis (`RNF42`).
+- Configurações institucionais parametrizáveis (`RNF42`); a antecedência mínima
+  de cancelamento é lida de `system_parameters` e alterada pelo administrador em
+  tela própria, com motivo obrigatório e auditoria.
 - Logs úteis sem conteúdo sensível (`RNF43`).
 
 ### Experiência e acessibilidade

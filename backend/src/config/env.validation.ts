@@ -18,6 +18,11 @@ export const environmentValidationSchema = Joi.object({
   AUTH_SESSION_JWT_TTL_SECONDS: Joi.number().integer().min(60).required(),
   AUTH_LOGIN_MAX_FAILURES: Joi.number().integer().min(1).max(100).default(5),
   AUTH_LOGIN_WINDOW_SECONDS: Joi.number().integer().min(1).max(86_400).default(300),
+  AUTH_LOGIN_MAX_FAILURES_PER_CLIENT: Joi.number().integer().min(1).max(1000).default(20),
+  AUTH_LOGIN_CLIENT_IP_HEADER: Joi.string()
+    .allow('')
+    .pattern(/^[A-Za-z0-9-]+$/)
+    .optional(),
   PASSWORD_ENCRYPTION_PRIVATE_KEY_BASE64: Joi.string().allow('').base64().optional(),
   DB_DIALECT: Joi.string().valid('mariadb').required(),
   DB_HOST: Joi.string().hostname().required(),

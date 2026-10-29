@@ -107,6 +107,8 @@ Entregas:
 - [ ] definir a validação institucional para futuro cadastro de aluno;
 - [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
 - [x] usuários ativos/inativos no gerenciamento administrativo;
+- [x] registrar a matrícula do aluno, numérica e única, com garantia no banco,
+      busca na listagem e auditoria das alterações;
 - perfis e permissões mínimas;
 - proteção de rotas administrativas;
 - testes de isolamento entre alunos.
@@ -129,6 +131,10 @@ Entregas:
       frontend, mantendo cada ocorrência concreta no contrato existente;
 - [x] apresentar as disponibilidades publicadas em um calendário mensal
       reutilizável, com navegação e detalhamento do dia selecionado;
+- [x] bloquear e desbloquear disponibilidades próprias sem agendamento
+      confirmado, com confirmação na interface e lock transacional
+      compartilhado com a reserva, e separar os totais de disponíveis,
+      reservadas e bloqueadas;
 - [x] criar a estrutura física de agendamentos, vinculando aluno,
       disponibilidade e modalidade permitida sem exclusão do histórico;
 - [x] permitir que o aluno consulte por mês e modalidade apenas os trechos
@@ -231,6 +237,8 @@ Entregas:
       externo sem sessão;
 - [x] isolar a `main` em worktree e separar os bancos da versão estável e do
       desenvolvimento;
+- [x] limitar falhas de login por conta + IP e por IP, registrar eventos
+      suspeitos pseudonimizados e preservar sempre um administrador ativo;
 - [x] revisar o transporte de credenciais, cookies, origem, validação de entrada
       e exposição de dados pessoais, incluindo limitação de falhas de login;
 - [x] revisar a acessibilidade dos componentes e fluxos principais;
@@ -239,8 +247,19 @@ Entregas:
       MariaDB sem definir silenciosamente a política institucional pendente;
 - executar e registrar o primeiro teste integral de restauração quando o cliente
   `mariadb` estiver disponível no ambiente local;
+- [x] criar a tela administrativa de parâmetros, com validação do intervalo,
+      motivo obrigatório e registro na auditoria;
+- [x] ler de `system_parameters` a antecedência mínima de cancelamento e
+      devolver o prazo calculado nas listagens, sem repetir a regra no frontend;
+- [x] registrar a trilha de auditoria de usuários, agendamentos e
+      disponibilidades na mesma transação das operações, com consulta
+      administrativa paginada e dados pessoais sensíveis protegidos;
+- [x] revisar de ponta a ponta, no navegador, os fluxos de aluno, professor e
+      administrador, corrigindo a checagem de permissão em acesso direto por
+      URL, o teclado em modais e textos ou datas inconsistentes;
 - observabilidade mínima;
-- seed ou roteiro de demonstração sem dados pessoais reais;
+- [x] criar seed recriável e roteiro de demonstração com contas fictícias
+      `@demo.test`, sem dados pessoais reais (`docs/DEMO.md`, ADR-031);
 - revisão final da documentação.
 
 ## Próxima ação recomendada

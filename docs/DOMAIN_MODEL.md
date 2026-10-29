@@ -47,6 +47,17 @@ Valor operacional não secreto identificado por nome único. Não pode ser usado
 para credenciais, chaves de criptografia ou configuração necessária para abrir
 a conexão com o próprio banco.
 
+O `SystemParametersService` lê os parâmetros declarados em um catálogo tipado,
+com intervalo permitido e valor aprovado. O primeiro parâmetro é
+`APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`, inteiro de 0 a 10080, semeado com
+`120`. Valor ausente ou inválido não interrompe a operação: o serviço usa o valor
+aprovado e registra um aviso no log técnico (ADR-029).
+
+O administrador com `parameters.manage` altera os parâmetros do catálogo pela
+interface. A alteração valida o intervalo, exige motivo, trava a linha e grava a
+auditoria na mesma transação. Uma linha ausente é criada e uma excluída
+logicamente é restaurada, preservando a unicidade do nome.
+
 ### Endpoint de integração
 
 URL nomeada de um serviço externo. Quando houver autenticação, guarda apenas os
@@ -86,6 +97,13 @@ evolução global autorizada.
 
 Especialização ou perfil associado a usuário, com matrícula, curso e outros
 dados mínimos definidos pela instituição.
+
+A matrícula fica em `users.registration_number`, como texto de até 20 dígitos
+para preservar zeros à esquerda. O banco garante que ela contenha somente
+números, que seja única — inclusive entre contas excluídas logicamente — e que
+apenas usuários do tipo `aluno` a possuam. A coluna aceita nulo para manter os
+alunos cadastrados antes da exigência; a API passa a exigi-la no cadastro e na
+edição de aluno. O formato oficial permanece pendente em `OPEN_QUESTIONS.md`.
 
 ### Curso
 
@@ -144,6 +162,12 @@ Cada disponibilidade se relaciona com um ou dois itens por meio de
 `availability_modalities`; “ambas” é a apresentação de dois vínculos e não um
 terceiro valor do catálogo.
 
+O professor proprietário pode bloquear uma janela ativa, ainda não encerrada e
+sem agendamento confirmado, e desbloqueá-la depois. Uma janela bloqueada não
+aparece na consulta do aluno, continua impedindo a publicação de janelas
+sobrepostas e não é excluída. Publicação, bloqueio e desbloqueio são
+registrados na trilha de auditoria.
+
 ### Agendamento
 
 Reserva de um aluno dentro de uma janela de disponibilidade, com início, fim,
@@ -160,8 +184,9 @@ as consultas transacionais de conflito. A confirmação bloqueia primeiro o
 usuário solicitante e depois a disponibilidade, revalida estado, professor,
 modalidade, contenção e sobreposições antes da criação.
 
-O cancelamento não apaga o agendamento. Aluno e professor precisam agir com no
-mínimo duas horas de antecedência e somente sobre registros próprios ou
+O cancelamento não apaga o agendamento. Aluno e professor precisam respeitar a
+antecedência mínima do parâmetro `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`
+(120 minutos por padrão) e agir somente sobre registros próprios ou
 atribuídos; o administrador pode agir até o início mediante confirmação da
 própria senha. Motivo, instante, ator e autoria da atualização são obrigatórios.
 A transação bloqueia a disponibilidade e o agendamento antes da mudança de
@@ -215,9 +240,25 @@ quando o provider ainda não está configurado, preservando o caminho de reenvio
 
 ### Auditoria
 
-Registra ator, ação administrativa, tipo e identificador do alvo, data e
-metadados mínimos. Não deve guardar segredos ou cópias desnecessárias de dados
-pessoais.
+Registra ator, ação, tipo e identificador do alvo, instante, motivo quando
+houver e os campos alterados com valores anterior e novo. O modelo físico
+`audit_logs` é somente de inserção: não possui colunas de atualização nem
+exclusão lógica, e `actor_id` referencia `users` com `RESTRICT`, preservando o
+responsável mesmo após a desativação ou exclusão lógica da conta (`RF65`).
+
+O registro ocorre na mesma transação da operação auditada; se a operação falhar,
+nenhuma linha de auditoria é gravada. As ações registradas no primeiro recorte
+são:
+
+- `user.created`, `user.updated` e `user.deleted`;
+- `appointment.created` e `appointment.cancelled`, com o motivo do cancelamento;
+- `availability.created`, `availability.blocked` e `availability.unblocked`;
+- `system_parameter.updated`, com o valor anterior, o novo e o motivo.
+
+Senhas e hashes nunca entram na trilha. CPF, telefone e data de nascimento
+aparecem apenas como alterados, sem valores. Assunto e detalhes do agendamento
+também ficam fora. Atendimentos continuam auditados por
+`attendance_status_history` (ADR-027).
 
 ## Relacionamentos propostos
 
@@ -328,6 +369,8 @@ resolvido são finais e não possuem reabertura.
 33. Somente `em_tratativa` pode mudar de classificação no MVP.
 34. Toda transição de atendimento registra motivo, ator e data na mesma
     transação da atualização.
+35. O sistema mantém pelo menos um administrador ativo; o administrador não
+    desativa nem rebaixa a própria conta.
 
 ## Convenção de auditoria
 

@@ -12,6 +12,10 @@ import {
   INSTITUTION_TIME_ZONE,
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
+import {
+  cancellationClosedMessage,
+  isWithinCancellationDeadline,
+} from '@/config/appointment-cancellation'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
   calendarCheckIcon,
@@ -40,6 +44,12 @@ useDocumentTitle('Agenda geral | Sistema de Agendamento')
 const loadingStore = useLoadingStore(pinia)
 const currentInstitutionDate = getInstitutionDateTime().date
 const visibleMonth = ref(currentInstitutionDate.slice(0, 7))
+// No mês corrente a agenda do dia abre em hoje; nos demais, no primeiro dia.
+const calendarInitialDate = computed(() =>
+  visibleMonth.value === currentInstitutionDate.slice(0, 7)
+    ? currentInstitutionDate
+    : `${visibleMonth.value}-01`,
+)
 const modalityFilter = ref<AvailabilityModality | ''>('')
 const stateFilter = ref<AvailabilityState | ''>('')
 const appointmentStatusFilter = ref<AppointmentStatus | ''>('')
@@ -381,7 +391,7 @@ onMounted(() => void loadSchedule())
         </div>
         <AppCalendar
           :events="calendarEvents"
-          :initial-date="`${visibleMonth}-01`"
+          :initial-date="calendarInitialDate"
           :today="currentInstitutionDate"
           @visible-month-change="changeMonth"
         />
@@ -453,11 +463,19 @@ onMounted(() => void loadSchedule())
               v-if="appointment.status === 'confirmado'"
               class="mt-5"
               variant="danger"
-              :disabled="new Date(appointment.startsAt).getTime() <= Date.now()"
+              :disabled="!isWithinCancellationDeadline(appointment)"
               @click="requestCancellation(appointment)"
             >
               Cancelar agendamento
             </AppButton>
+            <p
+              v-if="
+                appointment.status === 'confirmado' && !isWithinCancellationDeadline(appointment)
+              "
+              class="mt-2 text-xs text-content-muted"
+            >
+              {{ cancellationClosedMessage(appointment) }}
+            </p>
             <AppButton
               v-if="
                 appointment.status === 'confirmado' &&
@@ -476,6 +494,7 @@ onMounted(() => void loadSchedule())
     <AppointmentCancellationModal
       v-model:open="cancellationOpen"
       :appointment-label="cancellationAppointmentLabel"
+      :cancellable-until="appointmentToCancel?.cancellableUntil"
       :error="cancellationError"
       :loading="cancelling"
       requires-password

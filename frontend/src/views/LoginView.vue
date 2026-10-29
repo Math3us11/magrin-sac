@@ -238,6 +238,7 @@ async function submitFirstAccess(values: GenericObject, actions: FormActions<Gen
           v-if="!auth.requiresPasswordChange"
           class="mt-9 space-y-5"
           :validation-schema="loginValidationSchema"
+          @invalid="errorMessage = ''"
           @submit="submitLogin"
         >
           <AppInput
@@ -304,6 +305,7 @@ async function submitFirstAccess(values: GenericObject, actions: FormActions<Gen
           data-testid="first-access-form"
           class="mt-9 space-y-5"
           :validation-schema="firstAccessPasswordValidationSchema"
+          @invalid="errorMessage = ''"
           @submit="submitFirstAccess"
         >
           <AppInput

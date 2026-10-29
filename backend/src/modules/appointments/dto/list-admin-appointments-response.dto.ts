@@ -2,6 +2,7 @@ import type { AppointmentStatus } from '../../../models/appointment.model.js';
 import type { AppointmentModality } from '../../../types/appointment-modality.type.js';
 
 export class AdminAppointmentItemResponseDto {
+  declare cancellableUntil: string | null;
   declare cancelledAt: string | null;
   declare cancellationReason: string | null;
   declare endsAt: string;

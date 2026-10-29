@@ -18,6 +18,7 @@ vi.mock('@/services/users', () => usersServiceMocks)
 import UserCreateView from '@/views/administration/UserCreateView.vue'
 import UserDetailsView from '@/views/administration/UserDetailsView.vue'
 import UsersView from '@/views/administration/UsersView.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useLoadingStore } from '@/stores/loading'
 
 const registrationCourses = [
@@ -162,6 +163,7 @@ describe('UsersView', () => {
       mustChangePassword: false,
       name: 'Aluno Teste',
       phone: '65999999999',
+      registrationNumber: '20230001',
       updatedAt: '2026-10-02T12:00:00.000Z',
       userType: 'aluno',
     })
@@ -291,6 +293,9 @@ describe('UsersView', () => {
     expect(wrapper.get('h1').text()).toBe('Visualizar usuário')
     expect(wrapper.get('input[name="name"]').attributes()).toHaveProperty('disabled')
     expect(wrapper.get('input[name="email"]').attributes()).toHaveProperty('disabled')
+    const registrationInput = wrapper.get('input[name="registrationNumber"]')
+    expect((registrationInput.element as HTMLInputElement).value).toBe('20230001')
+    expect(registrationInput.attributes()).toHaveProperty('disabled')
     expect(wrapper.text()).toContain('Algoritmos e Programação')
     expect(wrapper.find('[data-testid="save-user-changes"]').exists()).toBe(false)
 
@@ -311,6 +316,12 @@ describe('UsersView', () => {
 
     expect(wrapper.get('h1').text()).toBe('Editar usuário')
     await wrapper.get('input[name="name"]').setValue('Aluno Atualizado')
+    await wrapper.get('input[name="registrationNumber"]').setValue('')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Informe a matrícula do aluno.'))
+    expect(usersServiceMocks.updateUser).not.toHaveBeenCalled()
+
+    await wrapper.get('input[name="registrationNumber"]').setValue('0020230002')
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(usersServiceMocks.updateUser).toHaveBeenCalledOnce())
 
@@ -323,10 +334,37 @@ describe('UsersView', () => {
           courseSubjectIds: [101],
         },
         name: 'Aluno Atualizado',
+        registrationNumber: '0020230002',
         userType: 'aluno',
       }),
     )
     expect(router.currentRoute.value.name).toBe('administration-users-view')
+  })
+
+  it('não oferece rebaixar ou desativar a própria conta na edição', async () => {
+    const router = createAdministrationRouter()
+    await router.push({ name: 'administration-users-edit', params: { userId: 2 } })
+    await router.isReady()
+    const pinia = createPinia()
+    useAuthStore(pinia).user = {
+      birthDate: '2001-02-03',
+      email: 'aluno@example.com',
+      id: 2,
+      mustChangePassword: false,
+      name: 'Aluno Teste',
+      userType: 'aluno',
+    }
+    const wrapper = mount(UserDetailsView, {
+      props: { mode: 'edit' },
+      global: { plugins: [pinia, router] },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="own-account-access-notice"]').exists()).toBe(true)
+    for (const input of wrapper.findAll('input[name="userType"], input[name="accountStatus"]')) {
+      expect(input.attributes()).toHaveProperty('disabled')
+    }
+    expect(wrapper.get('input[name="name"]').attributes()).not.toHaveProperty('disabled')
   })
 
   it('consulta usuários com busca, filtros e paginação controlados pela tela', async () => {
@@ -429,6 +467,7 @@ describe('UsersView', () => {
 
     expect(wrapper.findAll('nav li')).toHaveLength(4)
     expect(wrapper.find('input[value="201"]').exists()).toBe(false)
+    expect(wrapper.find('input[name="registrationNumber"]').exists()).toBe(false)
     await vi.waitFor(() => expect(usersServiceMocks.getUserRegistrationOptions).toHaveBeenCalled())
     await openSelect(wrapper, 'course-select')
     await wrapper.get('input[value="11"]').setValue(true)
@@ -462,6 +501,7 @@ describe('UsersView', () => {
         userType: 'professor',
       }),
     )
+    expect(usersServiceMocks.createUser.mock.calls[0]?.[0]).not.toHaveProperty('registrationNumber')
     expect(wrapper.find('[data-testid="back-after-create"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="register-another-user"]').exists()).toBe(true)
 
@@ -510,14 +550,36 @@ describe('UsersView', () => {
     await wrapper.get('input[value="103"]').setValue(true)
     await openSelect(wrapper, 'period-select')
     await wrapper.get('input[value="202"]').setValue(true)
+
+    const registrationInput = wrapper.get('input[name="registrationNumber"]')
+    expect(registrationInput.attributes()).toHaveProperty('required')
+    expect(registrationInput.attributes('inputmode')).toBe('numeric')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() => expect(wrapper.text()).toContain('Informe a matrícula do aluno.'))
+
+    await registrationInput.setValue('2023-01')
+    await wrapper.get('form').trigger('submit')
+    await vi.waitFor(() =>
+      expect(wrapper.text()).toContain('A matrícula deve conter somente números'),
+    )
+    expect(wrapper.text()).not.toContain('Revisão do cadastro')
+
+    await registrationInput.setValue('0020231001')
     await wrapper.get('form').trigger('submit')
     await vi.waitFor(() => expect(wrapper.text()).toContain('Revisão do cadastro'))
 
     expect(wrapper.text()).toContain('Aluno')
+    expect(wrapper.text()).toContain('Matrícula 0020231001')
     expect(wrapper.text()).toContain('Medicina')
     expect(wrapper.text()).toContain('Anatomia')
     expect(wrapper.text()).toContain('Bioética')
     expect(wrapper.text()).toContain('2º período')
+
+    await wrapper.get('[data-testid="save-user"]').trigger('click')
+    await vi.waitFor(() => expect(usersServiceMocks.createUser).toHaveBeenCalledOnce())
+    expect(usersServiceMocks.createUser).toHaveBeenCalledWith(
+      expect.objectContaining({ registrationNumber: '0020231001', userType: 'aluno' }),
+    )
   })
 
   it('impede avançar quando a confirmação da senha temporária é diferente', async () => {

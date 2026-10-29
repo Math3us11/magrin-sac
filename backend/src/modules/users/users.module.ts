@@ -8,6 +8,7 @@ import { SystemOptionItem } from '../../models/system-option-item.model.js';
 import { SystemOption } from '../../models/system-option.model.js';
 import { UserSubject } from '../../models/user-subject.model.js';
 import { User } from '../../models/user.model.js';
+import { AuditModule } from '../audit/audit.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
@@ -15,6 +16,7 @@ import { UsersService } from './users.service.js';
 @Module({
   controllers: [UsersController],
   imports: [
+    AuditModule,
     AuthModule,
     SequelizeModule.forFeature([
       AuthSession,

@@ -56,6 +56,9 @@ O diretório `frontend/` foi criado com:
 - tela de login responsiva, proteção de navegação e logout;
 - shell autenticado com header e sidebar responsiva alimentada pela API;
 - store de navegação com permissões atuais e estados de carregamento e erro;
+  chamadas simultâneas (guard do router e shell) aguardam a mesma requisição,
+  para que a checagem de permissão nunca ocorra antes da resposta, e um
+  `reset` descarta respostas que chegarem depois do logout;
 - store global de notificações e `AppNotify` para feedback de sucesso,
   informação, atenção e erro interpretado pelo cliente HTTP;
 - store global de loading com operações identificadas, mantendo o `AppLoading`
@@ -313,10 +316,19 @@ módulo importa a SDK do provedor. A implementação atual registra cada tentati
 em `notifications`, mascara o destino e usa um provider indisponível explícito
 até a configuração futura da Twilio.
 
+### `modules/parameters`
+
+Consulta e alteração administrativa dos parâmetros do catálogo de
+`helpers/system-parameters`, em `GET` e `PATCH /api/admin/system-parameters`.
+Cada alteração é registrada pelo `AuditService` na mesma transação.
+
 ### `modules/audit`
 
-Trilha de operações relevantes com ator, ação, alvo e data. Auditoria de negócio
-não substitui logging técnico.
+Trilha de operações relevantes com ator, ação, alvo, data, motivo e campos
+alterados. O `AuditService` é exportado para os módulos de usuários,
+agendamentos e disponibilidade, que o chamam dentro da própria transação; a
+consulta administrativa fica em `GET /api/admin/audit-logs`. Auditoria de
+negócio não substitui logging técnico. Consulte a ADR-028.
 
 ## Dependências permitidas
 
@@ -408,6 +420,11 @@ chave de ícone e nome de uma rota previamente registrada no Vue. O banco não
 armazena componentes nem URLs executáveis. Agrupadores sem rota podem ficar
 visíveis quando possuírem ao menos um filho autorizado.
 
+Como a migration do menu pode chegar ao banco antes do frontend que registra a
+rota, a sidebar ignora itens cujo nome de rota não existe no router, emite um
+aviso no console sem dados pessoais e oculta agrupadores que ficarem sem filhos.
+Assim um item ainda não publicado não impede a renderização do shell.
+
 `permissions` define capacidades estáveis do backend e
 `user_type_permissions` associa essas capacidades aos tipos iniciais
 `aluno`, `professor` e `administrador`. A permissão ligada ao menu serve
@@ -490,9 +507,10 @@ tabela `system_parameters` guarda somente parâmetros operacionais não secretos
 `integration_endpoints` pode guardar URL e nomes das variáveis que apontam para
 segredos externos, nunca os valores secretos.
 
-Providers de configuração poderão combinar ambiente e banco, sem copiar dados
-para `process.env`. Alterações de parâmetro em runtime exigirão estratégia
-explícita de cache e invalidação quando o módulo correspondente for criado.
+O helper `helpers/system-parameters` expõe `SystemParametersService`, que lê
+parâmetros tipados do banco a cada uso, sem cache e sem copiar valores para
+`process.env`. Assim, uma alteração no banco vale na operação seguinte. Uma
+eventual camada de cache exigirá estratégia explícita de invalidação.
 
 ## Consistência da reserva
 

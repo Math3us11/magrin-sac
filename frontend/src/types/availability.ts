@@ -10,6 +10,7 @@ export type AvailabilityDraft = {
 }
 
 export type AvailabilityItem = {
+  confirmedAppointments: number
   endsAt: string
   id: number
   modalities: AvailabilityModality[]
@@ -29,6 +30,11 @@ export type CreateAvailabilityPayload = {
 
 export type CreateAvailabilityResponse = {
   availabilities: AvailabilityItem[]
+  message: string
+}
+
+export type UpdateAvailabilityStateResponse = {
+  availability: AvailabilityItem
   message: string
 }
 
@@ -68,7 +74,7 @@ export type ListStudentAvailabilityResponse = {
   }
 }
 
-export type AdminAvailabilityItem = AvailabilityItem & {
+export type AdminAvailabilityItem = Omit<AvailabilityItem, 'confirmedAppointments'> & {
   professor: {
     id: number
     isActive: boolean

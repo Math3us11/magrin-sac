@@ -108,6 +108,26 @@ const router = createRouter({
       },
     },
     {
+      path: '/administracao/auditoria',
+      name: 'administration-audit',
+      component: () => import('@/views/administration/AuditView.vue'),
+      meta: {
+        requiredPermission: 'audit.read',
+        requiresAuth: true,
+        title: 'Auditoria',
+      },
+    },
+    {
+      path: '/administracao/parametros',
+      name: 'administration-parameters',
+      component: () => import('@/views/administration/ParametersView.vue'),
+      meta: {
+        requiredPermission: 'parameters.manage',
+        requiresAuth: true,
+        title: 'Parâmetros',
+      },
+    },
+    {
       path: '/administracao/usuarios',
       name: 'administration-users',
       component: () => import('@/views/administration/UsersView.vue'),

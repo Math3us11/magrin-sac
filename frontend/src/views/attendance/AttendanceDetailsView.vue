@@ -237,7 +237,7 @@ onBeforeUnmount(() => {
           <dl class="mt-7 grid gap-5 text-sm sm:grid-cols-2 lg:grid-cols-4">
             <div>
               <dt class="font-semibold text-content-muted">Data e horário</dt>
-              <dd class="mt-1 capitalize text-content">
+              <dd class="mt-1 first-letter:uppercase text-content">
                 {{ formatDate(attendance.appointment.startsAt) }},
                 {{ formatTime(attendance.appointment.startsAt) }}–{{
                   formatTime(attendance.appointment.endsAt)
@@ -246,7 +246,9 @@ onBeforeUnmount(() => {
             </div>
             <div>
               <dt class="font-semibold text-content-muted">Modalidade</dt>
-              <dd class="mt-1 capitalize text-content">{{ attendance.appointment.modality }}</dd>
+              <dd class="mt-1 first-letter:uppercase text-content">
+                {{ attendance.appointment.modality }}
+              </dd>
             </div>
             <div>
               <dt class="font-semibold text-content-muted">Aluno</dt>
