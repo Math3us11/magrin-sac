@@ -126,7 +126,8 @@ conjunto contém:
   centro das setas de navegação; a ação `Ir para hoje` permanece separada, e o
   dia atual usa tratamento visual diferente do contador de eventos. A grade
   elimina semanas excedentes, reduz sua densidade conforme a altura disponível
-  e preserva dia e contador quando o contêiner não comporta os resumos internos;
+  e preserva dia e contador quando o contêiner não comporta os resumos internos,
+  empilhando os dois em larguras de celular;
 - AppConfirmDialog: concentra confirmações reutilizáveis com título, descrição,
   tom da ação, loading, bloqueio do fundo, retorno de foco e fechamento por
   botão, backdrop ou tecla Escape.
