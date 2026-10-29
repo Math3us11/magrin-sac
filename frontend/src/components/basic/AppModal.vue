@@ -76,7 +76,10 @@ function handleKeydown(event: KeyboardEvent) {
     return
   }
 
-  if (event.shiftKey && document.activeElement === firstElement) {
+  if (!dialog.value?.contains(document.activeElement)) {
+    event.preventDefault()
+    ;(event.shiftKey ? lastElement : firstElement).focus()
+  } else if (event.shiftKey && document.activeElement === firstElement) {
     event.preventDefault()
     lastElement.focus()
   } else if (!event.shiftKey && document.activeElement === lastElement) {
@@ -85,9 +88,25 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+function isTopmostDialog(): boolean {
+  const dialogs = document.querySelectorAll('[role="dialog"][aria-modal="true"]')
+  return dialogs[dialogs.length - 1] === dialog.value
+}
+
+// O foco pode cair no body quando um botão é desabilitado durante uma requisição;
+// o modal do topo continua respondendo a Escape e devolve o Tab para dentro dele.
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented || !dialog.value) return
+  if (event.target instanceof Node && dialog.value.contains(event.target)) return
+  if (!isTopmostDialog()) return
+
+  handleKeydown(event)
+}
+
 function restorePageState() {
   if (typeof document === 'undefined' || !isPageStateLocked) return
 
+  document.removeEventListener('keydown', handleDocumentKeydown)
   document.body.style.overflow = previousBodyOverflow
   previouslyFocusedElement?.focus()
   previouslyFocusedElement = null
@@ -106,6 +125,7 @@ watch(
       document.activeElement instanceof HTMLElement ? document.activeElement : null
     previousBodyOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleDocumentKeydown)
     isPageStateLocked = true
 
     await nextTick()

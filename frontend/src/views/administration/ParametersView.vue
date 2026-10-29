@@ -16,7 +16,7 @@ import { listSystemParameters, updateSystemParameter } from '@/services/system-p
 import { useLoadingStore } from '@/stores/loading'
 import type { SystemParameter, SystemParameterName } from '@/types/system-parameter'
 
-useDocumentTitle('Parâmetros | Administração | Sistema de Agendamento')
+useDocumentTitle('Parâmetros | Sistema de Agendamento')
 
 const loadingStore = useLoadingStore()
 const parameters = ref<SystemParameter[]>([])

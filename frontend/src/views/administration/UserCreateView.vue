@@ -113,8 +113,12 @@ const saveError = ref('')
 const registrationCompleted = ref(false)
 let subjectsRequestSequence = 0
 
+// O catálogo chega agrupado por nível; o sufixo explica por que a pós-graduação vem ao final.
 const courseOptions = computed(() =>
-  courseCatalog.value.map(({ id, name }) => ({ label: name, value: String(id) })),
+  courseCatalog.value.map(({ educationLevel, id, name }) => ({
+    label: educationLevel === 'pos_graduacao' ? `${name} (pós-graduação)` : name,
+    value: String(id),
+  })),
 )
 const periodOptions = computed(() =>
   academicPeriodCatalog.value.map(({ id, name }) => ({ label: name, value: String(id) })),
@@ -149,8 +153,10 @@ const selectedProfile = computed(
   () => profileOptions.find((profile) => profile.value === draft.userType)?.label ?? 'Não definido',
 )
 const selectedAccountStatus = computed(() =>
-  draft.accountStatus === 'active' ? 'Ativa' : 'Inativa',
+  draft.accountStatus === 'active' ? 'ativa' : 'inativa',
 )
+// A data vem do input como AAAA-MM-DD e é exibida no padrão brasileiro sem conversão de fuso.
+const birthDateLabel = computed(() => draft.birthDate.split('-').reverse().join('/'))
 const selectedCourses = computed(() =>
   courseOptions.value.filter((course) => draft.courseIds.includes(course.value)),
 )
@@ -391,8 +397,8 @@ async function saveUser() {
           Cadastrar usuário
         </h1>
         <p class="mt-4 text-base leading-7 text-content-muted">
-          Preencha uma etapa de cada vez. O conteúdo muda conforme o perfil escolhido e, por ao
-          final, o servidor validará e salvará o cadastro completo.
+          Preencha uma etapa de cada vez. O conteúdo muda conforme o perfil escolhido e, ao final, o
+          servidor validará e salvará o cadastro completo.
         </p>
       </header>
 
@@ -621,8 +627,8 @@ async function saveUser() {
                 aria-hidden="true"
               />
               <p class="text-sm leading-6 text-content">
-                A senha temporária nunca será exibida na revisão. A troca obrigatória no primeiro
-                acesso será ligada ao backend posteriormente.
+                A senha temporária nunca será exibida na revisão. No primeiro acesso, a pessoa
+                usuária precisará substituí-la por uma senha pessoal.
               </p>
             </div>
           </div>
@@ -842,7 +848,7 @@ async function saveUser() {
                 Revisão do cadastro
               </h2>
               <p class="mt-2 text-sm leading-6 text-content-muted">
-                Confira como as informações serão organizadas antes da futura integração.
+                Confira as informações antes de salvar o cadastro.
               </p>
             </div>
 
@@ -880,7 +886,7 @@ async function saveUser() {
                 >
                   Matrícula {{ draft.registrationNumber }}
                 </dd>
-                <dd class="mt-1 text-sm text-content-muted">Nascimento: {{ draft.birthDate }}</dd>
+                <dd class="mt-1 text-sm text-content-muted">Nascimento: {{ birthDateLabel }}</dd>
               </div>
             </dl>
 

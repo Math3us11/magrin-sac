@@ -104,7 +104,13 @@ const phoneMasks = ['(##) ####-####', '(##) #####-####']
 
 const courseOptions = computed(() => {
   const options = new Map(
-    courseCatalog.value.map(({ id, name }) => [String(id), { label: name, value: String(id) }]),
+    courseCatalog.value.map(({ educationLevel, id, name }) => [
+      String(id),
+      {
+        label: educationLevel === 'pos_graduacao' ? `${name} (pós-graduação)` : name,
+        value: String(id),
+      },
+    ]),
   )
 
   for (const course of user.value?.academic?.courses ?? []) {
