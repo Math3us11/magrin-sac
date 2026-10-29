@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Icon } from '@iconify/vue'
-import { ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+import { filterRoutableNavigation } from '@/config/navigation'
 import {
   calendarCheckIcon,
   chartCombinedIcon,
@@ -36,7 +37,21 @@ const emit = defineEmits<{
 }>()
 
 const route = useRoute()
+const router = useRouter()
 const expandedGroups = ref<Set<string>>(new Set())
+const reportedUnknownRoutes = new Set<string>()
+
+const visibleItems = computed(() =>
+  filterRoutableNavigation(
+    props.items,
+    (routeName) => router.hasRoute(routeName),
+    (routeName) => {
+      if (reportedUnknownRoutes.has(routeName)) return
+      reportedUnknownRoutes.add(routeName)
+      console.warn(`Item de menu ignorado: a rota "${routeName}" não existe neste frontend.`)
+    },
+  ),
+)
 
 const iconMap = {
   'calendar-check': calendarCheckIcon,
@@ -79,7 +94,7 @@ function toggleGroup(item: NavigationItem) {
 }
 
 watch(
-  () => props.items,
+  visibleItems,
   (items) => {
     const nextGroups = new Set(expandedGroups.value)
 
@@ -164,7 +179,7 @@ watch(
 
       <nav v-else aria-label="Menu principal">
         <ul class="space-y-1.5">
-          <li v-for="item in items" :key="item.code">
+          <li v-for="item in visibleItems" :key="item.code">
             <RouterLink
               v-if="item.routeName"
               class="group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors"

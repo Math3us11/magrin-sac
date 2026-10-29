@@ -411,6 +411,11 @@ chave de ícone e nome de uma rota previamente registrada no Vue. O banco não
 armazena componentes nem URLs executáveis. Agrupadores sem rota podem ficar
 visíveis quando possuírem ao menos um filho autorizado.
 
+Como a migration do menu pode chegar ao banco antes do frontend que registra a
+rota, a sidebar ignora itens cujo nome de rota não existe no router, emite um
+aviso no console sem dados pessoais e oculta agrupadores que ficarem sem filhos.
+Assim um item ainda não publicado não impede a renderização do shell.
+
 `permissions` define capacidades estáveis do backend e
 `user_type_permissions` associa essas capacidades aos tipos iniciais
 `aluno`, `professor` e `administrador`. A permissão ligada ao menu serve
