@@ -237,6 +237,68 @@ describe('navegação autenticada', () => {
     warn.mockRestore()
   })
 
+  it('chamadas simultâneas aguardam a mesma requisição antes de liberar permissões', async () => {
+    setActivePinia(createPinia())
+    let resolveFetch: (response: Response) => void = () => {}
+    const fetchMock = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        resolveFetch = resolve
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const navigation = useNavigationStore()
+
+    // AppShell dispara a carga ao montar e o guard do router chama load() logo depois.
+    const shellLoad = navigation.load(true)
+    let guardSettled = false
+    const guardLoad = navigation.load().then(() => {
+      guardSettled = true
+    })
+    await Promise.resolve()
+
+    expect(guardSettled).toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    resolveFetch(
+      new Response(JSON.stringify(navigationResponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      }),
+    )
+    await Promise.all([shellLoad, guardLoad])
+
+    expect(navigation.initialized).toBe(true)
+    expect(navigation.hasPermission('users.manage')).toBe(true)
+  })
+
+  it('descarta a resposta de uma carga iniciada antes do reset', async () => {
+    setActivePinia(createPinia())
+    let resolveFetch: (response: Response) => void = () => {}
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockReturnValue(
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+        }),
+      ),
+    )
+    const navigation = useNavigationStore()
+
+    const staleLoad = navigation.load()
+    navigation.reset()
+    resolveFetch(
+      new Response(JSON.stringify(navigationResponse), {
+        headers: { 'Content-Type': 'application/json' },
+        status: 200,
+      }),
+    )
+    await staleLoad
+
+    expect(navigation.initialized).toBe(false)
+    expect(navigation.permissions).toEqual([])
+    expect(navigation.isLoading).toBe(false)
+  })
+
   it('sidebar renderiza a árvore e permite expandir o desktop minimizado', async () => {
     const router = createRouter({
       history: createMemoryHistory(),

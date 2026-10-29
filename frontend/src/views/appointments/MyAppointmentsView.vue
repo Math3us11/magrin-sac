@@ -12,7 +12,10 @@ import {
   INSTITUTION_TIME_ZONE,
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
-import { isWithinCancellationDeadline } from '@/config/appointment-cancellation'
+import {
+  cancellationClosedMessage,
+  isWithinCancellationDeadline,
+} from '@/config/appointment-cancellation'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
   calendarCheckIcon,
@@ -328,7 +331,7 @@ onMounted(() => void loadAppointments())
           data-testid="next-appointment"
         >
           <div>
-            <p class="font-bold capitalize text-content">
+            <p class="font-bold first-letter:uppercase text-content">
               {{ formatDate(nextAppointment.startsAt) }}
             </p>
             <p class="mt-1 text-sm text-content-muted">
@@ -442,7 +445,7 @@ onMounted(() => void loadAppointments())
             <p class="text-xs font-bold uppercase tracking-[0.14em] text-brand-primary">
               Dia selecionado
             </p>
-            <h2 class="mt-1 text-xl font-bold capitalize text-content">
+            <h2 class="mt-1 text-xl font-bold first-letter:uppercase text-content">
               {{ selectedDateLabel }}
             </h2>
 
@@ -556,7 +559,9 @@ onMounted(() => void loadAppointments())
               <dl class="mt-5 grid gap-3 text-sm text-content-muted sm:grid-cols-2">
                 <div>
                   <dt class="font-bold text-content">Data</dt>
-                  <dd class="mt-1 capitalize">{{ formatDate(appointment.startsAt) }}</dd>
+                  <dd class="mt-1 first-letter:uppercase">
+                    {{ formatDate(appointment.startsAt) }}
+                  </dd>
                 </div>
                 <div>
                   <dt class="font-bold text-content">Horário</dt>
@@ -659,16 +664,17 @@ onMounted(() => void loadAppointments())
           </dd>
         </div>
       </dl>
+      <p
+        v-if="selectedAppointment?.status === 'confirmado' && !canCancelSelectedAppointment"
+        class="mt-5 rounded-xl bg-surface-subtle px-4 py-3 text-sm text-content-muted"
+      >
+        {{ cancellationClosedMessage(selectedAppointment) }}
+      </p>
       <template #footer>
         <AppButton
           v-if="selectedAppointment?.status === 'confirmado'"
           variant="danger"
           :disabled="!canCancelSelectedAppointment"
-          :title="
-            canCancelSelectedAppointment
-              ? 'Cancelar este agendamento'
-              : 'O prazo de cancelamento deste agendamento já encerrou.'
-          "
           @click="requestCancellation"
         >
           Cancelar agendamento

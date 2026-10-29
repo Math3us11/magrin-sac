@@ -29,6 +29,7 @@ export { default as panelLeftCloseIcon } from '@iconify-icons/lucide/panel-left-
 export { default as panelLeftOpenIcon } from '@iconify-icons/lucide/panel-left-open'
 export { default as pencilIcon } from '@iconify-icons/lucide/pencil'
 export { default as searchIcon } from '@iconify-icons/lucide/search'
+export { default as settingsIcon } from '@iconify-icons/lucide/settings'
 export { default as shieldCheckIcon } from '@iconify-icons/lucide/shield-check'
 export { default as starIcon } from '@iconify-icons/lucide/star'
 export { default as sunIcon } from '@iconify-icons/lucide/sun'

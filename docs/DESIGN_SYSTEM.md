@@ -126,7 +126,8 @@ conjunto contém:
   centro das setas de navegação; a ação `Ir para hoje` permanece separada, e o
   dia atual usa tratamento visual diferente do contador de eventos. A grade
   elimina semanas excedentes, reduz sua densidade conforme a altura disponível
-  e preserva dia e contador quando o contêiner não comporta os resumos internos;
+  e preserva dia e contador quando o contêiner não comporta os resumos internos,
+  empilhando os dois em larguras de celular;
 - AppConfirmDialog: concentra confirmações reutilizáveis com título, descrição,
   tom da ação, loading, bloqueio do fundo, retorno de foco e fechamento por
   botão, backdrop ou tecla Escape.
@@ -281,7 +282,10 @@ recorrente oculta depois da publicação.
 `AppModal` é a base genérica para diálogos com conteúdo arbitrário. Ele oferece
 título, descrição opcional, tamanhos predefinidos, área de conteúdo rolável,
 rodapé por slot, bloqueio do scroll da página, fechamento por botão, fundo ou
-Escape, contenção de foco e devolução do foco ao elemento que o abriu. Fluxos
+Escape, contenção de foco e devolução do foco ao elemento que o abriu. Quando o
+foco sai do diálogo, por exemplo porque um botão foi desabilitado durante uma
+requisição, o modal do topo continua respondendo a Escape e o Tab devolve o
+foco para dentro dele. Fluxos
 com regras próprias devem compor essa base ou permanecer em componentes
 especializados, sem concentrar lógica de domínio no componente básico.
 

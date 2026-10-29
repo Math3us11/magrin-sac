@@ -247,13 +247,19 @@ Entregas:
       MariaDB sem definir silenciosamente a política institucional pendente;
 - executar e registrar o primeiro teste integral de restauração quando o cliente
   `mariadb` estiver disponível no ambiente local;
+- [x] criar a tela administrativa de parâmetros, com validação do intervalo,
+      motivo obrigatório e registro na auditoria;
 - [x] ler de `system_parameters` a antecedência mínima de cancelamento e
       devolver o prazo calculado nas listagens, sem repetir a regra no frontend;
 - [x] registrar a trilha de auditoria de usuários, agendamentos e
       disponibilidades na mesma transação das operações, com consulta
       administrativa paginada e dados pessoais sensíveis protegidos;
+- [x] revisar de ponta a ponta, no navegador, os fluxos de aluno, professor e
+      administrador, corrigindo a checagem de permissão em acesso direto por
+      URL, o teclado em modais e textos ou datas inconsistentes;
 - observabilidade mínima;
-- seed ou roteiro de demonstração sem dados pessoais reais;
+- [x] criar seed recriável e roteiro de demonstração com contas fictícias
+      `@demo.test`, sem dados pessoais reais (`docs/DEMO.md`, ADR-031);
 - revisão final da documentação.
 
 ## Próxima ação recomendada

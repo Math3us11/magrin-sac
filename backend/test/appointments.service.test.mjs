@@ -392,6 +392,15 @@ test('rejeita sobreposição na disponibilidade sem criar novo registro', async 
   assert.equal(calls.notification.length, 0);
 });
 
+test('informa ao aluno quando a sobreposição é com a própria reserva', async () => {
+  const { calls, service } = createBookingService({
+    appointmentFindOne: async () => ({ id: 99, studentId: 4 }),
+  });
+
+  await assert.rejects(service.create(validBooking, 4), /Você já possui um agendamento/);
+  assert.equal(calls.appointmentCreate.length, 0);
+});
+
 test('duas confirmações concorrentes reservam o mesmo intervalo somente uma vez', async () => {
   const appointments = [];
   let locked = false;

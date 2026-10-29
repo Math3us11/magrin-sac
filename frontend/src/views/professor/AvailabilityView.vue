@@ -16,7 +16,10 @@ import {
   INSTITUTION_TIME_ZONE,
   INSTITUTION_TIME_ZONE_LABEL,
 } from '@/config/date-time'
-import { isWithinCancellationDeadline } from '@/config/appointment-cancellation'
+import {
+  cancellationClosedMessage,
+  isWithinCancellationDeadline,
+} from '@/config/appointment-cancellation'
 import { useDocumentTitle } from '@/composables/useDocumentTitle'
 import {
   calendarCheckIcon,
@@ -803,6 +806,14 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
             >
               Cancelar agendamento
             </AppButton>
+            <p
+              v-if="
+                appointment.status === 'confirmado' && !isWithinCancellationDeadline(appointment)
+              "
+              class="mt-2 text-xs text-content-muted"
+            >
+              {{ cancellationClosedMessage(appointment) }}
+            </p>
             <AppButton
               v-if="
                 appointment.status === 'confirmado' &&
@@ -986,7 +997,7 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
                 <Icon class="h-5 w-5" :icon="chevronLeftIcon" aria-hidden="true" />
               </button>
               <div class="min-w-0 text-center">
-                <p class="font-bold capitalize text-content">{{ weekLabel }}</p>
+                <p class="font-bold first-letter:uppercase text-content">{{ weekLabel }}</p>
                 <p class="mt-0.5 text-xs text-content-muted">Use as setas para mudar de semana.</p>
               </div>
               <button
@@ -1206,7 +1217,9 @@ onMounted(() => void Promise.all([loadAvailabilities(), loadAssignedAppointments
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="font-bold capitalize text-content">{{ formatDate(draft.date) }}</p>
+                  <p class="font-bold first-letter:uppercase text-content">
+                    {{ formatDate(draft.date) }}
+                  </p>
                   <p class="mt-1 text-sm text-content-muted">
                     {{ draft.startTime }}–{{ draft.endTime }} ·
                     {{ formatModalities(draft.modalities) }}

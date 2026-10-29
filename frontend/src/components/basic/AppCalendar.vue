@@ -237,7 +237,7 @@ watch(
           <Icon class="h-5 w-5" :icon="chevronLeftIcon" aria-hidden="true" />
         </button>
         <h3
-          class="min-w-0 flex-1 px-1 text-center text-base font-bold capitalize text-content sm:min-w-44 sm:flex-none sm:px-2 sm:text-lg"
+          class="min-w-0 flex-1 px-1 text-center text-base font-bold first-letter:uppercase text-content sm:min-w-44 sm:flex-none sm:px-2 sm:text-lg"
           data-testid="calendar-month-label"
         >
           {{ formatMonth(visibleMonth) }}
@@ -301,7 +301,7 @@ watch(
             @click="selectDate(day.date)"
             @keydown="handleDayKeydown($event, day.date, index)"
           >
-            <span class="flex items-center justify-between gap-2">
+            <span class="calendar-day-header flex items-center justify-between gap-2">
               <span class="flex min-w-0 items-center gap-1 sm:gap-1.5">
                 <span
                   class="calendar-day-number inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-[0.68rem] font-bold sm:h-7 sm:min-w-7 sm:text-xs"
@@ -369,7 +369,7 @@ watch(
           <p class="text-xs font-bold uppercase tracking-[0.12em] text-content-muted">
             Agenda do dia
           </p>
-          <h4 class="font-bold capitalize text-content">{{ selectedDateLabel }}</h4>
+          <h4 class="font-bold first-letter:uppercase text-content">{{ selectedDateLabel }}</h4>
         </div>
       </div>
 
@@ -451,6 +451,15 @@ watch(
   .calendar-event-list,
   .calendar-today-label {
     display: none;
+  }
+}
+
+/* Em celulares a célula não comporta número e contador lado a lado. */
+@container (max-width: 28rem) {
+  .calendar-day-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.125rem;
   }
 }
 </style>

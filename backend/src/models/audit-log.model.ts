@@ -6,6 +6,7 @@ export enum AuditAction {
   AVAILABILITY_BLOCKED = 'availability.blocked',
   AVAILABILITY_CREATED = 'availability.created',
   AVAILABILITY_UNBLOCKED = 'availability.unblocked',
+  SYSTEM_PARAMETER_UPDATED = 'system_parameter.updated',
   USER_CREATED = 'user.created',
   USER_DELETED = 'user.deleted',
   USER_UPDATED = 'user.updated',
@@ -14,6 +15,7 @@ export enum AuditAction {
 export enum AuditEntityType {
   APPOINTMENT = 'appointment',
   AVAILABILITY = 'availability',
+  SYSTEM_PARAMETER = 'system_parameter',
   USER = 'user',
 }
 

@@ -390,7 +390,7 @@ onMounted(() => void loadHomeAgenda())
               <div
                 class="rounded-xl bg-brand-primary-soft px-3 py-2.5 text-center text-brand-primary"
               >
-                <p class="text-xs font-bold capitalize">
+                <p class="text-xs font-bold first-letter:uppercase">
                   {{
                     formatInstitutionDate(appointment.startsAt, {
                       day: '2-digit',
@@ -472,7 +472,7 @@ onMounted(() => void loadHomeAgenda())
             </div>
             <div class="rounded-2xl bg-surface-subtle p-4">
               <dt class="text-sm font-semibold text-content-muted">Próximo horário</dt>
-              <dd v-if="nextAppointment" class="mt-2 font-bold capitalize text-content">
+              <dd v-if="nextAppointment" class="mt-2 font-bold first-letter:uppercase text-content">
                 {{
                   formatInstitutionDate(nextAppointment.startsAt, {
                     day: '2-digit',

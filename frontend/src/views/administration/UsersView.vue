@@ -274,22 +274,15 @@ function startUserCreation() {
     <div class="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:px-10 lg:py-10">
       <header class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-3xl">
-          <div class="flex flex-wrap items-center gap-2">
-            <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand-primary">
-              Administração
-            </p>
-            <span
-              class="rounded-full border border-outline bg-surface px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-content-muted"
-            >
-              Estrutura inicial
-            </span>
-          </div>
+          <p class="text-xs font-bold uppercase tracking-[0.16em] text-brand-primary">
+            Administração
+          </p>
           <h1 class="mt-3 text-3xl font-bold tracking-tight text-content sm:text-4xl">
             Gerenciamento de usuários
           </h1>
           <p class="mt-4 text-base leading-7 text-content-muted">
-            Crie contas institucionais e, nas próximas etapas, acompanhe os usuários cadastrados e
-            suas situações de acesso.
+            Crie contas institucionais, acompanhe os usuários cadastrados e mantenha suas situações
+            de acesso.
           </p>
         </div>
 
@@ -302,9 +295,7 @@ function startUserCreation() {
       </header>
 
       <section class="mt-9" aria-labelledby="user-flow-title">
-        <h2 id="user-flow-title" class="text-lg font-bold text-content">
-          Estrutura do primeiro cadastro
-        </h2>
+        <h2 id="user-flow-title" class="text-lg font-bold text-content">Etapas do cadastro</h2>
         <div class="mt-4 grid gap-4 md:grid-cols-3">
           <article
             v-for="step in initialFlow"

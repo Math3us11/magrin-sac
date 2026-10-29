@@ -15,6 +15,7 @@ import {
   houseIcon,
   panelLeftCloseIcon,
   panelLeftOpenIcon,
+  settingsIcon,
   shieldCheckIcon,
   usersIcon,
   xIcon,
@@ -59,6 +60,7 @@ const iconMap = {
   'clock-3': clockIcon,
   history: historyIcon,
   house: houseIcon,
+  settings: settingsIcon,
   'shield-check': shieldCheckIcon,
   users: usersIcon,
 }

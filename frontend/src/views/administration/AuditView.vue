@@ -18,7 +18,7 @@ import type {
 } from '@/types/audit'
 import type { AppTableColumn, AppTableRecord } from '@/types/table'
 
-useDocumentTitle('Auditoria | Administração | Sistema de Agendamento')
+useDocumentTitle('Auditoria | Sistema de Agendamento')
 
 const loadingStore = useLoadingStore()
 const today = getInstitutionDateTime().date
@@ -39,6 +39,7 @@ const actionLabels: Record<AuditAction, string> = {
   'availability.blocked': 'Disponibilidade bloqueada',
   'availability.created': 'Disponibilidade publicada',
   'availability.unblocked': 'Disponibilidade desbloqueada',
+  'system_parameter.updated': 'Parâmetro alterado',
   'user.created': 'Usuário cadastrado',
   'user.deleted': 'Usuário excluído',
   'user.updated': 'Usuário alterado',
@@ -46,6 +47,7 @@ const actionLabels: Record<AuditAction, string> = {
 const entityLabels: Record<AuditEntityType, string> = {
   appointment: 'Agendamento',
   availability: 'Disponibilidade',
+  system_parameter: 'Parâmetro',
   user: 'Usuário',
 }
 const fieldLabels: Record<string, string> = {
@@ -60,10 +62,24 @@ const fieldLabels: Record<string, string> = {
   name: 'Nome',
   phone: 'Telefone',
   protocol: 'Protocolo',
+  registrationNumber: 'Matrícula',
   startsAt: 'Início',
   state: 'Estado',
   status: 'Situação',
   userType: 'Perfil',
+  value: 'Valor',
+}
+// Valores de domínio persistidos como códigos e exibidos com o rótulo usado nas demais telas.
+const valueLabels: Record<string, Record<string, string>> = {
+  modality: { online: 'Online', presencial: 'Presencial' },
+  state: { ativa: 'Ativa', bloqueada: 'Bloqueada', cancelada: 'Cancelada' },
+  status: {
+    ausencia: 'Ausência',
+    cancelado: 'Cancelado',
+    concluido: 'Concluído',
+    confirmado: 'Confirmado',
+  },
+  userType: { administrador: 'Administrador', aluno: 'Aluno', professor: 'Professor' },
 }
 const actionOptions = [
   { label: 'Todas as ações', value: '' },
@@ -103,11 +119,17 @@ function formatDateTime(value: string): string {
   }).format(new Date(value))
 }
 
-function formatValue(value: AuditValue): string {
+function formatValue(field: string, value: AuditValue): string {
   if (value === null || value === '') return '—'
   if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
   if (typeof value === 'string' && ISO_INSTANT.test(value)) return formatDateTime(value)
-  return String(value)
+  if (field === 'modalities' && typeof value === 'string') {
+    return value
+      .split(/,\s*/)
+      .map((modality) => valueLabels.modality?.[modality] ?? modality)
+      .join(', ')
+  }
+  return valueLabels[field]?.[String(value)] ?? String(value)
 }
 
 function describeChanges(changes: Record<string, AuditChange>) {
@@ -117,7 +139,7 @@ function describeChanges(changes: Record<string, AuditChange>) {
     text:
       'redacted' in change
         ? 'alterado (valor protegido)'
-        : `${formatValue(change.from)} → ${formatValue(change.to)}`,
+        : `${formatValue(field, change.from)} → ${formatValue(field, change.to)}`,
   }))
 }
 

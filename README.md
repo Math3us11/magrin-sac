@@ -76,6 +76,14 @@ execute:
 pnpm --filter backend db:bootstrap:admin
 ```
 
+Para popular o banco com contas e atendimentos fictícios de demonstração, defina
+`DEMO_SEED_ENABLED=true` e `DEMO_SEED_PASSWORD` no `.env` e execute o comando
+abaixo. O roteiro de apresentação está em `docs/DEMO.md`.
+
+```bash
+pnpm --filter backend db:seed:demo
+```
+
 A API fica em `http://localhost:3000/api`. O health check é
 `GET /api/health`. A autenticação oferece `POST /api/auth/login`,
 `POST /api/auth/logout` e `GET /api/me`.
