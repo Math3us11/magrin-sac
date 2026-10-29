@@ -1,14 +1,24 @@
+import type { ConfigService } from '@nestjs/config';
 import type { MigrationMeta } from 'umzug';
+import { InstitutionDateTimeService } from '../helpers/institution-date-time/institution-date-time.service.js';
 import { createConfiguredDatabase } from './database.admin.js';
 import {
   provisionAdministrator,
   readBootstrapAdministratorInput,
 } from './database.bootstrap-admin.js';
-import { createDatabaseConnection } from './database.connection.js';
+import { createDatabaseConnection, requiredEnvironmentValue } from './database.connection.js';
+import { institutionDateTime, readDemoSeedInput, seedDemoData } from './database.demo-seed.js';
 import { createDatabaseMigrator } from './database.migrator.js';
 
 type DatabaseCommand =
-  'bootstrap:admin' | 'check' | 'create' | 'migrate' | 'migrate:status' | 'migrate:undo' | 'setup';
+  | 'bootstrap:admin'
+  | 'check'
+  | 'create'
+  | 'migrate'
+  | 'migrate:status'
+  | 'migrate:undo'
+  | 'seed:demo'
+  | 'setup';
 
 const DATABASE_COMMANDS = new Set<DatabaseCommand>([
   'bootstrap:admin',
@@ -17,6 +27,7 @@ const DATABASE_COMMANDS = new Set<DatabaseCommand>([
   'migrate',
   'migrate:status',
   'migrate:undo',
+  'seed:demo',
   'setup',
 ]);
 
@@ -26,7 +37,7 @@ function parseCommand(value: string | undefined): DatabaseCommand {
   }
 
   throw new Error(
-    'Expected one command: bootstrap:admin, check, create, migrate, migrate:undo, migrate:status or setup',
+    'Expected one command: bootstrap:admin, check, create, migrate, migrate:undo, migrate:status, seed:demo or setup',
   );
 }
 
@@ -71,6 +82,31 @@ async function run(): Promise<void> {
 
         const result = await provisionAdministrator(sequelize, readBootstrapAdministratorInput());
         console.log(`Administrator ${result.action}.`);
+        break;
+      }
+      case 'seed:demo': {
+        const pendingMigrations = await migrations.pending();
+
+        if (pendingMigrations.length > 0) {
+          throw new Error('Apply all pending migrations before seeding the demo data.');
+        }
+
+        const input = readDemoSeedInput();
+        const timeZone = requiredEnvironmentValue('APP_TIMEZONE');
+        const dateTime = new InstitutionDateTimeService({
+          getOrThrow: () => ({ timeZone }),
+        } as unknown as ConfigService);
+        const now = new Date();
+        const result = await seedDemoData(
+          sequelize,
+          input,
+          { now, toUtc: (date, time) => dateTime.localToUtc(date, time) },
+          institutionDateTime(now, timeZone),
+        );
+        console.log(
+          `Demo data recreated: ${result.users} users, ${result.availabilities} availabilities, ` +
+            `${result.appointments} appointments.`,
+        );
         break;
       }
       case 'check':
