@@ -18,6 +18,7 @@
     "db:migrate": "pnpm build && node --env-file-if-exists=../.env dist/database/database-cli.js migrate",
     "db:migrate:undo": "pnpm build && node --env-file-if-exists=../.env dist/database/database-cli.js migrate:undo",
     "db:migrate:status": "pnpm build && node --env-file-if-exists=../.env dist/database/database-cli.js migrate:status",
+    "db:seed:demo": "pnpm build && node --env-file-if-exists=../.env dist/database/database-cli.js seed:demo",
     "db:setup": "pnpm build && node --env-file-if-exists=../.env dist/database/database-cli.js setup",
     "credential-key:generate": "node scripts/generate-credential-key.mjs",
     "start": "nest start",

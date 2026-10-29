@@ -253,7 +253,8 @@ Entregas:
       disponibilidades na mesma transação das operações, com consulta
       administrativa paginada e dados pessoais sensíveis protegidos;
 - observabilidade mínima;
-- seed ou roteiro de demonstração sem dados pessoais reais;
+- [x] criar seed recriável e roteiro de demonstração com contas fictícias
+      `@demo.test`, sem dados pessoais reais (`docs/DEMO.md`, ADR-031);
 - revisão final da documentação.
 
 ## Próxima ação recomendada

@@ -541,6 +541,37 @@ uma conta em ritmo lento. Os contadores e o log são locais à instância; múlt
 instâncias ou retenção dos eventos exigirão armazenamento compartilhado e a
 observabilidade mínima prevista no roadmap.
 
+## ADR-031 — Dados de demonstração recriáveis e isolados
+
+**Estado:** aceita.
+
+A demonstração usa contas fictícias no domínio reservado `@demo.test`, criadas pelo
+comando `pnpm --filter backend db:seed:demo`. As identidades não podem pertencer
+a pessoas reais: os CPFs têm dígito verificador propositalmente inválido, os
+telefones começam com `0` após o DDD e as matrículas usam o prefixo `9900`.
+A senha comum das contas vem de `DEMO_SEED_PASSWORD`, nunca do código, e o
+comando só executa com `DEMO_SEED_ENABLED=true` e sem migrations pendentes.
+
+Cada execução recria os dados operacionais da demonstração com datas relativas
+ao dia: disponibilidades dos professores de demo, agendamentos, atendimentos,
+histórico de status, notificações desses agendamentos e vínculos acadêmicos das
+contas de demo. Essa remoção física é a política de retenção explícita para dados
+fictícios e vale somente para eles. As contas são preservadas e atualizadas, e a
+trilha de auditoria nunca é apagada.
+
+O comando aborta sem alterar nada quando algum agendamento liga uma conta de demo
+a uma conta real, ou quando CPF ou matrícula fictícios já pertencem a uma conta
+real.
+
+Motivo: apresentar todos os estados do fluxo (resolvido, não resolvido, em
+tratativa, ausência e cancelamento) sem dados pessoais reais e sem depender do
+estado acumulado do banco.
+
+Consequência: registros de auditoria gerados durante uma apresentação podem
+apontar para agendamentos removidos na recriação seguinte. Se a validação do
+dígito verificador do CPF for adotada no futuro, as contas de demo precisarão de
+outro critério de identificação fictícia.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão
