@@ -72,6 +72,11 @@ describe('NewAppointmentView', () => {
 
     await wrapper.get('[data-testid^="day-interval-"]').trigger('click')
     expect(wrapper.get('[data-testid="selected-availability"]').text()).toContain('Professor Teste')
+
+    // O horário escolhido precisa continuar destacado mesmo guardado como proxy reativo.
+    const chosen = wrapper.get('[data-testid^="day-interval-"]')
+    expect(chosen.attributes('aria-pressed')).toBe('true')
+    expect(chosen.text()).toContain('Escolhido')
   })
 
   it('refaz a consulta quando a modalidade muda', async () => {
