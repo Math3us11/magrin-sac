@@ -4,11 +4,12 @@ export type AuditAction =
   | 'availability.blocked'
   | 'availability.created'
   | 'availability.unblocked'
+  | 'system_parameter.updated'
   | 'user.created'
   | 'user.deleted'
   | 'user.updated'
 
-export type AuditEntityType = 'appointment' | 'availability' | 'user'
+export type AuditEntityType = 'appointment' | 'availability' | 'system_parameter' | 'user'
 
 export type AuditValue = boolean | number | string | null
 

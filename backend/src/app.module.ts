@@ -15,6 +15,7 @@ import { AvailabilityModule } from './modules/availability/availability.module.j
 import { DashboardModule } from './modules/dashboard/dashboard.module.js';
 import { NavigationModule } from './modules/navigation/navigation.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { ParametersModule } from './modules/parameters/parameters.module.js';
 import { UsersModule } from './modules/users/users.module.js';
 
 const ROOT_ENV_FILE = fileURLToPath(new URL('../../.env', import.meta.url));
@@ -39,6 +40,7 @@ const ROOT_ENV_FILE = fileURLToPath(new URL('../../.env', import.meta.url));
     NavigationModule,
     NotificationsModule,
     AuditModule,
+    ParametersModule,
   ],
 })
 export class AppModule {}

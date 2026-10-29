@@ -39,6 +39,7 @@ const actionLabels: Record<AuditAction, string> = {
   'availability.blocked': 'Disponibilidade bloqueada',
   'availability.created': 'Disponibilidade publicada',
   'availability.unblocked': 'Disponibilidade desbloqueada',
+  'system_parameter.updated': 'Parâmetro alterado',
   'user.created': 'Usuário cadastrado',
   'user.deleted': 'Usuário excluído',
   'user.updated': 'Usuário alterado',
@@ -46,6 +47,7 @@ const actionLabels: Record<AuditAction, string> = {
 const entityLabels: Record<AuditEntityType, string> = {
   appointment: 'Agendamento',
   availability: 'Disponibilidade',
+  system_parameter: 'Parâmetro',
   user: 'Usuário',
 }
 const fieldLabels: Record<string, string> = {
@@ -60,10 +62,12 @@ const fieldLabels: Record<string, string> = {
   name: 'Nome',
   phone: 'Telefone',
   protocol: 'Protocolo',
+  registrationNumber: 'Matrícula',
   startsAt: 'Início',
   state: 'Estado',
   status: 'Situação',
   userType: 'Perfil',
+  value: 'Valor',
 }
 const actionOptions = [
   { label: 'Todas as ações', value: '' },
