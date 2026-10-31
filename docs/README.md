@@ -28,6 +28,8 @@ Os documentos distinguem:
 12. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
 13. `BACKUP_RESTORE.md` — backup, validação e restauração segura do MariaDB.
 14. `DEMO.md` — dados fictícios recriáveis e roteiro de apresentação.
+15. `ARTICLE_DOSSIER.md` — histórico datado, rastreabilidade e figuras para o
+    artigo.
 
 ## Fontes consolidadas
 
