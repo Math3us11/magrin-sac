@@ -31,6 +31,7 @@ function createAuthService(overrides = {}) {
   const session = {
     absoluteExpiresAt: new Date(Date.now() + 60_000),
     id: 7,
+    lastActivityAt: overrides.lastActivityAt ?? new Date(Date.now() - 60_000),
     update: async (values) => {
       state.sessionUpdate = values;
     },
@@ -51,6 +52,7 @@ function createAuthService(overrides = {}) {
       state.createdSession = values;
       return { ...session, ...values };
     },
+    findByPk: async () => (Object.hasOwn(overrides, 'session') ? overrides.session : session),
     findOne: async () => (Object.hasOwn(overrides, 'session') ? overrides.session : session),
     update: async (values) => {
       state.updatedSessions = values;
@@ -86,6 +88,12 @@ function createAuthService(overrides = {}) {
       state.failedLoginAttempt = email;
     },
   };
+  const systemParametersService = {
+    getInteger: async (name) => {
+      assert.equal(name, 'SESSION_IDLE_TIMEOUT_MINUTES');
+      return overrides.idleTimeoutMinutes ?? 30;
+    },
+  };
   const configService = new ConfigService({
     auth: { jwt: { ttlSeconds: 3600 } },
   });
@@ -98,6 +106,7 @@ function createAuthService(overrides = {}) {
       jwtSessionService,
       passwordHashService,
       loginAttemptService,
+      systemParametersService,
       configService,
     ),
     state,
@@ -158,6 +167,43 @@ test('autenticação rejeita sessão revogada ou inexistente', async () => {
   const { service } = createAuthService({ session: null });
 
   await assert.rejects(service.authenticate('signed.jwt.value'), UnauthorizedException);
+});
+
+test('autenticação encerra a sessão parada além do tempo de inatividade', async () => {
+  const { service, state } = createAuthService({
+    idleTimeoutMinutes: 30,
+    lastActivityAt: new Date(Date.now() - 31 * 60_000),
+  });
+
+  await assert.rejects(
+    service.authenticate('signed.jwt.value'),
+    (error) =>
+      error instanceof UnauthorizedException &&
+      error.message === 'Sessão encerrada por inatividade.',
+  );
+  assert.ok(state.sessionUpdate.revokedAt instanceof Date);
+  assert.equal(state.sessionUpdate.lastActivityAt, undefined);
+});
+
+test('autenticação mantém a sessão usada dentro do tempo de inatividade', async () => {
+  const { service, state } = createAuthService({
+    idleTimeoutMinutes: 30,
+    lastActivityAt: new Date(Date.now() - 29 * 60_000),
+  });
+
+  await service.authenticate('signed.jwt.value');
+
+  assert.equal(state.sessionUpdate.revokedAt, undefined);
+  assert.ok(state.sessionUpdate.lastActivityAt instanceof Date);
+});
+
+test('política da sessão informa expiração absoluta e inatividade configurada', async () => {
+  const { service } = createAuthService({ idleTimeoutMinutes: 45 });
+
+  const policy = await service.getSessionPolicy(7);
+
+  assert.equal(policy.idleTimeoutMinutes, 45);
+  assert.match(policy.absoluteExpiresAt, /^\d{4}-\d{2}-\d{2}T/);
 });
 
 test('primeiro acesso substitui a senha temporária e revoga todas as sessões', async () => {
