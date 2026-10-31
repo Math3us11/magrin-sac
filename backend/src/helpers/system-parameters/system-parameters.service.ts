@@ -23,6 +23,16 @@ export const SYSTEM_PARAMETERS = {
     min: 0,
     unit: 'minutes',
   },
+  SESSION_IDLE_TIMEOUT_MINUTES: {
+    description:
+      'Tempo sem uso após o qual a tela é bloqueada e a sessão é encerrada. ' +
+      'Para continuar, a pessoa confirma a própria senha.',
+    fallback: 30,
+    label: 'Tempo de inatividade da sessão',
+    max: 480,
+    min: 5,
+    unit: 'minutes',
+  },
 } as const satisfies Record<string, IntegerParameterDefinition>;
 
 export type IntegerParameterName = keyof typeof SYSTEM_PARAMETERS;

@@ -17,10 +17,12 @@ integração institucional. Consulte a ADR-016.
 
 ### 1.1. Tempos de sessão
 
-Definir os limites institucionais de inatividade e duração absoluta da sessão.
-Como ponto inicial para validação, considerar 30 minutos de inatividade e 8
-horas de duração absoluta. Esses números ainda não estão aprovados e não devem
-ser fixados silenciosamente no código.
+**Decisão:** em 31 de outubro de 2026, após a apresentação do MVP, ficou
+definido bloquear a tela após 30 minutos sem uso, valor configurável pela
+coordenação no parâmetro `SESSION_IDLE_TIMEOUT_MINUTES` (5 a 480 minutos), e
+limitar a sessão a 8 horas de duração absoluta (`AUTH_SESSION_JWT_TTL_SECONDS`).
+Ao bloquear, a pessoa confirma a própria senha para continuar. Consulte a
+ADR-032.
 
 ### 2. Perfis e permissões
 

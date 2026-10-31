@@ -19,6 +19,16 @@ export type ApiRequestOptions = RequestInit & {
   notification?: ApiNotificationOptions | boolean
 }
 
+// Recebe o 401 de uma sessão em uso; quando retorna true, o bloqueio de tela assume o
+// tratamento e o aviso genérico não é exibido. Registrado pela aplicação para evitar que
+// o cliente HTTP dependa diretamente dos stores de sessão.
+type UnauthorizedHandler = (path: string) => boolean
+let unauthorizedHandler: UnauthorizedHandler | null = null
+
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler
+}
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -128,13 +138,15 @@ export async function apiRequest<T>(path: string, init: ApiRequestOptions = {}):
   }
 
   const payload = await parseResponse(response)
-  notifyApiFeedback(payload, response, notification)
+  const handledByLock = response.status === 401 && (unauthorizedHandler?.(path) ?? false)
+  const effectiveNotification = handledByLock ? false : notification
+  notifyApiFeedback(payload, response, effectiveNotification)
 
   if (!response.ok) {
     const message = extractErrorMessage(payload) ?? 'Não foi possível concluir a solicitação.'
     const type = extractNotificationType(payload) ?? inferErrorNotificationType(response.status)
 
-    if (!extractErrorMessage(payload) && shouldNotify(notification, 'error')) {
+    if (!extractErrorMessage(payload) && shouldNotify(effectiveNotification, 'error')) {
       useNotificationStore(pinia).notify({ message, type })
     }
 

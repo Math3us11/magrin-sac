@@ -50,8 +50,10 @@ a conexão com o próprio banco.
 O `SystemParametersService` lê os parâmetros declarados em um catálogo tipado,
 com intervalo permitido e valor aprovado. O primeiro parâmetro é
 `APPOINTMENT_CANCELLATION_MIN_NOTICE_MINUTES`, inteiro de 0 a 10080, semeado com
-`120`. Valor ausente ou inválido não interrompe a operação: o serviço usa o valor
-aprovado e registra um aviso no log técnico (ADR-029).
+`120`. O segundo é `SESSION_IDLE_TIMEOUT_MINUTES`, inteiro de 5 a 480, semeado com
+`30`, que define quando a tela é bloqueada por inatividade (ADR-032). Valor
+ausente ou inválido não interrompe a operação: o serviço usa o valor aprovado e
+registra um aviso no log técnico (ADR-029).
 
 O administrador com `parameters.manage` altera os parâmetros do catálogo pela
 interface. A alteração valida o intervalo, exige motivo, trava a linha e grava a
