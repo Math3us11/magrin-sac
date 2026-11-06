@@ -19,6 +19,10 @@ Este documento não cria decisões. Pendências institucionais continuam em
 
 Roteiro sugerido para quem vai redigir o artigo em `.docx`:
 
+O primeiro texto corrido produzido com este roteiro está em
+`docs/ARTICLE_DRAFT.md`. Use o dossiê para conferir e atualizar as evidências do
+rascunho antes da diagramação no template institucional.
+
 1. Ler as seções 2 a 4 para montar introdução, objetivo e metodologia.
 2. Usar a seção 5 (rastreabilidade) como base de "Desenvolvimento" ou
    "Resultados": cada linha liga um requisito ao PR, à data, à decisão, ao
@@ -543,16 +547,24 @@ diferentes, por isso a sequência não é estritamente crescente.
 
 ### 9.2 Cobertura do conjunto mínimo exigido
 
-| Verificação exigida (`AGENTS.md`) | Teste                                                                                                                       |
-| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| 1. Concorrência                   | `appointments.service.test.mjs`: "duas confirmações concorrentes reservam o mesmo intervalo somente uma vez"                |
-| 2. Autorização entre alunos       | `appointments.service.test.mjs`: "aluno consulta somente os próprios próximos agendamentos"; `permission.guard.test.mjs`    |
-| 3. Conflito do aluno              | `appointments.service.test.mjs`: "rejeita sobreposição…" e "informa ao aluno quando a sobreposição é com a própria reserva" |
-| 4. Falha de notificação           | `appointments.service.test.mjs`: "falha de notificação não desfaz nem transforma a confirmação em erro"                     |
-| 5. Indicadores                    | `dashboard.service.test.mjs`; `attendance.service.test.mjs` (ausência sem classificação)                                    |
-| 6. Auditoria                      | `audit.service.test.mjs`; `parameters.service.test.mjs` ("altera o valor na transação, trava a linha e audita com motivo")  |
-| 7. Acessibilidade                 | `basic-components.spec.ts` e testes das views; revisão manual registrada no PR #10                                          |
-| 8. Migrations reversíveis         | testes de `up` e `down` em `*-migration.test.mjs`, `*-schema.test.mjs` e `*-data.test.mjs`                                  |
+| Verificação exigida (`AGENTS.md`) | Teste                                                                                                                                          |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. Concorrência                   | `appointments.service.test.mjs`: "duas confirmações concorrentes reservam o mesmo intervalo somente uma vez" (trava simulada; ver nota abaixo) |
+| 2. Autorização entre alunos       | `appointments.service.test.mjs`: "aluno consulta somente os próprios próximos agendamentos"; `permission.guard.test.mjs`                       |
+| 3. Conflito do aluno              | `appointments.service.test.mjs`: "rejeita sobreposição…" e "informa ao aluno quando a sobreposição é com a própria reserva"                    |
+| 4. Falha de notificação           | `appointments.service.test.mjs`: "falha de notificação não desfaz nem transforma a confirmação em erro"                                        |
+| 5. Indicadores                    | `dashboard.service.test.mjs`; `attendance.service.test.mjs` (ausência sem classificação)                                                       |
+| 6. Auditoria                      | `audit.service.test.mjs`; `parameters.service.test.mjs` ("altera o valor na transação, trava a linha e audita com motivo")                     |
+| 7. Acessibilidade                 | `basic-components.spec.ts` e testes das views; revisão manual registrada no PR #10                                                             |
+| 8. Migrations reversíveis         | testes de `up` e `down` em `*-migration.test.mjs`, `*-schema.test.mjs` e `*-data.test.mjs`                                                     |
+
+Nota sobre a concorrência: o teste exercita o serviço com uma trava simulada
+que imita o `SELECT … FOR UPDATE` da disponibilidade. Ele prova que, com as
+confirmações serializadas pela trava, a revalidação dentro da transação deixa
+passar uma única reserva, mas não roda contra o MariaDB. No banco, a proteção é a trava de linha da disponibilidade
+(`LOCK.UPDATE`) dentro da transação; não há restrição de unicidade contra
+intervalos sobrepostos. Um teste de integração com duas conexões reais ao
+MariaDB ainda não existe e deve ser citado como limitação.
 
 ### 9.3 Problemas encontrados e corrigidos
 
@@ -579,6 +591,8 @@ revisão no navegador ou no uso do ambiente estável:
 Pendências de `OPEN_QUESTIONS.md` e itens abertos do `ROADMAP.md` em 31/10/2026:
 
 - integração real com a Twilio, lembretes e reenvio de notificações (Fase 7);
+- teste de integração da confirmação concorrente contra o MariaDB real (o
+  teste atual usa trava simulada; ver seção 9.2);
 - fórmula do percentual de resolução, que depende do denominador (`RF55`);
 - limite de agendamentos futuros por aluno;
 - antecedência mínima e janela máxima de agendamento; bloqueio parcial de janelas
@@ -721,15 +735,15 @@ $env:CAPTURE_PASSWORD = '<senha do seed>'; $env:PLAYWRIGHT_DIR = '..\magrin-sac-
 
 Variáveis disponíveis:
 
-| Variável           | Uso                                               | Padrão                                     |
-| ------------------ | ------------------------------------------------- | ------------------------------------------ |
-| `CAPTURE_PASSWORD` | Senha das contas `@demo.test`                     | `DEMO_SEED_PASSWORD`                       |
-| `CAPTURE_BASE_URL` | Endereço do frontend                              | `http://localhost:5173`                    |
-| `CAPTURE_OUTPUT`   | Pasta das imagens                                 | `.article-screenshots` (ignorada pelo Git) |
-| `CAPTURE_ONLY`     | Capturar só alguns ids, como `F04,F19`            | todas                                      |
-| `CAPTURE_CONFIRM`  | `1` confirma um agendamento real para gerar a F07 | desligado                                  |
-| `CAPTURE_CHANNEL`  | `chrome` ou `msedge`                              | Chromium do Playwright                     |
-| `PLAYWRIGHT_DIR`   | Pasta em que o `playwright` foi instalado         | diretório atual                            |
+| Variável           | Uso                                                        | Padrão                                     |
+| ------------------ | ---------------------------------------------------------- | ------------------------------------------ |
+| `CAPTURE_PASSWORD` | Senha das contas `@demo.test`                              | `DEMO_SEED_PASSWORD`                       |
+| `CAPTURE_BASE_URL` | Endereço do frontend                                       | `http://localhost:5173`                    |
+| `CAPTURE_OUTPUT`   | Pasta das imagens                                          | `.article-screenshots` (ignorada pelo Git) |
+| `CAPTURE_ONLY`     | Capturar só alguns ids, como `F04,F19`                     | todas                                      |
+| `CAPTURE_CONFIRM`  | `1` autoriza a F07 e a preparação da F27, que gravam dados | desligado                                  |
+| `CAPTURE_CHANNEL`  | `chrome` ou `msedge`                                       | Chromium do Playwright                     |
+| `PLAYWRIGHT_DIR`   | Pasta em que o `playwright` foi instalado                  | diretório atual                            |
 
 ### 12.4 Resultado
 
@@ -744,6 +758,11 @@ Casos especiais:
 
 - **F07** altera o banco: cria um agendamento real para a Ana. Rode o seed de
   novo depois se quiser voltar ao estado inicial.
+- **F27** precisa de eventos na trilha, e o seed não grava auditoria. Com a
+  trilha vazia e `CAPTURE_CONFIRM=1`, o script reduz e restaura o prazo de
+  cancelamento pela tela de parâmetros, com motivos verossímeis; os dois eventos
+  ficam registrados. Sem a variável, a F27 aparece como `falhou`. Se a trilha já
+  tiver eventos, como numa segunda execução, nada é gravado de novo.
 - **F29** só funciona com o PR #27 integrado. Em código sem o bloqueio, ela
   aparece como `falhou` no manifesto, e as outras não são afetadas. O script
   adianta o relógio do navegador em 31 minutos, sem esperar.

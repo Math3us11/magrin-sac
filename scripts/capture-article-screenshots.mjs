@@ -8,7 +8,9 @@
 // - CAPTURE_BASE_URL: endereço do frontend (padrão: http://localhost:5173);
 // - CAPTURE_OUTPUT: pasta das imagens (padrão: .article-screenshots);
 // - CAPTURE_ONLY: ids separados por vírgula, por exemplo "F01,F12";
-// - CAPTURE_CONFIRM: "1" confirma um agendamento real para registrar o protocolo;
+// - CAPTURE_CONFIRM: "1" autoriza as capturas que gravam dados: confirma um
+//   agendamento real (F07) e, se a trilha estiver vazia, altera e restaura um
+//   parâmetro para a auditoria (F27);
 // - CAPTURE_CHANNEL: navegador instalado, como "chrome" ou "msedge" (opcional);
 // - PLAYWRIGHT_DIR: pasta em que o `playwright` foi instalado.
 import { mkdir, writeFile } from "node:fs/promises";
@@ -21,7 +23,7 @@ const rootDir = path.resolve(
   "..",
 );
 const require = createRequire(
-  path.join(process.env.PLAYWRIGHT_DIR ?? process.cwd(), "noop.js"),
+  path.resolve(process.env.PLAYWRIGHT_DIR ?? process.cwd(), "noop.js"),
 );
 
 let chromium;
@@ -48,7 +50,7 @@ const only = new Set(
     .map((id) => id.trim().toUpperCase())
     .filter(Boolean),
 );
-const confirmAppointment = process.env.CAPTURE_CONFIRM === "1";
+const allowWrites = process.env.CAPTURE_CONFIRM === "1";
 
 if (!password) {
   console.error("Defina CAPTURE_PASSWORD com a senha das contas @demo.test.");
@@ -70,6 +72,12 @@ function institutionToday() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Porto_Velho",
   }).format(new Date());
+}
+
+function institutionDateOffset(days) {
+  const date = new Date(`${institutionToday()}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 async function settle(page) {
@@ -114,6 +122,54 @@ async function login(page, email) {
 async function visit(page, route) {
   await page.goto(`${baseUrl}${route}`);
   await settle(page);
+}
+
+async function dismissNotifications(page) {
+  await page.addStyleTag({
+    content:
+      '[aria-label="Notificações do sistema"] { display: none !important; }',
+  });
+}
+
+// O seed não grava auditoria. Com CAPTURE_CONFIRM=1, altera e restaura o prazo
+// de cancelamento pela tela, como faria a coordenação, para a trilha ter o que
+// mostrar. Os dois eventos ficam registrados.
+async function prepareAuditEvidence(page) {
+  await visit(page, "/administracao/parametros");
+  const parameter = page.locator('[data-testid^="parameter-"]').first();
+  const valueInput = parameter.getByRole("spinbutton", {
+    name: "Novo valor (minutos)",
+  });
+  const originalValue = Number(await valueInput.inputValue());
+  const temporaryValue = originalValue === 0 ? 1 : originalValue - 1;
+
+  await valueInput.fill(String(temporaryValue));
+  await parameter
+    .getByRole("textbox", { name: "Motivo da alteração" })
+    .fill("Prazo reduzido durante a semana de provas.");
+  await parameter.getByRole("button", { name: "Salvar alteração" }).click();
+  await parameter
+    .getByTestId("parameter-current-value")
+    .filter({ hasText: `${temporaryValue} minutos` })
+    .waitFor();
+
+  const refreshedParameter = page
+    .locator('[data-testid^="parameter-"]')
+    .first();
+  await refreshedParameter
+    .getByRole("spinbutton", { name: "Novo valor (minutos)" })
+    .fill(String(originalValue));
+  await refreshedParameter
+    .getByRole("textbox", { name: "Motivo da alteração" })
+    .fill("Prazo retornado ao valor aprovado pela coordenação.");
+  await refreshedParameter
+    .getByRole("button", { name: "Salvar alteração" })
+    .click();
+  await refreshedParameter
+    .getByTestId("parameter-current-value")
+    .filter({ hasText: `${originalValue} minutos` })
+    .waitFor();
+  await dismissNotifications(page);
 }
 
 // Somente os dias do mês exibido: clicar em um dia de borda troca o mês.
@@ -211,11 +267,13 @@ await mkdir(outputDir, { recursive: true });
 
 await scenario(browser, ["F01"], {}, async (page) => {
   await visit(page, "/login");
+  await dismissNotifications(page);
   await shot(page, "F01", "F01-login.png", "Tela de login (tema claro)");
 });
 
 await scenario(browser, ["F02"], { dark: true }, async (page) => {
   await visit(page, "/login");
+  await dismissNotifications(page);
   await shot(
     page,
     "F02",
@@ -271,7 +329,7 @@ await scenario(
         { fullPage: false },
       );
 
-    if (confirmAppointment && wants("F07")) {
+    if (allowWrites && wants("F07")) {
       await page.getByTestId("confirm-appointment").click();
       await page.getByTestId("appointment-confirmation").waitFor();
       await page.waitForTimeout(300);
@@ -461,6 +519,14 @@ await scenario(
 
     await page.keyboard.press("Escape");
     await visit(page, "/administracao/atendimentos");
+    await page
+      .getByRole("textbox", { name: "Data inicial" })
+      .fill(institutionDateOffset(-30));
+    await page
+      .getByRole("textbox", { name: "Data final" })
+      .fill(institutionToday());
+    await page.getByRole("button", { name: "Filtrar" }).click();
+    await settle(page);
     if (wants("F22"))
       await shot(
         page,
@@ -518,8 +584,29 @@ await scenario(
       );
 
     await visit(page, "/administracao/auditoria");
-    if (wants("F27"))
-      await shot(page, "F27", "F27-admin-auditoria.png", "Trilha de auditoria");
+    if (wants("F27")) {
+      const emptyTrail = page.getByText(
+        "Nenhuma operação foi registrada para os filtros escolhidos.",
+      );
+      // Em execuções repetidas, a trilha já tem eventos e nada é gravado de novo.
+      if ((await isVisible(emptyTrail)) && allowWrites) {
+        await prepareAuditEvidence(page);
+        await visit(page, "/administracao/auditoria");
+      }
+      if (await isVisible(emptyTrail)) {
+        const error =
+          "Trilha vazia no período; rode com CAPTURE_CONFIRM=1 para gerar eventos.";
+        results.push({ error, id: "F27", status: "falhou" });
+        console.log(`erro F27 ${error}`);
+      } else {
+        await shot(
+          page,
+          "F27",
+          "F27-admin-auditoria.png",
+          "Trilha de auditoria",
+        );
+      }
+    }
 
     await visit(page, "/administracao/parametros");
     if (wants("F28"))

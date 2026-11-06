@@ -30,6 +30,8 @@ Os documentos distinguem:
 14. `DEMO.md` — dados fictícios recriáveis e roteiro de apresentação.
 15. `ARTICLE_DOSSIER.md` — histórico datado, rastreabilidade e figuras para o
     artigo.
+16. `ARTICLE_DRAFT.md` — primeira redação acadêmica baseada nas evidências do
+    dossiê, ainda com campos institucionais e referências a completar.
 
 ## Fontes consolidadas
 
