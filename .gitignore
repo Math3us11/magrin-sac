@@ -36,3 +36,6 @@ npm-debug.log*
 
 # Saídas locais do Playwright MCP
 .playwright-mcp/
+
+# Capturas locais para o artigo (scripts/capture-article-screenshots.mjs)
+.article-screenshots/
