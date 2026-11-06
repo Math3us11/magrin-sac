@@ -142,19 +142,19 @@ ou execuções simultâneas (GRAY; REUTER, 1993). Quando duas requisições disp
 o mesmo recurso, uma verificação feita antes da escrita não basta, porque ambas
 podem observar o mesmo estado. O bloqueio pessimista, como o `SELECT … FOR
 UPDATE` do MariaDB, serializa o acesso à linha disputada até o fim da transação
-(MARIADB, 2026).
+(MARIADB, [2025]).
 
 ### 2.5 Segurança, privacidade e acessibilidade
 
 O _Application Security Verification Standard_ (ASVS) reúne requisitos de
 verificação para autenticação, gerenciamento de sessão, controle de acesso e
-proteção de dados em aplicações web (OWASP, 2021). Para o armazenamento de
+proteção de dados em aplicações web (OWASP, 2025). Para o armazenamento de
 senhas, o Argon2 foi projetado para resistir a ataques de força bruta com uso
-intensivo de memória (BIRYUKOV; DINU; KHOVRATOVICH, 2021). No Brasil, o
+intensivo de memória (BIRYUKOV _et al._, 2021). No Brasil, o
 tratamento de dados pessoais é regido pela Lei Geral de Proteção de Dados
 (BRASIL, 2018). Quanto à interface, as Diretrizes de Acessibilidade para
 Conteúdo Web orientam requisitos como navegação por teclado, foco visível e
-alternativas textuais (W3C, 2018).
+alternativas textuais (W3C, 2024).
 
 ### 2.6 Trabalhos relacionados
 
@@ -167,12 +167,12 @@ alternativas textuais (W3C, 2018).
 
 ## 3 Metodologia
 
-Quanto à natureza, trata-se de uma pesquisa aplicada, voltada à solução de um
-problema concreto da coordenação do curso. O procedimento adotado foi o
-desenvolvimento tecnológico de um sistema, documentado como estudo de caso, com
-avaliação por testes automatizados, revisão dos fluxos e apresentação da versão
-estável ao professor orientador. _[Ajustar a classificação à exigida pelo
-orientador ou pelo template.]_
+Trata-se de uma pesquisa aplicada com desenvolvimento tecnológico, voltada à
+solução de um problema concreto da coordenação do curso. A avaliação combinou
+testes automatizados, revisão dos fluxos no navegador e apresentação da versão
+estável ao professor orientador. _[Confirmar a classificação com o orientador.
+Não chamar de estudo de caso sem descrever um método de coleta e análise de
+dados.]_
 
 O desenvolvimento adotou uma abordagem incremental orientada por documentação.
 O trabalho começou pela consolidação do problema, dos atores, dos requisitos e
@@ -430,8 +430,8 @@ Fonte: elaborado pelo autor a partir do histórico do repositório (2026).
 
 A versão estável promovida em 28 de outubro de 2026, com 176 testes no backend e
 116 no frontend, foi apresentada ao professor orientador e aprovada em 31 de
-outubro. Os ajustes posteriores, como o bloqueio da tela por inatividade, não
-acrescentaram funcionalidades. Além da automação, a navegação dos três
+outubro. Os ajustes posteriores, como o bloqueio da tela por inatividade, não ampliaram
+o escopo de negócio do MVP. Além da automação, a navegação dos três
 perfis revelou problemas que não eram evidentes em testes unitários, como a
 checagem prematura de permissões, o menu associado a uma rota ainda inexistente
 e a perda do destaque visual do horário selecionado. As correções reforçam que
@@ -497,13 +497,14 @@ decisões, a operação segura e a validação do sistema com seus usuários fin
 > segurança, transações e usabilidade, além da documentação oficial das
 > tecnologias efetivamente discutidas.
 
-Sugestões usadas nas citações da seção 2. Todas são obras ou documentos
-existentes, mas edição, ano, editora e endereço eletrônico devem ser conferidos
-na fonte antes da formatação final.
+Sugestões usadas nas citações da seção 2. RFC 9106, ASVS, WCAG e a página do
+MariaDB foram conferidos na fonte em 05/11/2026; os livros ainda precisam ter
+edição, ano e editora conferidos no exemplar usado.
 
-- BIRYUKOV, A.; DINU, D.; KHOVRATOVICH, D. **Argon2 memory-hard function for
-  password hashing and proof-of-work applications**. RFC 9106. Internet
-  Engineering Task Force, 2021.
+- BIRYUKOV, A.; DINU, D.; KHOVRATOVICH, D.; JOSEFSSON, S. **Argon2
+  memory-hard function for password hashing and proof-of-work applications**.
+  RFC 9106. Internet Engineering Task Force, 2021. Disponível em:
+  https://www.rfc-editor.org/info/rfc9106. Acesso em: 5 nov. 2026.
 - BRASIL. **Lei nº 13.709, de 14 de agosto de 2018**. Lei Geral de Proteção de
   Dados Pessoais (LGPD). Brasília, DF, 2018.
 - FIELDING, R. T. **Architectural styles and the design of network-based
@@ -515,16 +516,19 @@ na fonte antes da formatação final.
   Francisco: Morgan Kaufmann, 1993.
 - MAGRIN-SAC. **Documentação do sistema de agendamento**. Repositório do
   projeto, 2026.
-- MARIADB. **SELECT … FOR UPDATE** e **InnoDB lock modes**. Documentação
-  oficial do MariaDB Server. Acesso em: [data].
+- MARIADB. **FOR UPDATE**. MariaDB Server Documentation. [S. l.]: MariaDB,
+  [2025]. Disponível em:
+  https://mariadb.com/docs/server/reference/sql-statements/data-manipulation/selecting-data/for-update.
+  Acesso em: 5 nov. 2026.
 - NYGARD, M. **Documenting architecture decisions**. Cognitect, 2011.
-- OWASP. **Application Security Verification Standard 4.0.3**. OWASP
-  Foundation, 2021.
+- OWASP. **Application Security Verification Standard 5.0.0**. OWASP
+  Foundation, 2025. Disponível em: https://asvs.owasp.org/. Acesso em: 5 nov. 2026.
 - PRESSMAN, R. S.; MAXIM, B. R. **Engenharia de software**: uma abordagem
   profissional. 8. ed. Porto Alegre: AMGH, 2016.
 - SOMMERVILLE, I. **Engenharia de software**. 9. ed. São Paulo: Pearson, 2011.
-- W3C. **Web Content Accessibility Guidelines (WCAG) 2.1**. World Wide Web
-  Consortium, 2018.
+- W3C. **Web Content Accessibility Guidelines (WCAG) 2.2**. W3C
+  Recommendation, 12 dez. 2024. Disponível em: https://www.w3.org/TR/WCAG22/.
+  Acesso em: 5 nov. 2026.
 - [Adicionar os trabalhos relacionados da seção 2.6].
 - [Adicionar documentação oficial de Vue, NestJS e Sequelize, se citadas].
 
@@ -555,9 +559,11 @@ que o mesmo script gera (seção 12 do dossiê):
 | F24 | Evolução da tratativa                | —                                                 |
 | F32 | Protótipo visual inicial             | Abre `docs/mockups/sistema-agendamento.html`      |
 
-A F27 depende de eventos na trilha de auditoria. Depois de recriar o seed, rode
-com `CAPTURE_CONFIRM=1` para que o script gere uma alteração e a restauração do
-prazo de cancelamento pela tela de parâmetros.
+A F27 depende de eventos na trilha de auditoria. O script filtra a trilha pelo
+dia da captura, então as quatro linhas de teste gravadas em 05/11/2026 não
+aparecem em capturas de outros dias. Rode com `CAPTURE_CONFIRM=1` para que ele
+gere uma alteração e a restauração do prazo de cancelamento pela tela de
+parâmetros. A F13 é cortada logo abaixo do calendário para caber numa página.
 
 Os três diagramas Mermaid do texto (arquitetura, modelo de dados e confirmação
 concorrente nas seções 4.1, 4.2 e 4.5) devem ser exportados como imagem,

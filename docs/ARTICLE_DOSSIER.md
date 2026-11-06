@@ -758,11 +758,13 @@ Casos especiais:
 
 - **F07** altera o banco: cria um agendamento real para a Ana. Rode o seed de
   novo depois se quiser voltar ao estado inicial.
-- **F27** precisa de eventos na trilha, e o seed não grava auditoria. Com a
-  trilha vazia e `CAPTURE_CONFIRM=1`, o script reduz e restaura o prazo de
-  cancelamento pela tela de parâmetros, com motivos verossímeis; os dois eventos
-  ficam registrados. Sem a variável, a F27 aparece como `falhou`. Se a trilha já
-  tiver eventos, como numa segunda execução, nada é gravado de novo.
+- **F27** mostra só os eventos do dia da captura, e o seed não grava
+  auditoria. Com a trilha do dia vazia e `CAPTURE_CONFIRM=1`, o script reduz e
+  restaura o prazo de cancelamento pela tela de parâmetros, com motivos
+  verossímeis; os dois eventos ficam registrados. Sem a variável, a F27 aparece
+  como `falhou`. Numa segunda execução no mesmo dia, nada é gravado de novo.
+- **F13** é cortada logo abaixo do calendário, sem a lista de atendimentos, para
+  caber numa página.
 - **F29** só funciona com o PR #27 integrado. Em código sem o bloqueio, ela
   aparece como `falhou` no manifesto, e as outras não são afetadas. O script
   adianta o relógio do navegador em 31 minutos, sem esperar.

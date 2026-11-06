@@ -227,10 +227,25 @@ async function isVisible(locator) {
   return locator.isVisible().catch(() => false);
 }
 
-async function shot(page, id, file, title, { fullPage = true, target } = {}) {
+async function shot(
+  page,
+  id,
+  file,
+  title,
+  { fullPage = true, target, until } = {},
+) {
   const filePath = path.join(outputDir, file);
   if (target) await target.screenshot({ path: filePath });
-  else await page.screenshot({ fullPage, path: filePath });
+  else if (until) {
+    // Corta a página logo abaixo do elemento, para caber numa página do artigo.
+    const box = await until.boundingBox();
+    const width = page.viewportSize().width;
+    await page.screenshot({
+      clip: { height: box.y + box.height + 24, width, x: 0, y: 0 },
+      fullPage: true,
+      path: filePath,
+    });
+  } else await page.screenshot({ fullPage, path: filePath });
   results.push({ file, id, status: "ok", title });
   console.log(`ok   ${id} ${file}`);
 }
@@ -417,6 +432,11 @@ await scenario(browser, ["F13", "F14", "F15"], {}, async (page, wants) => {
       "F13",
       "F13-professor-agenda.png",
       "Agenda mensal do professor",
+      {
+        until: page.locator(
+          'section[aria-labelledby="availability-empty-title"]',
+        ),
+      },
     );
 
   await findCalendarDay(page, "future", () =>
@@ -585,6 +605,18 @@ await scenario(
 
     await visit(page, "/administracao/auditoria");
     if (wants("F27")) {
+      // Só o dia da captura: eventos de execuções em outros dias não aparecem.
+      const filterToday = async () => {
+        await page
+          .getByRole("textbox", { name: "Data inicial" })
+          .fill(institutionToday());
+        await page
+          .getByRole("textbox", { name: "Data final" })
+          .fill(institutionToday());
+        await page.getByRole("button", { name: "Filtrar" }).click();
+        await settle(page);
+      };
+      await filterToday();
       const emptyTrail = page.getByText(
         "Nenhuma operação foi registrada para os filtros escolhidos.",
       );
@@ -592,6 +624,7 @@ await scenario(
       if ((await isVisible(emptyTrail)) && allowWrites) {
         await prepareAuditEvidence(page);
         await visit(page, "/administracao/auditoria");
+        await filterToday();
       }
       if (await isVisible(emptyTrail)) {
         const error =
