@@ -23,11 +23,15 @@ Os documentos distinguem:
 7. `OPEN_QUESTIONS.md` — definições que ainda não podem ser presumidas.
 8. `DESIGN_SYSTEM.md` — cores institucionais, temas, tokens e uso das logos.
 9. `ROADMAP.md` — sequência sugerida para iniciar a implementação.
-10. `CODEX_VSCODE.md` — preparação e verificação do Codex no VS Code.
-11. `GIT_WORKFLOW.md` — branches, Pull Requests e promoção da versão estável.
-12. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
-13. `BACKUP_RESTORE.md` — backup, validação e restauração segura do MariaDB.
-14. `DEMO.md` — dados fictícios recriáveis e roteiro de apresentação.
+10. `GIT_WORKFLOW.md` — branches, Pull Requests e promoção da versão estável.
+11. `CLOUDFLARE.md` — publicação temporária do ambiente de demonstração.
+12. `BACKUP_RESTORE.md` — backup, validação e restauração segura do MariaDB.
+13. `DEMO.md` — dados fictícios recriáveis e roteiro de apresentação.
+
+## Artigo
+
+A versão final entregue do artigo acadêmico sobre o sistema está em
+`output/pdf/artigo-agendamento-academico-v1.pdf`.
 
 ## Fontes consolidadas
 
