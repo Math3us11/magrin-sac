@@ -121,8 +121,9 @@ levantados. Modalidade e grau acadêmico também não são inferidos neste recor
 
 Representa uma matéria disponível no catálogo acadêmico, com código estável,
 nome e estado ativo. O catálogo inicial reúne nomes encontrados nas matrizes
-locais em `docs/pdf/` e as disciplinas explicitamente listadas pela fonte
-oficial de Medicina, sem afirmar que todas pertencem à grade vigente de um
+curriculares institucionais consultadas no levantamento (a de Ciência da
+Computação permanece em `docs/pdf/`) e as disciplinas explicitamente listadas
+pela fonte oficial de Medicina, sem afirmar que todas pertencem à grade vigente de um
 curso específico.
 
 Matéria não possui chave estrangeira direta para curso. O catálogo operacional
