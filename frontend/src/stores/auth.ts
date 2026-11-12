@@ -31,11 +31,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(credentials: LoginCredentials) {
+  async function login(credentials: LoginCredentials, options: { quiet?: boolean } = {}) {
     isSubmitting.value = true
 
     try {
-      const response = await createSession(credentials)
+      const response = await createSession(credentials, options)
       user.value = response.user
       initialized.value = true
     } finally {

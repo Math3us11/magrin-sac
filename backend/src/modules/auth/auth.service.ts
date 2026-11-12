@@ -10,6 +10,7 @@ import { Sequelize } from 'sequelize-typescript';
 import type { AuthConfig } from '../../config/auth.config.js';
 import { JwtSessionService } from '../../helpers/jwt/jwt.service.js';
 import { PasswordHashService } from '../../helpers/password/password.service.js';
+import { SystemParametersService } from '../../helpers/system-parameters/system-parameters.service.js';
 import { AuthSession } from '../../models/auth-session.model.js';
 import { User } from '../../models/user.model.js';
 import type { AuthenticatedSession } from '../../types/authenticated-session.type.js';
@@ -18,6 +19,7 @@ import { LoginAttemptService } from './login-attempt.service.js';
 
 const INVALID_CREDENTIALS_MESSAGE = 'E-mail ou senha inválidos.';
 const INVALID_SESSION_MESSAGE = 'Sessão inválida ou expirada.';
+const IDLE_SESSION_MESSAGE = 'Sessão encerrada por inatividade.';
 const SAFE_USER_ATTRIBUTES = [
   'id',
   'name',
@@ -39,6 +41,11 @@ type LoginInput = {
   password: string;
 };
 
+export type SessionPolicy = {
+  absoluteExpiresAt: string;
+  idleTimeoutMinutes: number;
+};
+
 @Injectable()
 export class AuthService {
   private readonly authConfig: AuthConfig;
@@ -50,6 +57,7 @@ export class AuthService {
     private readonly jwtSessionService: JwtSessionService,
     private readonly passwordHashService: PasswordHashService,
     private readonly loginAttemptService: LoginAttemptService,
+    private readonly systemParametersService: SystemParametersService,
     configService: ConfigService,
   ) {
     this.authConfig = configService.getOrThrow<AuthConfig>('auth');
@@ -119,6 +127,18 @@ export class AuthService {
       throw new UnauthorizedException(INVALID_SESSION_MESSAGE);
     }
 
+    // A inatividade também é aplicada no servidor: o bloqueio da tela não depende só do navegador.
+    const idleTimeoutMinutes = await this.systemParametersService.getInteger(
+      'SESSION_IDLE_TIMEOUT_MINUTES',
+    );
+    if (now.getTime() - session.lastActivityAt.getTime() > idleTimeoutMinutes * 60_000) {
+      await session.update(
+        { revokedAt: now, updatedBy: payload.userId },
+        { fields: ['revokedAt', 'updatedBy'] },
+      );
+      throw new UnauthorizedException(IDLE_SESSION_MESSAGE);
+    }
+
     const user = await this.userModel.findByPk(payload.userId, {
       attributes: [...SAFE_USER_ATTRIBUTES],
     });
@@ -133,6 +153,20 @@ export class AuthService {
     return {
       sessionId: session.id,
       user: this.toCurrentUser(user),
+    };
+  }
+
+  async getSessionPolicy(sessionId: number): Promise<SessionPolicy> {
+    const session = await this.authSessionModel.findByPk(sessionId, {
+      attributes: ['absoluteExpiresAt'],
+    });
+    if (!session) throw new UnauthorizedException(INVALID_SESSION_MESSAGE);
+
+    return {
+      absoluteExpiresAt: session.absoluteExpiresAt.toISOString(),
+      idleTimeoutMinutes: await this.systemParametersService.getInteger(
+        'SESSION_IDLE_TIMEOUT_MINUTES',
+      ),
     };
   }
 
