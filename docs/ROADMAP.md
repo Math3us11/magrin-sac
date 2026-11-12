@@ -257,8 +257,8 @@ Entregas:
 - [x] revisar de ponta a ponta, no navegador, os fluxos de aluno, professor e
       administrador, corrigindo a checagem de permissão em acesso direto por
       URL, o teclado em modais e textos ou datas inconsistentes;
-- [x] reunir histórico datado, rastreabilidade e roteiro de captura de telas para
-      o artigo (`ARTICLE_DOSSIER.md`);
+- [x] redigir e entregar o artigo acadêmico sobre o sistema
+      (`output/pdf/artigo-agendamento-academico-v1.pdf`);
 - observabilidade mínima;
 - [x] criar seed recriável e roteiro de demonstração com contas fictícias
       `@demo.test`, sem dados pessoais reais (`docs/DEMO.md`, ADR-031);
