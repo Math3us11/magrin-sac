@@ -36,4 +36,3 @@ npm-debug.log*
 
 # Saídas locais do Playwright MCP
 .playwright-mcp/
-
