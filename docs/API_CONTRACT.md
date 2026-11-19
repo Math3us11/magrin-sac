@@ -45,6 +45,7 @@ POST /api/auth/logout
 POST /api/auth/first-access/password
 GET  /api/auth/credential-key
 GET  /api/me
+GET  /api/me/session
 GET  /api/me/navigation
 ```
 
@@ -55,11 +56,26 @@ definição de uma validação institucional.
 O login inicial usa e-mail e senha e cria uma sessão stateful no backend. O
 access token é um JWT assinado e enviado exclusivamente em cookie `HttpOnly`;
 ele não é retornado no JSON nem persistido pelo JavaScript. Não há refresh token
-no MVP. O backend já controla revogação, duração absoluta e estado do usuário
-consultando a sessão no MariaDB, além de registrar a última atividade. A
-expiração por inatividade permanece pendente dos valores em
-`OPEN_QUESTIONS.md`. Respostas de login, identidade atual e chave pública usam
+no MVP. O backend controla revogação, duração absoluta (8 horas) e estado do
+usuário consultando a sessão no MariaDB, e registra a última atividade. Uma
+sessão sem requisições por mais tempo que `SESSION_IDLE_TIMEOUT_MINUTES` é
+revogada e responde `401` com "Sessão encerrada por inatividade." (ADR-032).
+Respostas de login, identidade atual, política da sessão e chave pública usam
 `Cache-Control: no-store`.
+
+`GET /api/me/session` informa os limites da sessão atual, usados pelo frontend
+para bloquear a tela no momento certo:
+
+```json
+{
+  "absoluteExpiresAt": "2026-10-31T23:12:41.000Z",
+  "idleTimeoutMinutes": 30
+}
+```
+
+Quando uma sessão em uso recebe `401`, o frontend bloqueia a tela em vez de
+exibir o aviso genérico; o desbloqueio usa `POST /api/auth/login` com o e-mail da
+pessoa bloqueada.
 
 Antes do login, o cliente consulta `GET /api/auth/credential-key`. A resposta
 não contém segredo e não deve ser armazenada em cache:
@@ -715,6 +731,19 @@ As duas rotas exigem `parameters.manage`, concedida somente ao administrador. O
       "usingFallback": false,
       "updatedAt": "2026-10-28T12:00:00.000Z",
       "updatedBy": { "id": 3, "name": "Administrador" }
+    },
+    {
+      "name": "SESSION_IDLE_TIMEOUT_MINUTES",
+      "label": "Tempo de inatividade da sessão",
+      "description": "Tempo sem uso após o qual a tela é bloqueada e a sessão é encerrada. Para continuar, a pessoa confirma a própria senha.",
+      "unit": "minutes",
+      "min": 5,
+      "max": 480,
+      "fallback": 30,
+      "value": 30,
+      "usingFallback": false,
+      "updatedAt": "2026-10-31T12:00:00.000Z",
+      "updatedBy": null
     }
   ]
 }

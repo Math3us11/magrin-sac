@@ -17,3 +17,8 @@ export type LoginCredentials = {
 export type LoginResponse = {
   user: AuthenticatedUser
 }
+
+export type SessionPolicy = {
+  absoluteExpiresAt: string
+  idleTimeoutMinutes: number
+}

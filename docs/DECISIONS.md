@@ -182,7 +182,7 @@ O JWT contém apenas identificadores mínimos e seu `jti` é associado a uma
 sessão no MariaDB. Verificar assinatura, algoritmo, emissor, audiência e
 expiração é necessário, mas não suficiente: o backend também valida revogação,
 inatividade, expiração absoluta e estado ativo do usuário. Os valores dos
-timeouts ainda dependem de aprovação registrada em `OPEN_QUESTIONS.md`.
+timeouts estão definidos na ADR-032.
 
 Motivo: usar um formato de token padronizado sem perder logout imediato,
 timeout por inatividade e desativação de usuário exigidos pelo sistema interno.
@@ -573,6 +573,37 @@ Consequência: registros de auditoria gerados durante uma apresentação podem
 apontar para agendamentos removidos na recriação seguinte. Se a validação do
 dígito verificador do CPF for adotada no futuro, as contas de demo precisarão de
 outro critério de identificação fictícia.
+
+## ADR-032 — Bloqueio de tela por inatividade com confirmação de senha
+
+**Estado:** aceita.
+
+A sessão passa a ter dois limites: inatividade, definida pelo parâmetro
+`SESSION_IDLE_TIMEOUT_MINUTES` (padrão 30, de 5 a 480 minutos, alterável na tela
+de Parâmetros com motivo e auditoria), e duração absoluta de 8 horas
+(`AUTH_SESSION_JWT_TTL_SECONDS=28800`).
+
+Em vez de desconectar, o frontend bloqueia a tela: o conteúdo fica oculto e
+inerte, e a mesma pessoa continua de onde parou confirmando a própria senha. O
+bloqueio ocorre quando o navegador fica sem interação pelo tempo configurado,
+quando a duração absoluta vence ou quando uma requisição de uma sessão em uso
+recebe `401`. Ao bloquear, a sessão é encerrada no servidor; recarregar a página
+leva ao login. Desbloquear é um novo login com o e-mail fixo da pessoa bloqueada,
+sujeito ao mesmo limite de falhas, e nunca troca a conta em uso. Há também a
+opção de sair e entrar com outra conta.
+
+O backend aplica a inatividade de forma independente: uma sessão sem requisições
+além do limite é revogada e responde `401` com "Sessão encerrada por
+inatividade.". Enquanto há interação sem chamadas à API, o frontend envia um sinal
+de vida a cada 5 minutos para que formulários longos não sejam interrompidos.
+`GET /api/me/session` informa ao frontend a expiração absoluta e o tempo de
+inatividade vigente.
+
+Motivo: proteger dados pessoais em computadores compartilhados da coordenação sem
+fazer a pessoa perder o trabalho em andamento quando a sessão vence.
+
+Consequência: cada requisição autenticada consulta o parâmetro de inatividade.
+O primeiro acesso, ainda pendente de troca de senha, não é monitorado.
 
 ## Como adicionar uma decisão
 

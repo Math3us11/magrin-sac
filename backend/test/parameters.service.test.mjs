@@ -72,7 +72,15 @@ test('lista o catálogo com valor em uso, limites e último responsável', async
   const { service } = createService();
   const { parameters } = await service.list();
 
-  assert.equal(parameters.length, 1);
+  assert.deepEqual(
+    parameters.map(({ name }) => name),
+    [NAME, 'SESSION_IDLE_TIMEOUT_MINUTES'],
+  );
+  const idle = parameters[1];
+  assert.equal(idle.fallback, 30);
+  assert.equal(idle.min, 5);
+  assert.equal(idle.max, 480);
+  assert.equal(idle.label, 'Tempo de inatividade da sessão');
   assert.deepEqual(parameters[0], {
     description: parameters[0].description,
     fallback: 120,

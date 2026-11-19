@@ -105,7 +105,8 @@ Entregas:
 - [ ] modelar versões de grade e relacionar cursos, matérias e períodos após
       validação institucional;
 - [ ] definir a validação institucional para futuro cadastro de aluno;
-- [ ] aplicar o timeout por inatividade após aprovação dos tempos de sessão;
+- [x] bloquear a tela por inatividade (parâmetro, padrão 30 minutos) e limitar a
+      sessão a 8 horas, com desbloqueio pela senha (ADR-032);
 - [x] usuários ativos/inativos no gerenciamento administrativo;
 - [x] registrar a matrícula do aluno, numérica e única, com garantia no banco,
       busca na listagem e auditoria das alterações;
