@@ -54,7 +54,8 @@ O diretório `frontend/` foi criado com:
 - cliente HTTP baseado em `fetch`, sempre com cookies habilitados;
 - store Pinia de autenticação e restauração da sessão por `GET /api/me`;
 - tela de login responsiva, proteção de navegação e logout;
-- shell autenticado com header e sidebar responsiva alimentada pela API;
+- shell autenticado com header e sidebar responsiva alimentada pela API, montado
+  somente depois da primeira navegação para não consultar o menu sem sessão;
 - store de navegação com permissões atuais e estados de carregamento e erro;
   chamadas simultâneas (guard do router e shell) aguardam a mesma requisição,
   para que a checagem de permissão nunca ocorra antes da resposta, e um

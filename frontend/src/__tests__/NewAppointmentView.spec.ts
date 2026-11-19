@@ -117,11 +117,9 @@ describe('NewAppointmentView', () => {
   })
 
   it('mantém o resumo lateral e informa quando a data não possui horários livres', async () => {
-    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    const date = getInstitutionDateTime(tomorrow).date
-    const emptyDateValue = new Date(`${date}T12:00:00.000Z`)
-    emptyDateValue.setUTCDate(emptyDateValue.getUTCDate() + 1)
-    const emptyDate = emptyDateValue.toISOString().slice(0, 10)
+    // Hoje fica sempre visível no calendário e não tem horários: a janela simulada é de amanhã.
+    // Usar um dia depois de amanhã falhava na virada do mês, fora da grade exibida.
+    const emptyDate = getInstitutionDateTime().date
     const wrapper = mount(NewAppointmentView)
 
     await expect.poll(() => wrapper.text()).toContain('1 janela(s) livre(s)')
