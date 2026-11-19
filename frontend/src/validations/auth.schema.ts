@@ -31,5 +31,13 @@ export const firstAccessPasswordValidationSchema = object({
     .oneOf([ref('newPassword')], 'As senhas devem ser iguais.'),
 })
 
+// O desbloqueio segue a regra de senha do login: o e-mail é fixo, da pessoa bloqueada.
+export const sessionUnlockValidationSchema = object({
+  password: string()
+    .required('Informe sua senha.')
+    .max(PASSWORD_MAX_LENGTH, `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`),
+})
+
 export type FirstAccessPasswordFormValues = InferType<typeof firstAccessPasswordValidationSchema>
 export type LoginFormValues = InferType<typeof loginValidationSchema>
+export type SessionUnlockFormValues = InferType<typeof sessionUnlockValidationSchema>

@@ -8,6 +8,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -20,8 +21,9 @@ import { SessionAuthGuard } from '../../guards/session-auth.guard.js';
 import { SessionCookieService } from '../../helpers/cookie/cookie.service.js';
 import type { CredentialPublicKeyDto } from '../../helpers/credential-encryption/credential-encryption.dto.js';
 import { CredentialEncryptionService } from '../../helpers/credential-encryption/credential-encryption.service.js';
+import type { AuthenticatedRequest } from '../../types/authenticated-session.type.js';
 import type { AuthenticatedUser } from '../../types/authenticated-user.type.js';
-import { AuthService } from './auth.service.js';
+import { AuthService, type SessionPolicy } from './auth.service.js';
 import { resolveClientIp } from './client-ip.js';
 import type { CurrentUserDto } from './dto/current-user.dto.js';
 import { FirstAccessPasswordDto } from './dto/first-access-password.dto.js';
@@ -109,5 +111,15 @@ export class AuthController {
   @UseGuards(SessionAuthGuard)
   me(@CurrentUser() user: AuthenticatedUser): CurrentUserDto {
     return user;
+  }
+
+  // Limites da sessão atual, usados pelo frontend para bloquear a tela no momento certo.
+  @Get('me/session')
+  @AllowPasswordChangePending()
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(SessionAuthGuard)
+  session(@Req() request: AuthenticatedRequest): Promise<SessionPolicy> {
+    if (!request.auth) throw new UnauthorizedException('Sessão inválida ou expirada.');
+    return this.authService.getSessionPolicy(request.auth.sessionId);
   }
 }
