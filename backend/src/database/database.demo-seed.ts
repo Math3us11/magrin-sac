@@ -549,7 +549,7 @@ function requireId(map: Map<string, number>, key: string, description: string): 
 }
 
 /**
- * Recria somente os dados operacionais das contas @demo.test. Contas são preservadas
+ * Recria somente os dados operacionais das contas do plano de demonstração. Contas são preservadas
  * (para não violar as FKs da auditoria) e nada é alterado se a demonstração estiver
  * ligada a contas reais por algum agendamento.
  */
@@ -566,11 +566,13 @@ export async function seedDemoData(
 
   return sequelize.transaction(async (transaction) => {
     const now = clock.now;
-    const emailPattern = `%@${DEMO_EMAIL_DOMAIN}`;
+    // Somente as contas do plano: o domínio @demo.test também abriga as contas básicas de
+    // teste (database.test-users.ts), que a recriação da demonstração não pode alcançar.
+    const demoEmails = plan.users.map(({ email }) => email);
     const existingDemoIds = await selectIds(
       sequelize,
-      'SELECT id FROM users WHERE email LIKE :emailPattern FOR UPDATE',
-      { emailPattern },
+      'SELECT id FROM users WHERE email IN (:demoEmails) FOR UPDATE',
+      { demoEmails },
       transaction,
     );
 
@@ -612,12 +614,12 @@ export async function seedDemoData(
     // Contas: atualiza as existentes e cria as que faltam, sem tocar em contas reais.
     const identityConflicts = await sequelize.query<{ email: string }>(
       `SELECT email FROM users
-       WHERE email NOT LIKE :emailPattern
+       WHERE email NOT IN (:demoEmails)
          AND (cpf IN (:cpfs) OR registration_number IN (:registrationNumbers))`,
       {
         replacements: {
           cpfs: plan.users.map(({ cpf }) => cpf),
-          emailPattern,
+          demoEmails,
           registrationNumbers: plan.users.flatMap(({ registrationNumber }) =>
             registrationNumber === null ? [] : [registrationNumber],
           ),
