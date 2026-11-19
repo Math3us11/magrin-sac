@@ -1,5 +1,9 @@
 import Joi from 'joi';
 
+// Valor público do .env.example: permite iniciar o ambiente local sem gerar segredos,
+// mas nunca é aceito em produção.
+export const DEVELOPMENT_SESSION_SECRET = 'dev-only-insecure-session-secret-change-me';
+
 export const environmentValidationSchema = Joi.object({
   APP_ENV: Joi.string().valid('development', 'test', 'production').optional(),
   APP_HOST: Joi.string().trim().min(1).default('127.0.0.1'),
@@ -32,4 +36,17 @@ export const environmentValidationSchema = Joi.object({
     .required(),
   DB_USERNAME: Joi.string().trim().min(1).required(),
   DB_PASSWORD: Joi.string().allow('').required(),
+}).custom((environment: Record<string, unknown>, helpers) => {
+  const appEnvironment = environment.APP_ENV ?? environment.NODE_ENV;
+
+  if (
+    appEnvironment === 'production' &&
+    environment.AUTH_SESSION_JWT_SECRET === DEVELOPMENT_SESSION_SECRET
+  ) {
+    return helpers.message({
+      custom: 'AUTH_SESSION_JWT_SECRET must be replaced in production.',
+    });
+  }
+
+  return environment;
 });

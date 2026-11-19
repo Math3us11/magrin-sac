@@ -633,6 +633,11 @@ contas de teste.
 Motivo: entregar um ambiente avaliável com um único comando, sem um dump do banco
 de desenvolvimento, que conteria dados pessoais reais e hashes de senha.
 
+Pelo mesmo motivo, o `.env.example` traz um `AUTH_SESSION_JWT_SECRET` público,
+válido somente para desenvolvimento: com ele, basta ajustar a conexão com o
+MariaDB para iniciar o sistema. A validação do ambiente recusa esse valor com
+`APP_ENV=production`.
+
 Consequência: qualquer ambiente acessível publicamente onde o comando for
 executado terá três contas com senha conhecida. A versão estável no túnel deve
 receber essas contas somente durante a avaliação.
