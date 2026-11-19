@@ -41,12 +41,16 @@ nvm use 24
 pnpm install
 ```
 
-Copie o arquivo global de exemplo para a raiz do repositório e preencha os
-valores locais:
+Copie o arquivo global de exemplo para a raiz do repositório:
 
 ```bash
 cp .env.example .env
 ```
+
+Para rodar localmente, basta ajustar a conexão com o MariaDB (`DB_HOST`,
+`DB_PORT`, `DB_USERNAME` e `DB_PASSWORD`). Os demais valores do exemplo já
+funcionam em desenvolvimento. O segredo de sessão do exemplo é público e o
+backend o recusa com `APP_ENV=production`.
 
 No PowerShell, use `Copy-Item .env.example .env`. Frontend, backend e comandos
 de banco leem esse mesmo arquivo. Somente variáveis prefixadas com `VITE_` são
