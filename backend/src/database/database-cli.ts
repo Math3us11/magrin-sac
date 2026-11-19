@@ -9,6 +9,7 @@ import {
 import { createDatabaseConnection, requiredEnvironmentValue } from './database.connection.js';
 import { institutionDateTime, readDemoSeedInput, seedDemoData } from './database.demo-seed.js';
 import { createDatabaseMigrator } from './database.migrator.js';
+import { provisionTestUsers, readTestUsersInput } from './database.test-users.js';
 
 type DatabaseCommand =
   | 'bootstrap:admin'
@@ -18,6 +19,7 @@ type DatabaseCommand =
   | 'migrate:status'
   | 'migrate:undo'
   | 'seed:demo'
+  | 'seed:test-users'
   | 'setup';
 
 const DATABASE_COMMANDS = new Set<DatabaseCommand>([
@@ -28,6 +30,7 @@ const DATABASE_COMMANDS = new Set<DatabaseCommand>([
   'migrate:status',
   'migrate:undo',
   'seed:demo',
+  'seed:test-users',
   'setup',
 ]);
 
@@ -37,7 +40,7 @@ function parseCommand(value: string | undefined): DatabaseCommand {
   }
 
   throw new Error(
-    'Expected one command: bootstrap:admin, check, create, migrate, migrate:undo, migrate:status, seed:demo or setup',
+    'Expected one command: bootstrap:admin, check, create, migrate, migrate:undo, migrate:status, seed:demo, seed:test-users or setup',
   );
 }
 
@@ -107,6 +110,19 @@ async function run(): Promise<void> {
           `Demo data recreated: ${result.users} users, ${result.availabilities} availabilities, ` +
             `${result.appointments} appointments.`,
         );
+        break;
+      }
+      case 'seed:test-users': {
+        const pendingMigrations = await migrations.pending();
+
+        if (pendingMigrations.length > 0) {
+          throw new Error('Apply all pending migrations before provisioning the test users.');
+        }
+
+        const results = await provisionTestUsers(sequelize, readTestUsersInput());
+        for (const result of results) {
+          console.log(`Test user ${result.action}: ${result.email}`);
+        }
         break;
       }
       case 'check':

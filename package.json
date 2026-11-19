@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter frontend dev",
     "start:dev": "pnpm --filter backend start:dev",
+    "db": "pnpm --filter backend db:setup:test-users",
     "stable:prepare": "node scripts/prepare-stable-worktree.mjs",
     "stable:sync": "node scripts/sync-stable-worktree.mjs",
     "stable": "node scripts/run-stable.mjs",

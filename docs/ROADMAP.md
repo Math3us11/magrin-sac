@@ -263,6 +263,9 @@ Entregas:
 - observabilidade mínima;
 - [x] criar seed recriável e roteiro de demonstração com contas fictícias
       `@demo.test`, sem dados pessoais reais (`docs/DEMO.md`, ADR-031);
+- [x] preparar o banco da entrega com `pnpm db`: migrations e três contas
+      básicas de teste, uma por perfil, sem dump do banco de desenvolvimento
+      (ADR-033);
 - revisão final da documentação.
 
 ## Próxima ação recomendada

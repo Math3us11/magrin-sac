@@ -605,6 +605,38 @@ fazer a pessoa perder o trabalho em andamento quando a sessão vence.
 Consequência: cada requisição autenticada consulta o parâmetro de inatividade.
 O primeiro acesso, ainda pendente de troca de senha, não é monitorado.
 
+## ADR-033 — Contas básicas de teste para avaliação
+
+**Estado:** aceita.
+
+`pnpm db` cria o banco, aplica as migrations e provisiona três contas fictícias,
+uma por perfil: `admin@demo.test`, `professor@demo.test` e `aluno@demo.test`.
+Elas seguem os critérios de identidade fictícia da ADR-031 (CPF com dígito
+verificador inválido, telefone com `0` após o DDD e matrícula com prefixo
+`9900`), entram sem troca obrigatória de senha e recebem vínculos acadêmicos
+em Ciência da Computação: o aluno cursa três disciplinas que o professor também
+leciona.
+
+Diferentemente da senha da demonstração, as senhas dessas contas são públicas e
+simples (`admin123`, `professor123` e `aluno123`): ficam em `TEST_ADMIN_PASSWORD`,
+`TEST_PROFESSOR_PASSWORD` e `TEST_STUDENT_PASSWORD` no `.env.example`, para que
+quem avalia o sistema consiga entrar sem receber credenciais por outro canal. Por isso o comando recusa
+`APP_ENV=production`. A execução é idempotente: redefine senha, perfil e estado
+ativo das três contas, cria vínculos acadêmicos somente para quem ainda não tem
+nenhum e nunca apaga registros. Aborta sem alterar nada se o CPF ou a matrícula
+fictícios já pertencerem a outra conta.
+
+A recriação da demonstração (ADR-031) passa a se limitar às seis contas do seu
+plano, e não a todo o domínio `@demo.test`, para não apagar os vínculos das
+contas de teste.
+
+Motivo: entregar um ambiente avaliável com um único comando, sem um dump do banco
+de desenvolvimento, que conteria dados pessoais reais e hashes de senha.
+
+Consequência: qualquer ambiente acessível publicamente onde o comando for
+executado terá três contas com senha conhecida. A versão estável no túnel deve
+receber essas contas somente durante a avaliação.
+
 ## Como adicionar uma decisão
 
 Registrar contexto, decisão, motivo, consequências e estado. Quando uma decisão

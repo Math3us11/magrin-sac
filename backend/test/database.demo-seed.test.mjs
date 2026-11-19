@@ -187,7 +187,7 @@ test('seed não altera nada quando a demonstração está ligada a contas reais'
     }),
     query: async (sql) => {
       statements.push(sql);
-      if (/FROM users WHERE email LIKE/.test(sql)) return [{ id: 50 }];
+      if (/FROM users WHERE email IN/.test(sql)) return [{ id: 50 }];
       if (/COUNT\(\*\) AS total/.test(sql)) return [{ total: 1 }];
       return [];
     },
