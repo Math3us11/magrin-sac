@@ -40,6 +40,11 @@ A API usa o prefixo `/api` e expõe inicialmente:
 - `db:migrate`: aplica migrations;
 - `db:migrate:undo`: reverte a última migration;
 - `db:setup`: cria o banco e aplica migrations;
+- `db:seed:test-users`: cria ou atualiza as contas básicas de teste
+  `admin@`, `professor@` e `aluno@demo.test` com as senhas de
+  `TEST_ADMIN_PASSWORD`, `TEST_PROFESSOR_PASSWORD` e `TEST_STUDENT_PASSWORD`;
+- `db:setup:test-users`: `db:setup` seguido de `db:seed:test-users`; é o que
+  `pnpm db` executa na raiz;
 - `db:bootstrap:admin`: cria ou atualiza, de forma controlada, a primeira conta
   administrativa.
 

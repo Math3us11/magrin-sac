@@ -60,12 +60,32 @@ pnpm dev --host
 
 ## Preparar e executar o backend
 
-Com o `.env` global configurado na raiz:
+Com o `.env` global configurado na raiz, um único comando cria o banco, aplica
+as migrations e cria as contas básicas de teste:
 
 ```bash
-pnpm --filter backend db:create
-pnpm --filter backend db:setup
+pnpm db
 pnpm start:dev
+```
+
+| Perfil        | E-mail                | Senha          |
+| ------------- | --------------------- | -------------- |
+| Administrador | `admin@demo.test`     | `admin123`     |
+| Professor     | `professor@demo.test` | `professor123` |
+| Aluno         | `aluno@demo.test`     | `aluno123`     |
+
+As senhas vêm de `TEST_ADMIN_PASSWORD`, `TEST_PROFESSOR_PASSWORD` e
+`TEST_STUDENT_PASSWORD`, já preenchidas no `.env.example`.
+
+As contas entram sem troca obrigatória de senha. O aluno cursa disciplinas que o
+professor leciona, então o fluxo de agendamento funciona assim que o professor
+publica um horário. O comando pode ser repetido: ele redefine a senha e o estado
+das três contas sem apagar dados. Ele recusa `APP_ENV=production` (ADR-033).
+
+Para preparar apenas a estrutura, sem contas de teste:
+
+```bash
+pnpm --filter backend db:setup
 ```
 
 Para criar a primeira conta administrativa local, preencha somente no seu
